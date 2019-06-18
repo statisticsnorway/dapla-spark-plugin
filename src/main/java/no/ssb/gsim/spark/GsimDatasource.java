@@ -1,5 +1,12 @@
 package no.ssb.gsim.spark;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import no.ssb.gsim.spark.model.InstanceVariable;
+import no.ssb.gsim.spark.model.LogicalRecord;
+import no.ssb.gsim.spark.model.UnitDataStructure;
+import no.ssb.gsim.spark.model.UnitDataset;
+import no.ssb.gsim.spark.model.api.Client;
+import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -13,6 +20,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,15 +33,38 @@ public class GsimDatasource implements RelationProvider {
 
     public GsimDatasource() {
 
+        // TODO: Use env or spark/hadoop config.
         OAuth2Interceptor oAuth2Interceptor = new OAuth2Interceptor(
                 OPENID_DISCOVERY, "lds-postgres-gsim", "api-user-3", "890e9e58-b1b5-4705-a557-69c19c89dbcf"
         );
         this.client = new OkHttpClient.Builder().addInterceptor(oAuth2Interceptor).build();
 
+
+        long timestamp = System.currentTimeMillis();
+
+        Client ldsClient = new Client();
+
+        ldsClient.withClient(this.client);
+        ldsClient.withMapper(new ObjectMapper());
+        ldsClient.withPrefix(HttpUrl.parse("https://lds.staging.ssbmod.net/ns/"));
+
+        UnitDataset unitDataset = ldsClient.fetchUnitDataset("b9c10b86-5867-4270-b56e-ee7439fe381e", Instant.now())
+                .join();
+
+        System.out.println(unitDataset);
+        UnitDataStructure unitDataStructure = unitDataset.fetchUnitDataStructure().join();
+        System.out.println(unitDataStructure);
+        List<LogicalRecord> logicalRecords = unitDataStructure.fetchLogicalRecords().join();
+        System.out.println(logicalRecords);
+        for (LogicalRecord logicalRecord : logicalRecords) {
+            List<InstanceVariable> instanceVariables = logicalRecord.fetchInstanceVariables().join();
+            System.out.println(instanceVariables);
+        }
+
         Request request = new Request.Builder().get()
-                .url("https://lds.staging.ssbmod.net/ns/UnitDataSet/b9c10b86-5867-4270-b56e-ee7439fe381e")
+                .url("https://lds-c.staging.ssbmod.net/ns/UnitDataSet/b9c10b86-5867-4270-b56e-ee7439fe381e")
                 .build();
-        try (Response response = client.newCall(request).execute()) {
+        try (Response response = this.client.newCall(request).execute()) {
             System.out.println(response);
         } catch (IOException e) {
             e.printStackTrace();
