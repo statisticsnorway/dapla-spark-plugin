@@ -26,6 +26,14 @@ public class GsimDatasourceTest {
     }
 
     @Test
+    public void testReadWithId() {
+        Dataset<Row> dataset = sqlContext.read()
+                .format("no.ssb.gsim.spark")
+                .load("lds+gsim://b9c10b86-5867-4270-b56e-ee7439fe381e");
+        dataset.show();
+    }
+
+    @Test
     public void testRead() {
         Dataset<Row> dataset = sqlContext.read()
                 .format("no.ssb.gsim.spark")
