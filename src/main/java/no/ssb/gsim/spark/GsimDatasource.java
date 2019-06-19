@@ -8,21 +8,17 @@ import no.ssb.gsim.spark.model.UnitDataset;
 import no.ssb.gsim.spark.model.api.Client;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.RelationProvider;
 import scala.Option;
 import scala.collection.immutable.Map;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
 import java.time.Instant;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class GsimDatasource implements RelationProvider {
 
@@ -30,26 +26,27 @@ public class GsimDatasource implements RelationProvider {
             "https://keycloak.staging.ssbmod.net/auth/realms/ssb/protocol/openid-connect/token";
     private static final String PATH = "path";
     private final OkHttpClient client;
+    private final Client ldsClient;
 
     public GsimDatasource() {
 
         // TODO: Use env or spark/hadoop config.
         OAuth2Interceptor oAuth2Interceptor = new OAuth2Interceptor(
-                OPENID_DISCOVERY, "lds-postgres-gsim", "api-user-3", "890e9e58-b1b5-4705-a557-69c19c89dbcf"
+                OPENID_DISCOVERY,
+                "lds-c-postgres-gsim",
+                "api-user-3",
+                "890e9e58-b1b5-4705-a557-69c19c89dbcf"
         );
         this.client = new OkHttpClient.Builder().addInterceptor(oAuth2Interceptor).build();
 
+        // Builder style
+        ldsClient = new Client().withClient(this.client).withMapper(new ObjectMapper());
+        // setter style
+        ldsClient.withPrefix(HttpUrl.parse("https://lds-c.staging.ssbmod.net/ns/"));
+    }
 
-        long timestamp = System.currentTimeMillis();
-
-        Client ldsClient = new Client();
-
-        ldsClient.withClient(this.client);
-        ldsClient.withMapper(new ObjectMapper());
-        ldsClient.withPrefix(HttpUrl.parse("https://lds.staging.ssbmod.net/ns/"));
-
-        UnitDataset unitDataset = ldsClient.fetchUnitDataset("b9c10b86-5867-4270-b56e-ee7439fe381e", Instant.now())
-                .join();
+    private void testFetch(UnitDataset unitDataset) {
+        System.out.println("Datasource path" + unitDataset.getDataSourcePath().split(","));
 
         System.out.println(unitDataset);
         UnitDataStructure unitDataStructure = unitDataset.fetchUnitDataStructure().join();
@@ -59,15 +56,6 @@ public class GsimDatasource implements RelationProvider {
         for (LogicalRecord logicalRecord : logicalRecords) {
             List<InstanceVariable> instanceVariables = logicalRecord.fetchInstanceVariables().join();
             System.out.println(instanceVariables);
-        }
-
-        Request request = new Request.Builder().get()
-                .url("https://lds-c.staging.ssbmod.net/ns/UnitDataSet/b9c10b86-5867-4270-b56e-ee7439fe381e")
-                .build();
-        try (Response response = this.client.newCall(request).execute()) {
-            System.out.println(response);
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
@@ -79,27 +67,29 @@ public class GsimDatasource implements RelationProvider {
             throw new RuntimeException("'path' must be set");
         }
 
-        // Validate the path.
         URI pathUri = URI.create(pathOption.get());
-
-        URL ldsHost = null;
-        try {
-            ldsHost = new URL("https://lds-client.staging.ssbmod.net/be/lds-c/ns/");
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
-
-        List<URI> uris = fetchDataUris(ldsHost, pathUri);
-
-        ArrayList<URI> actualPaths = new ArrayList<>();
-        actualPaths.add(URI.create("file:///home/hadrien/Projects/SSB/java-vtl-connectors/java-vtl-connectors-parquet/8986396a-be56-434e-8491-fd1148d8c2b9.parquet"));
-        actualPaths.add(URI.create("file:///home/hadrien/Projects/SSB/java-vtl-connectors/java-vtl-connectors-parquet/8986396a-be56-434e-8491-fd1148d8c2b9.parquet"));
-
+        List<URI> actualPaths = fetchDataUris(pathUri);
         return new GsimRelation(sqlContext, actualPaths);
     }
 
-    private List<URI> fetchDataUris(URL ldsUrl, URI pathUri) {
-        //new Request.Builder().url()
-        return null;
+    private List<URI> fetchDataUris(URI pathUri) throws IllegalArgumentException {
+
+        // Validate the scheme.
+        List<String> schemes = Arrays.asList(pathUri.getScheme().split("\\+"));
+        if (!schemes.contains("lds") || !schemes.contains("gsim")) {
+            throw new IllegalArgumentException("invalid scheme. Please use lds+gsim://[port[:post]]/path");
+        }
+
+        String path = pathUri.getPath();
+        if (path == null || path.isEmpty()) {
+            // No path. Use the host as id.
+            path = pathUri.getHost();
+        }
+
+        UnitDataset unitDataset = this.ldsClient.fetchUnitDataset(path, Instant.now()).join();
+
+        // Find all the files for the dataset.
+        List<String> dataSources = Arrays.asList(unitDataset.getDataSourcePath().split(","));
+        return dataSources.stream().map(URI::create).collect(Collectors.toList());
     }
 }

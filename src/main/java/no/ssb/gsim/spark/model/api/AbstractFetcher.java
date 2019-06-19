@@ -2,12 +2,16 @@ package no.ssb.gsim.spark.model.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 
 public abstract class AbstractFetcher<T> extends Configured implements Fetchable<T>, Deserializable<T>, Configurable {
+
+    private final Logger LOG = LoggerFactory.getLogger(this.getClass());
 
     @Override
     public T fetch(String id) {
@@ -56,6 +60,7 @@ public abstract class AbstractFetcher<T> extends Configured implements Fetchable
                 }
                 this.complete(deserialize(response.body().byteStream()));
             } catch (Throwable e) {
+                LOG.warn("failed to deserialize body of {}", call.request());
                 this.completeExceptionally(e);
             }
         }
