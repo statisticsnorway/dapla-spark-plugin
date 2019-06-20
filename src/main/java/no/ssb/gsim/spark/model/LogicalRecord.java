@@ -20,6 +20,17 @@ public class LogicalRecord extends IdentifiableArtefact {
     @JsonProperty
     private List<String> instanceVariables;
 
+    @JsonProperty
+    private String shortName;
+
+    public String getShortName() {
+        return shortName;
+    }
+
+    public void setShortName(String shortName) {
+        this.shortName = shortName;
+    }
+
     public List<String> getInstanceVariables() {
         return instanceVariables;
     }
@@ -28,26 +39,7 @@ public class LogicalRecord extends IdentifiableArtefact {
         this.instanceVariables = instanceVariables;
     }
 
-    public CompletableFuture<List<InstanceVariable>> fetchInstanceVariables() {
-        if (getInstanceVariables().isEmpty()) {
-            return CompletableFuture.completedFuture(Collections.emptyList());
-        }
-
-        AbstractFetcher<InstanceVariable> fetcher = new InstanceVariable.Fetcher();
-        fetcher.withParametersFrom(this);
-
-        List<CompletableFuture<InstanceVariable>> fetches = getInstanceVariables().stream()
-                .map(fetcher::fetchAsync).collect(Collectors.toList());
-
-        return CompletableFuture.allOf(fetches.toArray(new CompletableFuture[0]))
-                .thenApply(aVoid -> fetches.stream()
-                        .map(CompletableFuture::join)
-                        .map(result -> (InstanceVariable) result.withParametersFrom(this))
-                        .collect(Collectors.toList())
-                );
-    }
-
-    static class LogicalRecordFetcher extends AbstractFetcher<LogicalRecord> {
+    static class Fetcher extends AbstractFetcher<LogicalRecord> {
 
         @Override
         public LogicalRecord deserialize(ObjectMapper mapper, InputStream bytes) throws IOException {

@@ -35,7 +35,7 @@ public class UnitDataStructure extends IdentifiableArtefact {
         if (getLogicalRecords().isEmpty()) {
             return CompletableFuture.completedFuture(Collections.emptyList());
         }
-        LogicalRecord.LogicalRecordFetcher fetcher = new LogicalRecord.LogicalRecordFetcher();
+        LogicalRecord.Fetcher fetcher = new LogicalRecord.Fetcher();
         fetcher.withParametersFrom(this);
 
         List<CompletableFuture<LogicalRecord>> fetches = getLogicalRecords().stream()
