@@ -16,6 +16,9 @@ RUN wget https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-lat
 RUN mv gcs-connector-hadoop2-latest.jar lib/gcs-connector-hadoop.jar
 
 # Add some examples:
+# val test = spark.read.parquet("gs://ssb-data-a/data/b9c10b86-5867-4270-b56e-ee7439fe381e")
+# test.show()
+#
 # val test = spark.read.format("no.ssb.gsim.spark")
-#                .load("lds+gsim://lds-postgres.staging.ssbmod.net/UnitDataset/b9c10b86-5867-4270-b56e-ee7439fe381e");
-# test.show();
+#     .load("lds+gsim://b9c10b86-5867-4270-b56e-ee7439fe381e")
+# test.show()
