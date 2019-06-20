@@ -1,80 +1,127 @@
 package no.ssb.gsim.spark;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import no.ssb.gsim.spark.model.InstanceVariable;
-import no.ssb.gsim.spark.model.LogicalRecord;
-import no.ssb.gsim.spark.model.UnitDataStructure;
 import no.ssb.gsim.spark.model.UnitDataset;
 import no.ssb.gsim.spark.model.api.Client;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
+import org.apache.spark.SparkConf;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.sources.BaseRelation;
+import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.RelationProvider;
 import scala.Option;
 import scala.collection.immutable.Map;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class GsimDatasource implements RelationProvider {
+public class GsimDatasource implements RelationProvider, CreatableRelationProvider {
 
-    public static final String OPENID_DISCOVERY =
-            "https://keycloak.staging.ssbmod.net/auth/realms/ssb/protocol/openid-connect/token";
+    private static final String CONFIG = "spark.ssb.gsim.";
+
+    // The default location used when writing data.
+    static final String CONFIG_LOCATION_PREFIX = CONFIG + "location";
+
+    // The lds url to use. Required.
+    static final String CONFIG_LDS_URL = CONFIG + "ldsUrl";
+
+    // oAuth parameters. Must all be set to be used.
+    static final String CONFIG_LDS_OAUTH_TOKEN_URL = CONFIG + "oauth.tokenUrl";
+    static final String CONFIG_LDS_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
+    static final String CONFIG_LDS_OAUTH_USER_NAME = CONFIG + "oauth.userName";
+    static final String CONFIG_LDS_OAUTH_PASSWORD = CONFIG + "oauth.password";
+
     private static final String PATH = "path";
-    private final OkHttpClient client;
-    private final Client ldsClient;
 
-    public GsimDatasource() {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
-        // TODO: Use env or spark/hadoop config.
-        OAuth2Interceptor oAuth2Interceptor = new OAuth2Interceptor(
-                OPENID_DISCOVERY,
-                "lds-c-postgres-gsim",
-                "api-user-3",
-                "890e9e58-b1b5-4705-a557-69c19c89dbcf"
-        );
-        this.client = new OkHttpClient.Builder().addInterceptor(oAuth2Interceptor).build();
-
-        // Builder style
-        ldsClient = new Client().withClient(this.client).withMapper(new ObjectMapper());
-        // setter style
-        ldsClient.withPrefix(HttpUrl.parse("https://lds-c.staging.ssbmod.net/ns/"));
+    private Client createLdsClient(final SparkConf conf) {
+        OkHttpClient.Builder builder = new OkHttpClient.Builder();
+        createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
+        return new Client()
+                .withClient(builder.build())
+                .withMapper(MAPPER)
+                .withPrefix(HttpUrl.parse(conf.get(CONFIG_LDS_URL)));
     }
 
-    private void testFetch(UnitDataset unitDataset) {
-        System.out.println("Datasource path" + unitDataset.getDataSourcePath().split(","));
-
-        System.out.println(unitDataset);
-        UnitDataStructure unitDataStructure = unitDataset.fetchUnitDataStructure().join();
-        System.out.println(unitDataStructure);
-        List<LogicalRecord> logicalRecords = unitDataStructure.fetchLogicalRecords().join();
-        System.out.println(logicalRecords);
-        for (LogicalRecord logicalRecord : logicalRecords) {
-            List<InstanceVariable> instanceVariables = logicalRecord.fetchInstanceVariables().join();
-            System.out.println(instanceVariables);
+    private Optional<OAuth2Interceptor> createOAuth2Interceptor(final SparkConf conf) {
+        if (conf.contains(CONFIG_LDS_OAUTH_TOKEN_URL) &&
+                conf.contains(CONFIG_LDS_OAUTH_CLIENT_ID) &&
+                conf.contains(CONFIG_LDS_OAUTH_USER_NAME) &&
+                conf.contains(CONFIG_LDS_OAUTH_PASSWORD)) {
+            OAuth2Interceptor interceptor = new OAuth2Interceptor(
+                    conf.get(CONFIG_LDS_OAUTH_TOKEN_URL),
+                    conf.get(CONFIG_LDS_OAUTH_CLIENT_ID),
+                    conf.get(CONFIG_LDS_OAUTH_USER_NAME),
+                    conf.get(CONFIG_LDS_OAUTH_PASSWORD)
+            );
+            return Optional.of(interceptor);
         }
+        return Optional.empty();
     }
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
+        List<URI> dataUris = fetchDataUris(extractPath(parameters), sqlContext.sparkContext().conf());
+        return new GsimRelation(sqlContext, dataUris);
+    }
 
+    @Override
+    public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
+
+        URI datasetUri = extractPath(parameters);
+        List<URI> dataUris = fetchDataUris(datasetUri, sqlContext.sparkContext().conf());
+
+        // Create a new path with the current time.
+        try {
+            String locationPrefix = sqlContext.getConf(CONFIG_LOCATION_PREFIX);
+            URI prefixUri = URI.create(locationPrefix);
+            URI newDataUri = new URI(
+                    prefixUri.getScheme(),
+                    String.format("%s/%s/%d",
+                            prefixUri.getSchemeSpecificPart(),
+                            datasetUri.getSchemeSpecificPart(), System.currentTimeMillis()
+                    ),
+                    null
+            );
+
+            // TODO: Write new paths.
+            if (mode.equals(SaveMode.Overwrite)) {
+                System.out.println("New paths would be " + newDataUri);
+            } else if (mode.equals(SaveMode.Append)) {
+                System.out.println("New paths would be " + dataUris + " plus " + newDataUri);
+            } else {
+                throw new IllegalArgumentException("Unsupported mode " + mode);
+            }
+
+            data.coalesce(1).write().parquet(newDataUri.toASCIIString());
+            return createRelation(sqlContext, parameters);
+        } catch (URISyntaxException e) {
+            throw new RuntimeException("could not generate new file uri", e);
+        }
+    }
+
+    private URI extractPath(Map<String, String> parameters) {
         Option<String> pathOption = parameters.get(PATH);
         if (pathOption.isEmpty()) {
             throw new RuntimeException("'path' must be set");
         }
-
-        URI pathUri = URI.create(pathOption.get());
-        List<URI> actualPaths = fetchDataUris(pathUri);
-        return new GsimRelation(sqlContext, actualPaths);
+        return URI.create(pathOption.get());
     }
 
-    private List<URI> fetchDataUris(URI pathUri) throws IllegalArgumentException {
+    private List<URI> fetchDataUris(URI pathUri, SparkConf conf) throws IllegalArgumentException {
 
         // Validate the scheme.
+        // TODO: Find the resolver mechanism instead.
         List<String> schemes = Arrays.asList(pathUri.getScheme().split("\\+"));
         if (!schemes.contains("lds") || !schemes.contains("gsim")) {
             throw new IllegalArgumentException("invalid scheme. Please use lds+gsim://[port[:post]]/path");
@@ -86,10 +133,23 @@ public class GsimDatasource implements RelationProvider {
             path = pathUri.getHost();
         }
 
-        UnitDataset unitDataset = this.ldsClient.fetchUnitDataset(path, Instant.now()).join();
+        Client ldsClient = createLdsClient(conf);
+        UnitDataset unitDataset = ldsClient.fetchUnitDataset(path, Instant.now()).join();
 
         // Find all the files for the dataset.
         List<String> dataSources = Arrays.asList(unitDataset.getDataSourcePath().split(","));
         return dataSources.stream().map(URI::create).collect(Collectors.toList());
+    }
+
+    public static class Configuration {
+        private String location;
+
+        public String getLocation() {
+            return location;
+        }
+
+        public void setLocation(String location) {
+            this.location = location;
+        }
     }
 }
