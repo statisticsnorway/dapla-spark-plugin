@@ -1,4 +1,4 @@
-#Spark integration with LDS GSIM
+# Spark integration with LDS GSIM
 
 This project integrates spark with LDS and the GSIM model. It implements a new format 
 so that users can read from and write to a dataset that exists in a LDS instance. 
