@@ -16,12 +16,11 @@ import org.apache.spark.sql.sources.RelationProvider;
 import scala.Option;
 import scala.collection.immutable.Map;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider {
@@ -39,6 +38,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     static final String CONFIG_LDS_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
     static final String CONFIG_LDS_OAUTH_USER_NAME = CONFIG + "oauth.userName";
     static final String CONFIG_LDS_OAUTH_PASSWORD = CONFIG + "oauth.password";
+
+
 
     private static final String PATH = "path";
 
@@ -71,7 +72,17 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
-        List<URI> dataUris = fetchDataUris(extractPath(parameters), sqlContext.sparkContext().conf());
+
+        System.out.println("Environment:");
+        System.getenv().forEach((key, value) -> {
+            System.out.printf("%s: %s\n", key, value);
+        });
+
+        URI datasetUri = extractPath(parameters);
+        String datasetId = extractDatasetId(datasetUri);
+        Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
+        UnitDataset dataset = ldsClient.fetchUnitDataset(datasetId, Instant.now()).join();
+        List<URI> dataUris = extractUris(dataset);
         return new GsimRelation(sqlContext, dataUris);
     }
 
@@ -79,7 +90,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
 
         URI datasetUri = extractPath(parameters);
-        List<URI> dataUris = fetchDataUris(datasetUri, sqlContext.sparkContext().conf());
+        String datasetId = extractDatasetId(datasetUri);
+        Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
+        UnitDataset dataset = ldsClient.fetchUnitDataset(datasetId, Instant.now()).join();
+        List<URI> dataUris = extractUris(dataset);
 
         // Create a new path with the current time.
         try {
@@ -94,20 +108,33 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                     null
             );
 
-            // TODO: Write new paths.
+            List<URI> newDataUris;
             if (mode.equals(SaveMode.Overwrite)) {
-                System.out.println("New paths would be " + newDataUri);
+                newDataUris = Collections.singletonList(newDataUri);
             } else if (mode.equals(SaveMode.Append)) {
-                System.out.println("New paths would be " + dataUris + " plus " + newDataUri);
+                newDataUris = new ArrayList<>();
+                newDataUris.add(newDataUri);
+                newDataUris.addAll(dataUris);
             } else {
                 throw new IllegalArgumentException("Unsupported mode " + mode);
             }
+
+            dataset.setDataSourcePath(newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(",")));
+            ldsClient.updateUnitDataset(datasetId, dataset).join();
 
             data.coalesce(1).write().parquet(newDataUri.toASCIIString());
             return createRelation(sqlContext, parameters);
         } catch (URISyntaxException e) {
             throw new RuntimeException("could not generate new file uri", e);
+        } catch (IOException e) {
+            throw new RuntimeException("could not update lds", e);
         }
+    }
+
+    private List<URI> extractUris(UnitDataset dataset) {
+        // Find all the files for the dataset.
+        List<String> dataSources = Arrays.asList(dataset.getDataSourcePath().split(","));
+        return dataSources.stream().map(URI::create).collect(Collectors.toList());
     }
 
     private URI extractPath(Map<String, String> parameters) {
@@ -118,10 +145,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         return URI.create(pathOption.get());
     }
 
-    private List<URI> fetchDataUris(URI pathUri, SparkConf conf) throws IllegalArgumentException {
-
-        // Validate the scheme.
-        // TODO: Find the resolver mechanism instead.
+    private String extractDatasetId(URI pathUri) {
         List<String> schemes = Arrays.asList(pathUri.getScheme().split("\\+"));
         if (!schemes.contains("lds") || !schemes.contains("gsim")) {
             throw new IllegalArgumentException("invalid scheme. Please use lds+gsim://[port[:post]]/path");
@@ -132,13 +156,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // No path. Use the host as id.
             path = pathUri.getHost();
         }
-
-        Client ldsClient = createLdsClient(conf);
-        UnitDataset unitDataset = ldsClient.fetchUnitDataset(path, Instant.now()).join();
-
-        // Find all the files for the dataset.
-        List<String> dataSources = Arrays.asList(unitDataset.getDataSourcePath().split(","));
-        return dataSources.stream().map(URI::create).collect(Collectors.toList());
+        return path;
     }
 
     public static class Configuration {

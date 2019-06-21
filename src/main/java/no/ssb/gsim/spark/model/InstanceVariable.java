@@ -9,10 +9,12 @@ import okhttp3.Request;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class InstanceVariable extends IdentifiableArtefact {
 
+    public static final String INSTANCE_VARIABLE_NAME = "InstanceVariable";
     @JsonProperty
     private String shortName;
     @JsonProperty
@@ -92,17 +94,27 @@ public class InstanceVariable extends IdentifiableArtefact {
         }
 
         @Override
-        public Request getRequest(HttpUrl prefix, String id, Long timestamp) {
-            String normalizedId = id.replaceAll("InstanceVariable/", "");
+        public Request.Builder getFetchRequest(HttpUrl prefix, String id, Long timestamp) {
+            String normalizedId = id.replaceAll(INSTANCE_VARIABLE_NAME + "/", "");
             if (normalizedId.startsWith("/")) {
                 normalizedId = normalizedId.substring(1);
             }
-
+            HttpUrl url = prefix.resolve("./" + INSTANCE_VARIABLE_NAME + "/" + normalizedId);
+            if (url == null) {
+                throw new RuntimeException(new MalformedURLException());
+            }
             Request.Builder builder = new Request.Builder();
-            builder.header("Content-Type", "application/json");
-            //HttpUrl base = HttpUrl.parse("https://lds.staging.ssbmod.net/ns/");
-            HttpUrl url = prefix.resolve("./InstanceVariable/" + normalizedId);
-            return builder.url(url).build();
+            return builder.url(url);
+        }
+
+        @Override
+        public Request.Builder getUpdateRequest(HttpUrl prefix, String id) {
+            return null;
+        }
+
+        @Override
+        public byte[] serialize(ObjectMapper mapper, InstanceVariable object) throws IOException {
+            return new byte[0];
         }
     }
 

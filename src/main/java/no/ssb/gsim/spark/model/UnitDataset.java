@@ -9,11 +9,13 @@ import okhttp3.Request;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.util.concurrent.CompletableFuture;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class UnitDataset extends Dataset {
 
+    public static final String UNIT_DATA_SET_NAME = "UnitDataSet";
     @JsonProperty
     private String unitDataStructure;
 
@@ -40,14 +42,33 @@ public class UnitDataset extends Dataset {
         }
 
         @Override
-        public Request getRequest(HttpUrl prefix, String id, Long timestamp) {
+        public Request.Builder getFetchRequest(HttpUrl prefix, String id, Long timestamp) {
+            String normalizedId = id.replaceAll(UNIT_DATA_SET_NAME + "/", "");
+            if (normalizedId.startsWith("/")) {
+                normalizedId = normalizedId.substring(1);
+            }
+            HttpUrl url = prefix.resolve("./" + UNIT_DATA_SET_NAME + "/" + normalizedId);
+            if (url == null) {
+                throw new RuntimeException(new MalformedURLException());
+            }
             Request.Builder builder = new Request.Builder();
-            builder.header("Content-Type", "application/json");
-            //HttpUrl base = HttpUrl.parse("https://lds.staging.ssbmod.net/ns/");
-            HttpUrl url = prefix.resolve("./UnitDataSet/" + id);
-            return builder.url(url).build();
+            return builder.url(url);
         }
 
+        @Override
+        public Request.Builder getUpdateRequest(HttpUrl prefix, String id) {
+            Request.Builder builder = new Request.Builder();
+            HttpUrl url = prefix.resolve("./" + UNIT_DATA_SET_NAME + "/" + id);
+            if (url == null) {
+                throw new RuntimeException(new MalformedURLException());
+            }
+            return builder.url(url);
+        }
+
+        @Override
+        public byte[] serialize(ObjectMapper mapper, UnitDataset object) throws IOException {
+            return mapper.writeValueAsBytes(object);
+        }
     }
 
 }

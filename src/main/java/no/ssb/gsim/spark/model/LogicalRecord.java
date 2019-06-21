@@ -9,14 +9,13 @@ import okhttp3.Request;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
+import java.net.MalformedURLException;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class LogicalRecord extends IdentifiableArtefact {
 
+    public static final String LOGICAL_RECORD_NAME = "LogicalRecord";
     @JsonProperty
     private List<String> instanceVariables;
 
@@ -47,18 +46,27 @@ public class LogicalRecord extends IdentifiableArtefact {
         }
 
         @Override
-        public Request getRequest(HttpUrl prefix, String id, Long timestamp) {
-
-            String normalizedId = id.replaceAll("LogicalRecord/", "");
+        public Request.Builder getFetchRequest(HttpUrl prefix, String id, Long timestamp) {
+            String normalizedId = id.replaceAll(LOGICAL_RECORD_NAME + "/", "");
             if (normalizedId.startsWith("/")) {
                 normalizedId = normalizedId.substring(1);
             }
-
+            HttpUrl url = prefix.resolve("./" + LOGICAL_RECORD_NAME + "/" + normalizedId);
+            if (url == null) {
+                throw new RuntimeException(new MalformedURLException());
+            }
             Request.Builder builder = new Request.Builder();
-            builder.header("Content-Type", "application/json");
-            //HttpUrl base = HttpUrl.parse("https://lds.staging.ssbmod.net/ns/");
-            HttpUrl url = prefix.resolve("./LogicalRecord/" + normalizedId);
-            return builder.url(url).build();
+            return builder.url(url);
+        }
+
+        @Override
+        public Request.Builder getUpdateRequest(HttpUrl prefix, String id) {
+            return null;
+        }
+
+        @Override
+        public byte[] serialize(ObjectMapper mapper, LogicalRecord object) throws IOException {
+            return new byte[0];
         }
     }
 }

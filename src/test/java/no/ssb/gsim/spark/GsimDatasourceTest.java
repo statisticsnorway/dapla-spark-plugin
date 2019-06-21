@@ -2,10 +2,7 @@ package no.ssb.gsim.spark;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SQLContext;
-import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,7 +44,8 @@ public class GsimDatasourceTest {
         config.set(CONFIG_LDS_OAUTH_PASSWORD, "890e9e58-b1b5-4705-a557-69c19c89dbcf");
 
         this.sparkContext = new SparkContext(config);
-        this.sqlContext = new SQLContext(sparkContext);
+        SparkSession session = SparkSession.builder().sparkContext(sparkContext).getOrCreate();
+        this.sqlContext = session.sqlContext();
     }
 
     @Test

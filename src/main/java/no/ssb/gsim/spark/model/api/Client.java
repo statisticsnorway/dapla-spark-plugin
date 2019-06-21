@@ -5,6 +5,7 @@ import no.ssb.gsim.spark.model.UnitDataset;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
 
@@ -14,6 +15,12 @@ public class Client extends Configured {
         UnitDataset.Fetcher fetcher = new UnitDataset.Fetcher();
         fetcher.withParametersFrom(this).withTimestamp(timestamp);
         return fetcher.fetchAsync(id).thenApply(result -> (UnitDataset) result.withParametersFrom(this));
+    }
+
+    public CompletableFuture<Void> updateUnitDataset(String id, UnitDataset dataset) throws IOException {
+        UnitDataset.Fetcher fetcher = new UnitDataset.Fetcher();
+        fetcher.withParametersFrom(this);
+        return fetcher.updateAsync(id, dataset);
     }
 
     @Override

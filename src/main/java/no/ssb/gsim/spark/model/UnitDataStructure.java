@@ -9,6 +9,7 @@ import okhttp3.Request;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class UnitDataStructure extends IdentifiableArtefact {
 
+    public static final String UNIT_DATA_STRUCTURE_NAME = "UnitDataStructure";
     @JsonProperty
     private List<String> logicalRecords;
 
@@ -57,18 +59,27 @@ public class UnitDataStructure extends IdentifiableArtefact {
         }
 
         @Override
-        public Request getRequest(HttpUrl prefix, String id, Long timestamp) {
-
-            String normalizedId = id.replaceAll("UnitDataStructure/", "");
+        public Request.Builder getFetchRequest(HttpUrl prefix, String id, Long timestamp) {
+            String normalizedId = id.replaceAll(UNIT_DATA_STRUCTURE_NAME + "/", "");
             if (normalizedId.startsWith("/")) {
                 normalizedId = normalizedId.substring(1);
             }
-
+            HttpUrl url = prefix.resolve("./" + UNIT_DATA_STRUCTURE_NAME + "/" + normalizedId);
+            if (url == null) {
+                throw new RuntimeException(new MalformedURLException());
+            }
             Request.Builder builder = new Request.Builder();
-            builder.header("Content-Type", "application/json");
-            //HttpUrl base = HttpUrl.parse("https://lds.staging.ssbmod.net/ns/");
-            HttpUrl url = prefix.resolve("./UnitDataStructure/" + normalizedId);
-            return builder.url(url).build();
+            return builder.url(url);
+        }
+
+        @Override
+        public Request.Builder getUpdateRequest(HttpUrl prefix, String id) {
+            return null;
+        }
+
+        @Override
+        public byte[] serialize(ObjectMapper mapper, UnitDataStructure object) throws IOException {
+            return new byte[0];
         }
     }
 }
