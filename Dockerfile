@@ -15,6 +15,8 @@ COPY interpreter.json /zeppelin/conf/interpreter.json
 RUN wget https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-latest.jar
 RUN mv gcs-connector-hadoop2-latest.jar lib/gcs-connector-hadoop.jar
 
+VOLUME ["/gcloud/key.json"]
+
 # Add some examples:
 # val test = spark.read.parquet("gs://ssb-data-a/data/b9c10b86-5867-4270-b56e-ee7439fe381e")
 # test.show()
