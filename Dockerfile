@@ -7,6 +7,7 @@ COPY target/lds-gsim-spark-1.0-SNAPSHOT.jar /zeppelin/lib/lds-gsim-spark.jar
 # Copy zeppelin settings. This includes the library.
 # docker exec ID-OF-CONTAINER cat /zeppelin/conf/interpreter.json > interpreter.json
 COPY interpreter.json /zeppelin/conf/interpreter.json
+COPY zeppelin-site.xml /zeppelin/conf/zeppelin-site.xml
 
 # Add the GCS connector.
 # https://github.com/GoogleCloudPlatform/bigdata-interop/blob/master/gcs/INSTALL.md#configure-spark
