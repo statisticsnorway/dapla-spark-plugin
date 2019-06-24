@@ -39,8 +39,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     static final String CONFIG_LDS_OAUTH_USER_NAME = CONFIG + "oauth.userName";
     static final String CONFIG_LDS_OAUTH_PASSWORD = CONFIG + "oauth.password";
 
-
-
     private static final String PATH = "path";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -72,12 +70,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
-
-        System.out.println("Environment:");
-        System.getenv().forEach((key, value) -> {
-            System.out.printf("%s: %s\n", key, value);
-        });
-
         URI datasetUri = extractPath(parameters);
         String datasetId = extractDatasetId(datasetUri);
         Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
