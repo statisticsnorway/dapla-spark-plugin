@@ -1300,27 +1300,27 @@
           "type": "textarea"
         },
         "spark.ssb.gsim.ldsUrl": {
-          "value": "https://lds-c.staging.ssbmod.net/ns/",
+          "value": "$LDS_GSIM_SPARK_LDS_URL",
           "type": "string"
         },
         "spark.ssb.gsim.oauth.clientId": {
-          "value": "lds-c-postgres-gsim",
+          "value": "$LDS_GSIM_SPARK_OAUTH_CLIENT_ID",
           "type": "textarea"
         },
         "spark.ssb.gsim.oauth.userName": {
-          "value": "api-user-3",
+          "value": "$LDS_GSIM_SPARK_OAUTH_USERNAME",
           "type": "string"
         },
         "spark.ssb.gsim.location": {
-          "value": "gs://test",
+          "value": "$LDS_GSIM_SPARK_LOCATION",
           "type": "string"
         },
         "spark.ssb.gsim.oauth.password": {
-          "value": "GSIM_PASSORD",
+          "value": "$LDS_GSIM_SPARK_OAUTH_PASSWORD",
           "type": "password"
         },
         "spark.ssb.gsim.oauth.tokenUrl": {
-          "value": "https://keycloak.staging.ssbmod.net/auth/realms/ssb/protocol/openid-connect/token",
+          "value": "$LDS_GSIM_SPARK_OAUTH_TOKEN_URL",
           "type": "string"
         },
         "spark.hadoop.fs.gs.impl": {
