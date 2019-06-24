@@ -3,29 +3,23 @@
 This project integrates spark with LDS and the GSIM model. It implements a new format 
 so that users can read from and write to a dataset that exists in a LDS instance. 
 
-## Known issues
-
-* No environment settings for the gsim module. Configuration is done via spark configuration. 
-See `CONFIG_LDS_OAUTH_TOKEN_URL` in `GsimDatasource.java`. Default config is setup to access 
-`https://lds-c.staging.ssbmod.net/ns/` but you'll need to set the `spark.ssb.gsim.oauth.password` 
-value in the **spark interpreter** 
-settings.
 ## Test it
 
 The project contains a Dockerfile based on `apache/zeppelin`. It includes the Google Cloud 
 Storage connector and the built jar file.
+
+The following environment variables are required.
+*Note that if one of the oAuth variable is missing, the module with try to access the lds resources __without__
+authentication*
 
 |ENV Variable| Spark variable|Purpose|
 |---|---|---|
 |LDS_GSIM_SPARK_LOCATION|spark.ssb.gsim.location|Prefix used when writing data|
 |LDS_GSIM_SPARK_LDS_URL|spark.ssb.gsim.ldsUrl|LDS url to use|
 |LDS_GSIM_SPARK_OAUTH_TOKEN_URL|spark.ssb.gsim.oauth.tokenUrl|OAUTH token url|
-|LDS_GSIM_SPARK_OAUTH_CLIENT_ID|spark.ssb.gsim.oauth.clientId|OAUTH token url|
-|LDS_GSIM_SPARK_OAUTH_USERNAME|spark.ssb.gsim.oauth.userName|OAUTH token url|
-|LDS_GSIM_SPARK_OAUTH_PASSWORD|spark.ssb.gsim.oauth.password|OAUTH token url|
-
-*Note that if one of the oAuth variable is missing, the module with try to access the lds resources without
-authentication*
+|LDS_GSIM_SPARK_OAUTH_CLIENT_ID|spark.ssb.gsim.oauth.clientId|OAUTH client id|
+|LDS_GSIM_SPARK_OAUTH_USERNAME|spark.ssb.gsim.oauth.userName|OAUTH username|
+|LDS_GSIM_SPARK_OAUTH_PASSWORD|spark.ssb.gsim.oauth.password|OAUTH password|
 
 ```
 # Compile the project
