@@ -20,6 +20,12 @@
 <configuration>
 
 <property>
+    <name>zeppelin.server.rpc.hostName</name>
+    <value>127.0.0.1</value>
+    <description>RPC server address</description>
+</property>
+
+<property>
     <name>zeppelin.server.jetty.request.header.size</name>
     <value>16000</value>
     <description>Http Request Header Size Limit (to prevent HTTP 413)</description>
