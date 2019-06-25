@@ -8,6 +8,7 @@ COPY target/lds-gsim-spark-1.0-SNAPSHOT.jar /zeppelin/lib/lds-gsim-spark.jar
 # docker exec ID-OF-CONTAINER cat /zeppelin/conf/interpreter.json > interpreter.json
 COPY interpreter-template.json /zeppelin/conf/interpreter-template.json
 COPY zeppelin-site.xml /zeppelin/conf/zeppelin-site.xml
+COPY zeppelin-env.sh /zeppelin/conf/zeppelin-env.sh
 COPY env.sh /env.sh
 
 # Add the GCS connector.
