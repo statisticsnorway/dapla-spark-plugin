@@ -9,6 +9,8 @@ COPY target/lds-gsim-spark-1.0-SNAPSHOT.jar /zeppelin/lib/lds-gsim-spark.jar
 COPY interpreter-template.json /zeppelin/conf/interpreter-template.json
 COPY zeppelin-site.xml /zeppelin/conf/zeppelin-site.xml
 COPY zeppelin-env.sh /zeppelin/conf/zeppelin-env.sh
+COPY interpreter.sh /zeppelin/bin/interpreter.sh
+RUN chmod 0755 /zeppelin/bin/interpreter.sh
 COPY env.sh /env.sh
 
 # Add the GCS connector.
