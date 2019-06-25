@@ -16,4 +16,5 @@
 # limitations under the License.
 #
 
+export MASTER=local
 export CALLBACK_HOST=127.0.0.1
