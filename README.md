@@ -66,3 +66,8 @@ myProcessedDataset.write
   .save("lds+gsim://b9c10b86-5867-4270-b56e-ee7439fe381e");                        
 ```
 
+## Diagrams
+
+![](http://www.plantuml.com/plantuml/png/VL7DJiCm3BxxAQpSzm8x84qhJ4XmYYQatRBKgyAof4fSnkFZqB51ct6Bldn_jjcn9rprFOKMEM9hs6HY06Cv9jncIj2RnCwwtWH6jIFXUXVKN_YbqNC4D_hv5RN0HmKsUa-MNGmPrJU6rW-PAIaegNl9HRM9iPD2Qn-75hLKC1qfWD835m_uauvBVFmaEp315PBlYQ-mD4idV8_xCf3xC4opyAcewhEEfxwarSYJIONTaAUkP9sJ4z4jUhgKcLRy2hJ4LJxYGIxWNUQRWVn18XvIg4ehLIx5CT1vzBeV-LRA_aySxpmsm2VdAPWJGNKhrKjUKmwY_RMN-jalEKqCTE_z1G00)
+
+![](http://www.plantuml.com/plantuml/png/TPB1JiCm38RlUGehTrvW1wHfXGa9Jj64n2rBlIeiYwF4PJm-3eoLjU5M_R7_xxTTzXmGrYbXx849Uiks82jb7LE6NS6iaitidKysCkWtbDhWexwLdpkpL61hdbx0Y7pKob48wDXJBA2_DN1XB8nPgqhT2nVqbcYGG9j0Omz68jW1jL8r1zpTmoyTLl3mYMvaL5T9dcU-KcLOCi4xxUj0_iCoBk3pfgRFXawfqbh5iqcbkiE0GsMTivUc2JrVog9N_AgqWdKvma4k47pXoK3UL4OUSuH77p3Q4vQcIIFKPGI8UFvn_H_-McDFXGtyCaLpDSrpNW47QVwpdFRjBw2E8jvyJtSNKFq_lW00)
