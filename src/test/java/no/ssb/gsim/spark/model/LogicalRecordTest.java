@@ -4,40 +4,32 @@ package no.ssb.gsim.spark.model;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
+import okio.Buffer;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.io.InputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 
 public class LogicalRecordTest {
 
-    private String exampleDataset;
     private MockWebServer server;
 
     @Before
-    public void setUp() throws Exception {
-        Request getExampleDataset = new Request.Builder()
-                .url("https://github.com/statisticsnorway/gsim-raml-schema/raw/master/examples/" +
-                        "_main/LogicalRecord_Person_1.json")
-                .build();
-
-        try (Response execute = new OkHttpClient().newCall(getExampleDataset).execute()) {
-            exampleDataset = execute.body().string();
-        }
-
+    public void setUp() {
         server = new MockWebServer();
     }
 
     @Test
     public void testDeserialize() throws IOException {
-        server.enqueue(new MockResponse().setBody(exampleDataset));
+        InputStream in = this.getClass().getResourceAsStream(
+                "/no/ssb/gsim/spark/data/LogicalRecord_Person_1.json");
+        server.enqueue(new MockResponse().setBody(new Buffer().readFrom(in)));
         server.start();
         HttpUrl baseUrl = server.url("/test/");
         LogicalRecord.Fetcher fetcher = new LogicalRecord.Fetcher();
