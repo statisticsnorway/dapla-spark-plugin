@@ -76,26 +76,28 @@ myProcessedDataset.write
 
 To create the lds spark interface in DataProc use this (or similar) command:
 
-  gcloud dataproc clusters create lds-spark-gsim \
-    --enable-component-gateway \
-    --region europe-north1 \
-    --subnet default \
-    --zone "" \
-    --master-machine-type n1-highmem-4 \
-    --master-boot-disk-size 500 \
-    --num-workers 2 \
-    --worker-machine-type n1-highmem-4 \
-    --worker-boot-disk-size 500 \
-    --image-version 1.4-debian9 \
-    --optional-components ZEPPELIN \
-    --project bip-nullfem \
-    --properties "dataproc:dataproc.conscrypt.provider.enable=false" \
-    --initialization-actions gs://dataproc-initialization-actions/python/pip-install.sh
+```bash
+gcloud dataproc clusters create lds-spark-gsim \
+--enable-component-gateway \
+--region europe-north1 \
+--subnet default \
+--zone "" \
+--master-machine-type n1-highmem-4 \
+--master-boot-disk-size 500 \
+--num-workers 2 \
+--worker-machine-type n1-highmem-4 \
+--worker-boot-disk-size 500 \
+--image-version 1.4-debian9 \
+--optional-components ZEPPELIN \
+--project bip-nullfem \
+--properties "dataproc:dataproc.conscrypt.provider.enable=false" \
+--initialization-actions gs://dataproc-initialization-actions/python/pip-install.sh
+```
 
 The setting "enable-component-gateway" will make the Zeppelin web interface available from GCP console, but is not supported yet in Terraform, so the cluster needs to be created manually.
 When <https://github.com/terraform-providers/terraform-provider-google/pull/4073> is merged, Zeppelin can be added as a "optional component". The branch <https://github.com/statisticsnorway/platform/tree/dataproc_lds_terraform_example> include a WIP example of the setup.
 
-The property dataproc:dataproc.conscrypt.provider.enable=false is used to disable Conscrypt Java security provider to support lds-gsim-spark interpeter. With Conscrypt it will currently result in a bug in DataProc.
+The property `dataproc:dataproc.conscrypt.provider.enable=false` is used to disable Conscrypt Java security provider to support lds-gsim-spark interpeter. With Conscrypt it will currently result in a bug in DataProc.
 
 ### Manually copy the lds-gsim-spark to the DataProc master node
 
@@ -104,19 +106,25 @@ Get the SSH and SCP command from the console, under VM Instances.
 
 Example, build the jar and copy it to the master node:
 
-  mvn clean package
-  gcloud compute scp --project "bip-nullfem" --zone "europe-north1-c" \
-    target/lds-gsim-spark-1.0-SNAPSHOT.jar "lds-spark-gsim-m:"
+```bash
+mvn clean package
+gcloud compute scp --project "bip-nullfem" --zone "europe-north1-c" \
+target/lds-gsim-spark-1.0-SNAPSHOT.jar "lds-spark-gsim-m:"
+```
 
 Connect to the master VM Instance:
 
-  gcloud compute --project "bip-nullfem" ssh --zone "europe-north1-c" "lds-spark-gsim-m"
+```bash
+gcloud compute --project "bip-nullfem" ssh --zone "europe-north1-c" "lds-spark-gsim-m"
+```
 
 Move the file to Zeppelin folder and change permissions:
 
-  sudo cp lds-gsim-spark-1.0-SNAPSHOT.jar /etc/zeppelin/lds-gsim-spark.jar
-  sudo chown zeppelin /etc/zeppelin/lds-gsim-spark.jar
-  sudo chgrp zeppelin /etc/zeppelin/lds-gsim-spark.jar
+```bash
+sudo cp lds-gsim-spark-1.0-SNAPSHOT.jar /etc/zeppelin/lds-gsim-spark.jar
+sudo chown zeppelin /etc/zeppelin/lds-gsim-spark.jar
+sudo chgrp zeppelin /etc/zeppelin/lds-gsim-spark.jar
+```
 
 ### Add configuration to the Zeppelin interface
 
