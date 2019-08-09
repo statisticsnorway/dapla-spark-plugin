@@ -146,3 +146,7 @@ sudo chgrp zeppelin /etc/zeppelin/lds-gsim-spark.jar
 |spark.ssb.gsim.oauth.password|Get the password from Keycloak|
 
 Click Save and  OK for the dialog to restart the interpeter.
+
+### Notebook storage
+
+By default, notebooks are saved in Cloud Storage in the Cloud Dataproc staging bucket, which is specified by the user or auto-created when the cluster is created. The location can be changed at cluster creation time via the `zeppelin.notebook.gcs.dir` property.
