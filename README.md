@@ -53,7 +53,25 @@ personWithIncome.printSchema()
 personWithIncome.show()
 ```
 
+```sql
+%sql 
+CREATE TEMPORARY VIEW personWithIncome
+USING no.ssb.gsim.spark
+OPTIONS (
+  path "lds+gsim://b9c10b86-5867-4270-b56e-ee7439fe381e"
+)
+SELECT * FROM personWithIncome
+```
+
+```r
+%r
+pWithIncome <- sql("SELECT * FROM personWithIncome")
+head(pWithIncome)
+```
+
+
 Write to a dataset. Note the mode.  
+
 
 ```scala
 val myProcessedDataset = Seq(
