@@ -1,0 +1,23 @@
+@startuml
+title Docker deployment diagram
+
+cloud "Google Cloud storage" as storage
+actor user
+database "LDS Gsim" as lds
+
+
+frame zeppelin-lds {
+  component zeppelin
+  component spark
+  artifact [lds-gsim-spark] as gsim
+  artifact [gcs-connector-hadoop] as gcs
+}
+
+spark -(0- zeppelin
+spark o-- gsim
+spark o-- gcs
+gcs -0)- storage
+gsim -0)- "HTTP" lds
+
+user -right- zeppelin : HTTP 8080
+@enduml

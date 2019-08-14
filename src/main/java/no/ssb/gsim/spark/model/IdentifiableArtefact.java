@@ -12,7 +12,7 @@ public abstract class IdentifiableArtefact extends Configured {
     @JsonProperty
     private String id;
     @JsonIgnore
-    private Map<String, Object> unknowProperties = new LinkedHashMap<>();
+    private Map<String, Object> unknownProperties = new LinkedHashMap<>();
 
     public String getId() {
         return id;
@@ -23,12 +23,12 @@ public abstract class IdentifiableArtefact extends Configured {
     }
 
     @JsonAnyGetter
-    public Map<String, Object> getUnknowProperties() {
-        return unknowProperties;
+    public Map<String, Object> getUnknownProperties() {
+        return unknownProperties;
     }
 
     @JsonAnySetter
     public void setUnknowProperty(String key, Object value) {
-        unknowProperties.put(key, value);
+        unknownProperties.put(key, value);
     }
 }

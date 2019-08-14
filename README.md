@@ -53,7 +53,25 @@ personWithIncome.printSchema()
 personWithIncome.show()
 ```
 
+```sql
+%sql 
+CREATE TEMPORARY VIEW personWithIncome
+USING no.ssb.gsim.spark
+OPTIONS (
+  path "lds+gsim://b9c10b86-5867-4270-b56e-ee7439fe381e"
+)
+SELECT * FROM personWithIncome
+```
+
+```r
+%r
+pWithIncome <- sql("SELECT * FROM personWithIncome")
+head(pWithIncome)
+```
+
+
 Write to a dataset. Note the mode.  
+
 
 ```scala
 val myProcessedDataset = Seq(
@@ -66,3 +84,8 @@ myProcessedDataset.write
   .save("lds+gsim://b9c10b86-5867-4270-b56e-ee7439fe381e");                        
 ```
 
+## Diagrams
+
+![](http://www.plantuml.com/plantuml/png/VL7DJiCm3BxxAQpSzm8x84qhJ4XmYYQatRBKgyAof4fSnkFZqB51ct6Bldn_jjcn9rprFOKMEM9hs6HY06Cv9jncIj2RnCwwtWH6jIFXUXVKN_YbqNC4D_hv5RN0HmKsUa-MNGmPrJU6rW-PAIaegNl9HRM9iPD2Qn-75hLKC1qfWD835m_uauvBVFmaEp315PBlYQ-mD4idV8_xCf3xC4opyAcewhEEfxwarSYJIONTaAUkP9sJ4z4jUhgKcLRy2hJ4LJxYGIxWNUQRWVn18XvIg4ehLIx5CT1vzBeV-LRA_aySxpmsm2VdAPWJGNKhrKjUKmwY_RMN-jalEKqCTE_z1G00)
+
+![](http://www.plantuml.com/plantuml/png/LP0nRmCX38Lt_mgBhOEb6wEkZPGE7IerMzN11OUWS6S4P6Yh_lV2eLEQ0Ga_VtuFKqEDWdkr5yde94NzccMfw0Bxp3E0ZNfrQ0wgle5FQrMgPlPYaCjs1xRjWjSY6HnN_kGYQ5xsRtWeOLx9w0e0d9ghuBUa934ir4Jy0KIhSzAb9s-jEx4apfUcSAxXrABmlGsIRzQqjZvwG2_l66yBMLqMwM-ZCplLD4XRu1TW7KMQ7kYMEZGb6dR_oZRJpi2thJip5FDyFBwQiMJ_1QGS_BdUdF4HEuAxQJVz0G00)

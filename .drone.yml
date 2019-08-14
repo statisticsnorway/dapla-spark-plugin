@@ -1,0 +1,22 @@
+kind: pipeline
+name: default
+
+steps:
+- name: test
+  image: maven:3-jdk-10
+  commands:
+  - mvn test -B
+
+- name: build
+  image: maven:3-jdk-10
+  commands:
+  - mvn package -DskipTests=true -Dmaven.javadoc.skip=true -B -V
+
+- name: publish
+  image: plugins/gcr
+  settings:
+    repo: bip-nullfem/ssb/lds-zeppelin
+    registry: eu.gcr.io
+    auto_tag: true
+    json_key:
+      from_secret: google_credentials
