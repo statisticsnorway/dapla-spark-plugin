@@ -1261,7 +1261,17 @@
         },
         "master": {
           "name": "master",
-          "value": "local[*]",
+          "value": "spark://spark-master:7077",
+          "type": "string"
+        },
+        "SPARK_HOME": {
+          "name": "SPARK_HOME",
+          "value": "/opt/spark",
+          "type": "string"
+        },
+        "spark.driver.host": {
+          "name": "spark.driver.host",
+          "value": "zeppelin",
           "type": "string"
         },
         "zeppelin.pyspark.python": {
