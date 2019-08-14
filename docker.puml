@@ -13,7 +13,7 @@ frame zeppelin-lds {
   artifact [gcs-connector-hadoop] as gcs
 }
 
-spark -0)- zeppelin
+spark -(0- zeppelin
 spark o-- gsim
 spark o-- gcs
 gcs -0)- storage
