@@ -112,9 +112,9 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             }
 
             dataset.setDataSourcePath(newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(",")));
-            ldsClient.updateUnitDataset(datasetId, dataset).join();
-
             data.coalesce(1).write().parquet(newDataUri.toASCIIString());
+            
+            ldsClient.updateUnitDataset(datasetId, dataset).join();
             return createRelation(sqlContext, parameters);
         } catch (URISyntaxException e) {
             throw new RuntimeException("could not generate new file uri", e);

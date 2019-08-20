@@ -53,11 +53,7 @@ public class GsimDatasourceTest {
                 .master("local")
                 .config("spark.ui.enabled", false)
                 .config(CONFIG_LDS_URL, baseUrl.toString())
-                .config(CONFIG_LDS_OAUTH_CLIENT_ID, "lds-c-postgres-gsim")
-                .config(CONFIG_LDS_OAUTH_USER_NAME, "api-user-3")
-                .config(CONFIG_LDS_OAUTH_PASSWORD, "890e9e58-b1b5-4705-a557-69c19c89dbcf")
                 .config(CONFIG_LOCATION_PREFIX, tempDirectory.toString())
-                .config(CONFIG_LDS_OAUTH_TOKEN_URL, "https://keycloak.staging.ssbmod.net/auth/realms/ssb/protocol/openid-connect/token")
                 .getOrCreate();
 
         this.sparkContext = session.sparkContext();

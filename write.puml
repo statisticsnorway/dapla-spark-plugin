@@ -16,6 +16,7 @@ activate "Spark cluster"
 "Spark cluster" -> "LDS GSIM Spark" : Delegate write
 activate "LDS GSIM Spark"
 "LDS GSIM Spark" -> LDS : Ask for list
+"LDS GSIM Spark" --> "Spark cluster" : Write files
 activate LDS
 return Filenames
 "LDS GSIM Spark" -> "LDS GSIM Spark" : Compute new list
