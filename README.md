@@ -1,6 +1,6 @@
 # Spark integration with LDS GSIM
 
-[![Build Status](https://drone.jonas.ssbmod.net/api/badges/statisticsnorway/lds-gsim-spark/status.svg)](https://drone.jonas.ssbmod.net/statisticsnorway/lds-gsim-spark)
+[![Build Status](https://drone.infra.ssbmod.net/api/badges/statisticsnorway/lds-gsim-spark/status.svg)](https://drone.infra.ssbmod.net/statisticsnorway/lds-gsim-spark)
 
 This project integrates spark with LDS and the GSIM model. It implements a new format so that users can read from and write to a dataset that exists in a LDS instance.
 
@@ -42,7 +42,7 @@ Check that all the configuration starting with `spark.ssb.gsim` are setup correc
 
 ## Usage in spark
 
-Read a dataset:  
+Read a dataset:
 
 ```scala
 val personWithIncome = spark.read.format("no.ssb.gsim.spark")
@@ -54,7 +54,7 @@ personWithIncome.show()
 ```
 
 ```sql
-%sql 
+%sql
 CREATE TEMPORARY VIEW personWithIncome
 USING no.ssb.gsim.spark
 OPTIONS (
@@ -70,7 +70,7 @@ head(pWithIncome)
 ```
 
 
-Write to a dataset. Note the mode.  
+Write to a dataset. Note the mode.
 
 
 ```scala
