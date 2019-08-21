@@ -59,7 +59,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             OAuth2Interceptor interceptor = new OAuth2Interceptor(
                     conf.get(CONFIG_LDS_OAUTH_TOKEN_URL),
                     OAuth2Interceptor.GrantType.valueOf(
-                            conf.get(CONFIG_LDS_OAUTH_GRANT_TYPE)
+                            conf.get(CONFIG_LDS_OAUTH_GRANT_TYPE).toUpperCase()
                     ),
                     conf.get(CONFIG_LDS_OAUTH_CLIENT_ID),
                     conf.get(CONFIG_LDS_OAUTH_CLIENT_SECRET),
