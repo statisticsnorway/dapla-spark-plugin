@@ -10,15 +10,10 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
-import org.apache.spark.sql.catalyst.expressions.Attribute;
-import org.apache.spark.sql.catalyst.expressions.SortOrder;
-import org.apache.spark.sql.catalyst.plans.QueryPlan;
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.RelationProvider;
 import scala.Option;
-import scala.collection.Seq;
 import scala.collection.immutable.Map;
 
 import java.io.IOException;
@@ -121,7 +116,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
             dataset.setDataSourcePath(newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(",")));
             data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-            
+
             ldsClient.updateUnitDataset(datasetId, dataset).join();
             return createRelation(sqlContext, parameters);
         } catch (URISyntaxException e) {
