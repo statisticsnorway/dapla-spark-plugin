@@ -19,21 +19,25 @@ public class OAuth2Interceptor implements Interceptor {
     private static final String GRANT_TYPE = "grant_type";
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final String grantType;
-    private final String tokenUrl;
+    private final HttpUrl tokenUrl;
     private final String clientId;
     private final String clientSecret;
     private final String userName;
     private final String password;
     private String token = null;
 
-    public OAuth2Interceptor(String tokenUrl, GrantType type, String clientId, String clientSecret, String userName, String password) {
-        this.tokenUrl = tokenUrl;
+    public OAuth2Interceptor(String tokenUrl, GrantType type, String clientId, String clientSecret, String userName,
+                             String password) {
+        this.tokenUrl = HttpUrl.get(Objects.requireNonNull(tokenUrl, "token url is required"));
+        if (!this.tokenUrl.isHttps()) {
+            throw new IllegalArgumentException("token url must be https");
+        }
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.userName = userName;
         this.password = password;
 
-        switch (type) {
+        switch (Objects.requireNonNull(type)) {
             case PASSWORD:
                 grantType = "password";
                 Objects.requireNonNull(userName, "username is required");
