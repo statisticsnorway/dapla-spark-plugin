@@ -1303,8 +1303,16 @@
           "value": "$LDS_GSIM_SPARK_LDS_URL",
           "type": "string"
         },
+        "spark.ssb.gsim.oauth.grantType": {
+          "value": "$LDS_GSIM_SPARK_OAUTH_GRANT_TYPE",
+          "type": "textarea"
+        },
         "spark.ssb.gsim.oauth.clientId": {
           "value": "$LDS_GSIM_SPARK_OAUTH_CLIENT_ID",
+          "type": "textarea"
+        },
+        "spark.ssb.gsim.oauth.clientSecret": {
+          "value": "$LDS_GSIM_SPARK_OAUTH_CLIENT_SECRET",
           "type": "textarea"
         },
         "spark.ssb.gsim.oauth.userName": {
