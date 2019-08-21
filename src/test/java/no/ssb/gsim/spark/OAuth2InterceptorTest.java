@@ -1,6 +1,9 @@
 package no.ssb.gsim.spark;
 
-import okhttp3.*;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -48,12 +51,50 @@ public class OAuth2InterceptorTest {
                 .addInterceptor(interceptor).build();
 
         Request request = new Request.Builder()
-                .url(resourceServer.url("/resource")) .get().build();
+                .url(resourceServer.url("/resource")).get().build();
         Response execute = client.newCall(request).execute();
 
         RecordedRequest tokenRequest = tokenServer.takeRequest();
         assertThat(tokenRequest.getUtf8Body())
-                .isEqualTo("username=username&password=password&grant_type=password&scope=openid%20profile%20email");
+                .isEqualTo("" +
+                        "username=username&" +
+                        "password=password&" +
+                        "grant_type=password&" +
+                        "scope=openid%20profile%20email" +
+                        "");
+
+        RecordedRequest resourceRequest = resourceServer.takeRequest();
+        assertThat(resourceRequest.getHeader("Authorization")).isEqualTo("Bearer letoken");
+    }
+
+    @Test
+    public void testClientCredential() throws IOException, InterruptedException {
+
+        tokenServer.enqueue(new MockResponse().setBody("{\"access_token\":\"letoken\"}"));
+        resourceServer.enqueue(new MockResponse().setBody("OK"));
+
+        HttpUrl url = tokenServer.url("/token");
+        OAuth2Interceptor interceptor = new OAuth2Interceptor(
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                "client", "secret",
+                null, null
+        );
+
+        OkHttpClient client = new OkHttpClient.Builder()
+                .addInterceptor(interceptor).build();
+
+        Request request = new Request.Builder()
+                .url(resourceServer.url("/resource")).get().build();
+        Response execute = client.newCall(request).execute();
+
+        RecordedRequest tokenRequest = tokenServer.takeRequest();
+        assertThat(tokenRequest.getUtf8Body())
+                .isEqualTo("" +
+                        "client_id=client&" +
+                        "client_secret=secret&" +
+                        "grant_type=client_credential&" +
+                        "scope=openid%20profile%20email" +
+                        "");
 
         RecordedRequest resourceRequest = resourceServer.takeRequest();
         assertThat(resourceRequest.getHeader("Authorization")).isEqualTo("Bearer letoken");

@@ -97,7 +97,6 @@ public class OAuth2Interceptor implements Interceptor {
         if (clientSecret != null) formBodyBuilder.add(CLIENT_SECRET, clientSecret);
         if (userName != null) formBodyBuilder.add(USERNAME, userName);
         if (password != null) formBodyBuilder.add(PASSWORD, password);
-        if (clientId != null) formBodyBuilder.add(CLIENT_ID, clientId);
 
         FormBody formBody = formBodyBuilder.add(GRANT_TYPE, grantType)
                 .add("scope", "openid profile email")
