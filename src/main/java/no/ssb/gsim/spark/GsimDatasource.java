@@ -34,10 +34,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     static final String CONFIG_LDS_URL = CONFIG + "ldsUrl";
 
     // oAuth parameters. Must all be set to be used.
-    static final String CONFIG_LDS_OAUTH_TOKEN_URL = CONFIG + "oauth.tokenUrl";
-    static final String CONFIG_LDS_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
-    static final String CONFIG_LDS_OAUTH_USER_NAME = CONFIG + "oauth.userName";
-    static final String CONFIG_LDS_OAUTH_PASSWORD = CONFIG + "oauth.password";
+    private static final String CONFIG_LDS_OAUTH_TOKEN_URL = CONFIG + "oauth.tokenUrl";
+    private static final String CONFIG_LDS_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
+    private static final String CONFIG_LDS_OAUTH_CLIENT_SECRET = CONFIG + "oauth.clientSecret";
+    private static final String CONFIG_LDS_OAUTH_USER_NAME = CONFIG + "oauth.userName";
+    private static final String CONFIG_LDS_OAUTH_PASSWORD = CONFIG + "oauth.password";
+    private static final String CONFIG_LDS_OAUTH_GRANT_TYPE = CONFIG + "oauth.grantType";
 
     private static final String PATH = "path";
 
@@ -53,13 +55,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     }
 
     private Optional<OAuth2Interceptor> createOAuth2Interceptor(final SparkConf conf) {
-        if (conf.contains(CONFIG_LDS_OAUTH_TOKEN_URL) &&
-                conf.contains(CONFIG_LDS_OAUTH_CLIENT_ID) &&
-                conf.contains(CONFIG_LDS_OAUTH_USER_NAME) &&
-                conf.contains(CONFIG_LDS_OAUTH_PASSWORD)) {
+        if (conf.contains(CONFIG_LDS_OAUTH_TOKEN_URL)) {
             OAuth2Interceptor interceptor = new OAuth2Interceptor(
                     conf.get(CONFIG_LDS_OAUTH_TOKEN_URL),
+                    OAuth2Interceptor.GrantType.valueOf(
+                            conf.get(CONFIG_LDS_OAUTH_GRANT_TYPE).toUpperCase()
+                    ),
                     conf.get(CONFIG_LDS_OAUTH_CLIENT_ID),
+                    conf.get(CONFIG_LDS_OAUTH_CLIENT_SECRET),
                     conf.get(CONFIG_LDS_OAUTH_USER_NAME),
                     conf.get(CONFIG_LDS_OAUTH_PASSWORD)
             );
@@ -113,7 +116,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
             dataset.setDataSourcePath(newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(",")));
             data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-            
+
             ldsClient.updateUnitDataset(datasetId, dataset).join();
             return createRelation(sqlContext, parameters);
         } catch (URISyntaxException e) {

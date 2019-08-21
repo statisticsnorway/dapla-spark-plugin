@@ -17,7 +17,9 @@ authentication*
 |LDS_GSIM_SPARK_LOCATION|spark.ssb.gsim.location|Prefix used when writing data|
 |LDS_GSIM_SPARK_LDS_URL|spark.ssb.gsim.ldsUrl|LDS url to use|
 |LDS_GSIM_SPARK_OAUTH_TOKEN_URL|spark.ssb.gsim.oauth.tokenUrl|OAUTH token url|
+|LDS_GSIM_SPARK_OAUTH_GRANT_TYPE|spark.ssb.gsim.oauth.grantType|OAUTH grant type|
 |LDS_GSIM_SPARK_OAUTH_CLIENT_ID|spark.ssb.gsim.oauth.clientId|OAUTH client id|
+|LDS_GSIM_SPARK_OAUTH_CLIENT_SECRET|spark.ssb.gsim.oauth.clientSecret|OAUTH client secret|
 |LDS_GSIM_SPARK_OAUTH_USERNAME|spark.ssb.gsim.oauth.userName|OAUTH username|
 |LDS_GSIM_SPARK_OAUTH_PASSWORD|spark.ssb.gsim.oauth.password|OAUTH password|
 
@@ -30,6 +32,7 @@ docker build -t lds-zeppelin-gsim .
 docker run -p 8080:8080 -e LDS_GSIM_SPARK_LDS_URL=https://lds-c.staging.ssbmod.net/ns/ \
                         -e LDS_GSIM_SPARK_LOCATION=gs://bucker/prefix/ \
                         -e LDS_GSIM_SPARK_OAUTH_TOKEN_URL=https://keycloak.staging.ssbmod.net/auth/realms/ssb/protocol/openid-connect/token \
+                        -e LDS_GSIM_SPARK_OAUTH_GRANT_TYPE=password \
                         -e LDS_GSIM_SPARK_OAUTH_CLIENT_ID=lds-c-postgres-gsim \
                         -e LDS_GSIM_SPARK_OAUTH_USERNAME=api-user-3 \
                         -e LDS_GSIM_SPARK_OAUTH_PASSWORD=PASSWORD \
