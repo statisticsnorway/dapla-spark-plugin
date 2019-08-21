@@ -10,10 +10,15 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.catalyst.expressions.Attribute;
+import org.apache.spark.sql.catalyst.expressions.SortOrder;
+import org.apache.spark.sql.catalyst.plans.QueryPlan;
+import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.RelationProvider;
 import scala.Option;
+import scala.collection.Seq;
 import scala.collection.immutable.Map;
 
 import java.io.IOException;
@@ -34,10 +39,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     static final String CONFIG_LDS_URL = CONFIG + "ldsUrl";
 
     // oAuth parameters. Must all be set to be used.
-    static final String CONFIG_LDS_OAUTH_TOKEN_URL = CONFIG + "oauth.tokenUrl";
-    static final String CONFIG_LDS_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
-    static final String CONFIG_LDS_OAUTH_USER_NAME = CONFIG + "oauth.userName";
-    static final String CONFIG_LDS_OAUTH_PASSWORD = CONFIG + "oauth.password";
+    private static final String CONFIG_LDS_OAUTH_TOKEN_URL = CONFIG + "oauth.tokenUrl";
+    private static final String CONFIG_LDS_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
+    private static final String CONFIG_LDS_OAUTH_CLIENT_SECRET = CONFIG + "oauth.clientSecret";
+    private static final String CONFIG_LDS_OAUTH_USER_NAME = CONFIG + "oauth.userName";
+    private static final String CONFIG_LDS_OAUTH_PASSWORD = CONFIG + "oauth.password";
+    private static final String CONFIG_LDS_OAUTH_GRANT_TYPE = CONFIG + "oauth.grantType";
 
     private static final String PATH = "path";
 
@@ -53,13 +60,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     }
 
     private Optional<OAuth2Interceptor> createOAuth2Interceptor(final SparkConf conf) {
-        if (conf.contains(CONFIG_LDS_OAUTH_TOKEN_URL) &&
-                conf.contains(CONFIG_LDS_OAUTH_CLIENT_ID) &&
-                conf.contains(CONFIG_LDS_OAUTH_USER_NAME) &&
-                conf.contains(CONFIG_LDS_OAUTH_PASSWORD)) {
+        if (conf.contains(CONFIG_LDS_OAUTH_TOKEN_URL)) {
             OAuth2Interceptor interceptor = new OAuth2Interceptor(
                     conf.get(CONFIG_LDS_OAUTH_TOKEN_URL),
+                    OAuth2Interceptor.GrantType.valueOf(
+                            conf.get(CONFIG_LDS_OAUTH_GRANT_TYPE)
+                    ),
                     conf.get(CONFIG_LDS_OAUTH_CLIENT_ID),
+                    conf.get(CONFIG_LDS_OAUTH_CLIENT_SECRET),
                     conf.get(CONFIG_LDS_OAUTH_USER_NAME),
                     conf.get(CONFIG_LDS_OAUTH_PASSWORD)
             );
