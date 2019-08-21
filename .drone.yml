@@ -69,4 +69,4 @@ kind: secret
 name: maven_servers
 get:
   path: drone-maven-servers
-  name: nexus-ssb
+  name: ssb-bip-maven-servers
