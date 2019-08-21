@@ -26,9 +26,9 @@ public class OAuth2Interceptor implements Interceptor {
     private final String password;
     private String token = null;
 
-    // For testing.
+    // Used in tests. This constructor skips token url validation.
     OAuth2Interceptor(HttpUrl tokenUrl, GrantType type, String clientId, String clientSecret, String userName,
-                              String password) {
+                      String password) {
         this.tokenUrl = tokenUrl;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
@@ -53,31 +53,15 @@ public class OAuth2Interceptor implements Interceptor {
 
     public OAuth2Interceptor(String tokenUrl, GrantType type, String clientId, String clientSecret, String userName,
                              String password) {
-        this.tokenUrl = HttpUrl.get(Objects.requireNonNull(tokenUrl, "token url is required"));
-        if (!this.tokenUrl.isHttps()) {
+        this(validateTokenUrl(tokenUrl), type, clientId, clientSecret, userName, password);
+    }
+
+    private static HttpUrl validateTokenUrl(String tokenUrl) {
+        HttpUrl tokenHttpUrl = HttpUrl.get(Objects.requireNonNull(tokenUrl, "token url is required"));
+        if (!tokenHttpUrl.isHttps()) {
             throw new IllegalArgumentException("token url must be https");
         }
-
-        this.clientId = clientId;
-        this.clientSecret = clientSecret;
-        this.userName = userName;
-        this.password = password;
-
-        switch (Objects.requireNonNull(type)) {
-            case PASSWORD:
-                grantType = "password";
-                Objects.requireNonNull(userName, "username is required");
-                Objects.requireNonNull(password, "password is required");
-                break;
-            case CLIENT_CREDENTIAL:
-                grantType = "client_credential";
-                Objects.requireNonNull(clientId, "client id is required");
-                Objects.requireNonNull(clientSecret, "client secret is required");
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown grant type " + type);
-        }
-
+        return tokenHttpUrl;
     }
 
     @Override
