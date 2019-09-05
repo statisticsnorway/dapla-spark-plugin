@@ -57,14 +57,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     private Optional<OAuth2Interceptor> createOAuth2Interceptor(final SparkConf conf) {
         if (conf.contains(CONFIG_LDS_OAUTH_TOKEN_URL)) {
             OAuth2Interceptor interceptor = new OAuth2Interceptor(
-                    conf.get(CONFIG_LDS_OAUTH_TOKEN_URL),
+                    conf.get(CONFIG_LDS_OAUTH_TOKEN_URL, null),
                     OAuth2Interceptor.GrantType.valueOf(
                             conf.get(CONFIG_LDS_OAUTH_GRANT_TYPE).toUpperCase()
                     ),
-                    conf.get(CONFIG_LDS_OAUTH_CLIENT_ID),
-                    conf.get(CONFIG_LDS_OAUTH_CLIENT_SECRET),
-                    conf.get(CONFIG_LDS_OAUTH_USER_NAME),
-                    conf.get(CONFIG_LDS_OAUTH_PASSWORD)
+                    conf.get(CONFIG_LDS_OAUTH_CLIENT_ID, null),
+                    conf.get(CONFIG_LDS_OAUTH_CLIENT_SECRET, null),
+                    conf.get(CONFIG_LDS_OAUTH_USER_NAME, null),
+                    conf.get(CONFIG_LDS_OAUTH_PASSWORD, null)
             );
             return Optional.of(interceptor);
         }

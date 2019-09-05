@@ -14,6 +14,7 @@ import org.junit.Test;
 import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class OAuth2InterceptorTest {
 
@@ -68,6 +69,62 @@ public class OAuth2InterceptorTest {
     }
 
     @Test
+    public void testInvalidCombinations() throws IOException, InterruptedException {
+
+
+        HttpUrl url = HttpUrl.get("http://localhost/");
+        new OAuth2Interceptor(
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                "client", "secret",
+                null, null
+        );
+
+        new OAuth2Interceptor(
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                "client", "secret",
+                "user", null
+        );
+
+        new OAuth2Interceptor(
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                "client", "secret",
+                "user", "password"
+        );
+
+        assertThatThrownBy(() -> {
+            new OAuth2Interceptor(
+                    url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                    "client", null,
+                    "user", "password"
+            );
+        });
+
+        assertThatThrownBy(() -> {
+            new OAuth2Interceptor(
+                    url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                    null, "secret",
+                    "user", "password"
+            );
+        });
+
+        assertThatThrownBy(() -> {
+            new OAuth2Interceptor(
+                    url, OAuth2Interceptor.GrantType.PASSWORD,
+                    null, null,
+                    null, "password"
+            );
+        });
+
+        assertThatThrownBy(() -> {
+            new OAuth2Interceptor(
+                    url, OAuth2Interceptor.GrantType.PASSWORD,
+                    null, null,
+                    "user", null
+            );
+        });
+    }
+
+    @Test
     public void testClientCredential() throws IOException, InterruptedException {
 
         tokenServer.enqueue(new MockResponse().setBody("{\"access_token\":\"letoken\"}"));
@@ -95,6 +152,40 @@ public class OAuth2InterceptorTest {
                         "grant_type=client_credential&" +
                         "scope=openid%20profile%20email" +
                         "");
+
+        RecordedRequest resourceRequest = resourceServer.takeRequest();
+        assertThat(resourceRequest.getHeader("Authorization")).isEqualTo("Bearer letoken");
+    }
+
+    @Test
+    public void testClientCredentialAndPassword() throws IOException, InterruptedException {
+
+        tokenServer.enqueue(new MockResponse().setBody("{\"access_token\":\"letoken\"}"));
+        resourceServer.enqueue(new MockResponse().setBody("OK"));
+
+        HttpUrl url = tokenServer.url("/token");
+        OAuth2Interceptor interceptor = new OAuth2Interceptor(
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                "client", "secret",
+                "user", "password"
+        );
+
+        OkHttpClient client = new OkHttpClient.Builder()
+                .addInterceptor(interceptor).build();
+
+        Request request = new Request.Builder()
+                .url(resourceServer.url("/resource")).get().build();
+        Response execute = client.newCall(request).execute();
+
+        RecordedRequest tokenRequest = tokenServer.takeRequest();
+        assertThat(tokenRequest.getUtf8Body())
+                .isEqualTo("" +
+                        "client_id=client&" +
+                        "client_secret=secret&" +
+                        "username=user&" +
+                        "password=password&" +
+                        "grant_type=client_credential&" +
+                        "scope=openid%20profile%20email");
 
         RecordedRequest resourceRequest = resourceServer.takeRequest();
         assertThat(resourceRequest.getHeader("Authorization")).isEqualTo("Bearer letoken");
