@@ -74,26 +74,26 @@ public class OAuth2InterceptorTest {
 
         HttpUrl url = HttpUrl.get("http://localhost/");
         new OAuth2Interceptor(
-                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
                 "client", "secret",
                 null, null
         );
 
         new OAuth2Interceptor(
-                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
                 "client", "secret",
                 "user", null
         );
 
         new OAuth2Interceptor(
-                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
                 "client", "secret",
                 "user", "password"
         );
 
         assertThatThrownBy(() -> {
             new OAuth2Interceptor(
-                    url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                    url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
                     "client", null,
                     "user", "password"
             );
@@ -101,7 +101,7 @@ public class OAuth2InterceptorTest {
 
         assertThatThrownBy(() -> {
             new OAuth2Interceptor(
-                    url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                    url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
                     null, "secret",
                     "user", "password"
             );
@@ -132,7 +132,7 @@ public class OAuth2InterceptorTest {
 
         HttpUrl url = tokenServer.url("/token");
         OAuth2Interceptor interceptor = new OAuth2Interceptor(
-                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
                 "client", "secret",
                 null, null
         );
@@ -149,7 +149,7 @@ public class OAuth2InterceptorTest {
                 .isEqualTo("" +
                         "client_id=client&" +
                         "client_secret=secret&" +
-                        "grant_type=client_credential&" +
+                        "grant_type=client_credentials&" +
                         "scope=openid%20profile%20email" +
                         "");
 
@@ -165,7 +165,7 @@ public class OAuth2InterceptorTest {
 
         HttpUrl url = tokenServer.url("/token");
         OAuth2Interceptor interceptor = new OAuth2Interceptor(
-                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
                 "client", "secret",
                 "user", "password"
         );
@@ -184,7 +184,7 @@ public class OAuth2InterceptorTest {
                         "client_secret=secret&" +
                         "username=user&" +
                         "password=password&" +
-                        "grant_type=client_credential&" +
+                        "grant_type=client_credentials&" +
                         "scope=openid%20profile%20email");
 
         RecordedRequest resourceRequest = resourceServer.takeRequest();
