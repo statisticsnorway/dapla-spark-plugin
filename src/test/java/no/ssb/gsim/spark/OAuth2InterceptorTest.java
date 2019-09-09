@@ -74,26 +74,26 @@ public class OAuth2InterceptorTest {
 
         HttpUrl url = HttpUrl.get("http://localhost/");
         new OAuth2Interceptor(
-                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
                 "client", "secret",
                 null, null
         );
 
         new OAuth2Interceptor(
-                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
                 "client", "secret",
                 "user", null
         );
 
         new OAuth2Interceptor(
-                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
                 "client", "secret",
                 "user", "password"
         );
 
         assertThatThrownBy(() -> {
             new OAuth2Interceptor(
-                    url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
+                    url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
                     "client", null,
                     "user", "password"
             );
@@ -101,7 +101,7 @@ public class OAuth2InterceptorTest {
 
         assertThatThrownBy(() -> {
             new OAuth2Interceptor(
-                    url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
+                    url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
                     null, "secret",
                     "user", "password"
             );
@@ -132,7 +132,7 @@ public class OAuth2InterceptorTest {
 
         HttpUrl url = tokenServer.url("/token");
         OAuth2Interceptor interceptor = new OAuth2Interceptor(
-                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
                 "client", "secret",
                 null, null
         );
@@ -165,7 +165,7 @@ public class OAuth2InterceptorTest {
 
         HttpUrl url = tokenServer.url("/token");
         OAuth2Interceptor interceptor = new OAuth2Interceptor(
-                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIALS,
+                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
                 "client", "secret",
                 "user", "password"
         );

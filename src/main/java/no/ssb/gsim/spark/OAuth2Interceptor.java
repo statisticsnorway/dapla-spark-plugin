@@ -41,7 +41,7 @@ public class OAuth2Interceptor implements Interceptor {
                 Objects.requireNonNull(userName, "username is required");
                 Objects.requireNonNull(password, "password is required");
                 break;
-            case CLIENT_CREDENTIALS:
+            case CLIENT_CREDENTIAL:
                 grantType = "client_credentials";
                 Objects.requireNonNull(clientId, "client id is required");
                 Objects.requireNonNull(clientSecret, "client secret is required");
@@ -108,6 +108,6 @@ public class OAuth2Interceptor implements Interceptor {
 
     public enum GrantType {
         PASSWORD,
-        CLIENT_CREDENTIALS
+        CLIENT_CREDENTIAL
     }
 }
