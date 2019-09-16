@@ -1,8 +1,8 @@
 package no.ssb.gsim.spark;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import no.ssb.gsim.spark.model.UnitDataset;
-import no.ssb.gsim.spark.model.api.Client;
+import no.ssb.lds.gsim.okhttp.UnitDataset;
+import no.ssb.lds.gsim.okhttp.api.Client;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import org.apache.spark.SparkConf;
