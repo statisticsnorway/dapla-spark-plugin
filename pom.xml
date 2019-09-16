@@ -61,6 +61,12 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.12</artifactId>
             <version>2.4.2</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.module</groupId>
+                    <artifactId>jackson-module-scala_2.12</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -68,6 +74,14 @@
             <artifactId>spark-sql_2.12</artifactId>
             <version>2.4.2</version>
         </dependency>
+
+        <!-- We need this to bump the jackson version to a java 9 compatible version -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-scala_2.12</artifactId>
+            <version>2.10.0.pr2</version>
+        </dependency>
+
 
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
