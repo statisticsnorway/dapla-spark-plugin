@@ -100,7 +100,7 @@ myProcessedDataset.write
 To create the lds spark interface in DataProc use this (or similar) command:
 
 ```bash
-gcloud dataproc clusters create lds-spark-gsim \
+gcloud beta dataproc clusters create lds-spark-gsim \
 --enable-component-gateway \
 --region europe-north1 \
 --subnet default \
@@ -114,6 +114,7 @@ gcloud dataproc clusters create lds-spark-gsim \
 --optional-components ZEPPELIN \
 --project bip-nullfem \
 --properties "dataproc:dataproc.conscrypt.provider.enable=false" \
+--metadata 'PIP_PACKAGES=pandas' \
 --initialization-actions gs://dataproc-initialization-actions/python/pip-install.sh
 ```
 
