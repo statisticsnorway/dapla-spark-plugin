@@ -100,11 +100,11 @@ myProcessedDataset.write
 To create the lds spark interface in DataProc use this (or similar) command:
 
 ```bash
-gcloud beta dataproc clusters create lds-spark-gsim \
+gcloud beta dataproc clusters create staging-bip-lds-dataproc \
 --enable-component-gateway \
 --region europe-north1 \
---subnet default \
---zone "" \
+--subnet dataproc-subnet \
+--zone europe-north1-a\
 --master-machine-type n1-highmem-4 \
 --master-boot-disk-size 500 \
 --num-workers 2 \
@@ -112,11 +112,15 @@ gcloud beta dataproc clusters create lds-spark-gsim \
 --worker-boot-disk-size 500 \
 --image-version 1.4-debian9 \
 --optional-components ZEPPELIN \
---project bip-nullfem \
+--project staging-bip \
 --properties "dataproc:dataproc.conscrypt.provider.enable=false" \
 --metadata 'PIP_PACKAGES=pandas' \
 --initialization-actions gs://dataproc-initialization-actions/python/pip-install.sh
 ```
+
+This creates a cluster with the given name (e.g. staging-bip-lds-dataproc) according to the specifications.
+
+**NOTE:** If this is the first DataProc cluster being created in the given GCP project (and the project is set up according to security best practices, disabling "default" networks/subnets), some network configurations have to be done. See <https://cloud.google.com/dataproc/docs/concepts/configuring-clusters/network>.
 
 The setting "enable-component-gateway" will make the Zeppelin web interface available from GCP console, but is not supported yet in Terraform, so the cluster needs to be created manually.
 When <https://github.com/terraform-providers/terraform-provider-google/pull/4073> is merged, Zeppelin can be added as a "optional component". The branch <https://github.com/statisticsnorway/platform/tree/dataproc_lds_terraform_example> include a WIP example of the setup.
