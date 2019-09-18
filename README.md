@@ -132,12 +132,16 @@ The property `dataproc:dataproc.conscrypt.provider.enable=false` is used to disa
 The jar needs to be manually added to the master node.
 Get the SSH and SCP command from the console, under VM Instances.
 
+#### Add jar to master node: Alternative 1
+
 Connect to the master VM Instance and fetch the latest jar from Nexus directly to the master node (find the right version & URL by using the Nexus GUI):
 
 ```bash
 gcloud compute ssh --project "staging-bip" --zone "europe-north1-a" "lds-spark-gsim-m"
 curl -O https://nexus.infra.ssbmod.net/repository/maven-snapshots/no/ssb/lds/lds-gsim-spark/1.0-SNAPSHOT/lds-gsim-spark-1.0-20190918.092747-15.jar
 ```
+
+#### Add jar to master node: Alternative 2
 
 Alternatively, build the jar locally and copy the jar to the master node (remember to replace &lt;version&gt; with the right version) before connecting to the master VM instance:
 
@@ -147,6 +151,8 @@ gcloud compute scp --project "staging-bip" --zone "europe-north1-a" \
 target/lds-gsim-spark-<version>.jar "lds-spark-gsim-m:"
 gcloud compute ssh --project "staging-bip" --zone "europe-north1-a" "lds-spark-gsim-m"
 ```
+
+#### Set permissions
 
 While staying connected to the master node, copy the file to Zeppelin folder while renaming it (drop the version number) and change permissions (file owner and group):
 
