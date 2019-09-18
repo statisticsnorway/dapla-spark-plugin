@@ -132,26 +132,27 @@ The property `dataproc:dataproc.conscrypt.provider.enable=false` is used to disa
 The jar needs to be manually added to the master node.
 Get the SSH and SCP command from the console, under VM Instances.
 
-Example, build the jar and copy it to the master node:
+Connect to the master VM Instance and fetch the latest jar from Nexus directly to the master node (find the right version & URL by using the Nexus GUI):
+
+```bash
+gcloud compute ssh --project "bip-nullfem" --zone "europe-north1-c" "lds-spark-gsim-m"
+curl -O https://nexus.infra.ssbmod.net/repository/maven-snapshots/no/ssb/lds/lds-gsim-spark/1.0-SNAPSHOT/lds-gsim-spark-1.0-20190918.092747-15.jar
+```
+
+Alternatively, build the jar locally and copy the jar to the master node (remember to replace &lt;version&gt; with the right version) before connecting to the master VM instance:
 
 ```bash
 mvn clean package
 gcloud compute scp --project "bip-nullfem" --zone "europe-north1-c" \
-target/lds-gsim-spark-1.0-SNAPSHOT.jar "lds-spark-gsim-m:"
+target/lds-gsim-spark-<version>.jar "lds-spark-gsim-m:"
+gcloud compute ssh --project "bip-nullfem" --zone "europe-north1-c" "lds-spark-gsim-m"
 ```
 
-Connect to the master VM Instance:
-
-```bash
-gcloud compute --project "bip-nullfem" ssh --zone "europe-north1-c" "lds-spark-gsim-m"
-```
-
-Move the file to Zeppelin folder and change permissions:
+While staying connected to the master node, copy the file to Zeppelin folder while renaming it (drop the version number) and change permissions (file owner and group):
 
 ```bash
 sudo cp lds-gsim-spark-1.0-SNAPSHOT.jar /etc/zeppelin/lds-gsim-spark.jar
-sudo chown zeppelin /etc/zeppelin/lds-gsim-spark.jar
-sudo chgrp zeppelin /etc/zeppelin/lds-gsim-spark.jar
+sudo chown zeppelin:zeppelin /etc/zeppelin/lds-gsim-spark.jar
 ```
 
 ### Add configuration to the Zeppelin interface
@@ -173,7 +174,7 @@ sudo chgrp zeppelin /etc/zeppelin/lds-gsim-spark.jar
 |spark.ssb.gsim.oauth.userName|api-user-3|
 |spark.ssb.gsim.oauth.password|Get the password from Keycloak|
 
-Click Save and  OK for the dialog to restart the interpeter.
+Click Save and  OK for the dialog to restart the interpreter.
 
 ### Notebook storage
 
