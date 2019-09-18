@@ -166,8 +166,8 @@ sudo chgrp zeppelin /etc/zeppelin/lds-gsim-spark.jar
 |spark.ssb.gsim.ldsUrl|<https://lds-c.staging.ssbmod.net/ns/>|
 |spark.ssb.gsim.oauth.tokenUrl|<https://keycloak.staging.ssbmod.net/auth/realms/ssb/protocol/openid-connect/token>|
 |spark.ssb.gsim.oauth.clientId|lds-c-postgres-gsim|
-|spark.ssb.gsim.oauth.userName|api-user-3|
-|spark.ssb.gsim.oauth.password|Get the password from Keycloak|
+spark.ssb.gsim.oauth.grantType|client_credential|
+spark.ssb.gsim.oauth.clientSecret|*get this from keycloak*|
 
 Click Save and  OK for the dialog to restart the interpeter.
 
