@@ -135,7 +135,7 @@ Get the SSH and SCP command from the console, under VM Instances.
 Connect to the master VM Instance and fetch the latest jar from Nexus directly to the master node (find the right version & URL by using the Nexus GUI):
 
 ```bash
-gcloud compute ssh --project "bip-nullfem" --zone "europe-north1-c" "lds-spark-gsim-m"
+gcloud compute ssh --project "staging-bip" --zone "europe-north1-a" "lds-spark-gsim-m"
 curl -O https://nexus.infra.ssbmod.net/repository/maven-snapshots/no/ssb/lds/lds-gsim-spark/1.0-SNAPSHOT/lds-gsim-spark-1.0-20190918.092747-15.jar
 ```
 
@@ -143,9 +143,9 @@ Alternatively, build the jar locally and copy the jar to the master node (rememb
 
 ```bash
 mvn clean package
-gcloud compute scp --project "bip-nullfem" --zone "europe-north1-c" \
+gcloud compute scp --project "staging-bip" --zone "europe-north1-a" \
 target/lds-gsim-spark-<version>.jar "lds-spark-gsim-m:"
-gcloud compute ssh --project "bip-nullfem" --zone "europe-north1-c" "lds-spark-gsim-m"
+gcloud compute ssh --project "staging-bip" --zone "europe-north1-a" "lds-spark-gsim-m"
 ```
 
 While staying connected to the master node, copy the file to Zeppelin folder while renaming it (drop the version number) and change permissions (file owner and group):
