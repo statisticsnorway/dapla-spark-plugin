@@ -125,7 +125,7 @@ This creates a cluster with the given name (e.g. staging-bip-lds-dataproc) accor
 The setting "enable-component-gateway" will make the Zeppelin web interface available from GCP console, but is not supported yet in Terraform, so the cluster needs to be created manually.
 When <https://github.com/terraform-providers/terraform-provider-google/pull/4073> is merged, Zeppelin can be added as a "optional component". The branch <https://github.com/statisticsnorway/platform/tree/dataproc_lds_terraform_example> include a WIP example of the setup.
 
-The property `dataproc:dataproc.conscrypt.provider.enable=false` is used to disable Conscrypt Java security provider to support lds-gsim-spark interpeter. With Conscrypt it will currently result in a bug in DataProc.
+The property `dataproc:dataproc.conscrypt.provider.enable=false` is used to disable Conscrypt Java security provider to support lds-gsim-spark interpreter. With Conscrypt it will currently result in a bug in DataProc.
 
 ### Manually copy the lds-gsim-spark to the DataProc master node
 
@@ -169,16 +169,16 @@ sudo chown zeppelin:zeppelin /etc/zeppelin/lds-gsim-spark.jar
 
 3. Under Dependencies, add "/etc/zeppelin/lds-gsim-spark.jar" as artifact.
 
-4. Under "Properties" and name, add the settings, with string values:
+4. Under "Properties", add the settings, with string values:
 
 |Spark variable|Example|
 |---|---|
-|spark.ssb.gsim.location|gs://ssb-data-a/data/|
-|spark.ssb.gsim.ldsUrl|<https://lds-c.staging.ssbmod.net/ns/>|
+|spark.ssb.gsim.location|gs://ssb-data-staging/data/|
+|spark.ssb.gsim.ldsUrl|<https://lds.staging.ssbmod.net/ns/>|
 |spark.ssb.gsim.oauth.tokenUrl|<https://keycloak.staging.ssbmod.net/auth/realms/ssb/protocol/openid-connect/token>|
-|spark.ssb.gsim.oauth.clientId|lds-c-postgres-gsim|
+|spark.ssb.gsim.oauth.clientId|lds-postgres-gsim|
 spark.ssb.gsim.oauth.grantType|client_credential|
-spark.ssb.gsim.oauth.clientSecret|*get this from keycloak*|
+spark.ssb.gsim.oauth.clientSecret|*get this from keycloak or Ansible vault*|
 
 Click Save and  OK for the dialog to restart the interpreter.
 
