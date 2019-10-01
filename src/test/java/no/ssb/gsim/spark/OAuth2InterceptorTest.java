@@ -56,7 +56,7 @@ public class OAuth2InterceptorTest {
         Response execute = client.newCall(request).execute();
 
         RecordedRequest tokenRequest = tokenServer.takeRequest();
-        assertThat(tokenRequest.getUtf8Body())
+        assertThat(tokenRequest.getBody().readByteString().utf8())
                 .isEqualTo("" +
                         "username=username&" +
                         "password=password&" +
@@ -145,7 +145,7 @@ public class OAuth2InterceptorTest {
         Response execute = client.newCall(request).execute();
 
         RecordedRequest tokenRequest = tokenServer.takeRequest();
-        assertThat(tokenRequest.getUtf8Body())
+        assertThat(tokenRequest.getBody().readByteString().utf8())
                 .isEqualTo("" +
                         "client_id=client&" +
                         "client_secret=secret&" +
@@ -178,7 +178,7 @@ public class OAuth2InterceptorTest {
         Response execute = client.newCall(request).execute();
 
         RecordedRequest tokenRequest = tokenServer.takeRequest();
-        assertThat(tokenRequest.getUtf8Body())
+        assertThat(tokenRequest.getBody().readByteString().utf8())
                 .isEqualTo("" +
                         "client_id=client&" +
                         "client_secret=secret&" +
