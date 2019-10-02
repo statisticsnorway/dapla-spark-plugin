@@ -136,3 +136,9 @@ name: sonar_token
 get:
   path: drone-sonarqube-configuration
   name: token
+---
+kind: secret
+name: gcr_credentials
+get:  
+  path: drone-gcr-credentials
+  name: gcr-credentials
