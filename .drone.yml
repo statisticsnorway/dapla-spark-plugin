@@ -85,7 +85,7 @@ steps:
 - name: publish-docker
   image: plugins/gcr
   settings:
-    repo: bip-nullfem/ssb/lds-zeppelin
+    repo: prod-bip/ssb/lds-zeppelin
     registry: eu.gcr.io
     auto_tag: true
     json_key:
