@@ -6,7 +6,7 @@
 
     <groupId>no.ssb.lds</groupId>
     <artifactId>lds-gsim-spark</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
 
     <name>lds-gsim-spark</name>
 
