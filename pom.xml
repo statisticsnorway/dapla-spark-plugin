@@ -6,7 +6,7 @@
 
     <groupId>no.ssb.lds</groupId>
     <artifactId>lds-gsim-spark</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
 
     <name>lds-gsim-spark</name>
 
@@ -88,12 +88,12 @@
                 <repository>
                     <id>ssb-bip-releases</id>
                     <name>SSB Nexus Releases</name>
-                    <url>https://nexus.prod-bip-ci.ssbmod.net/repository/maven-releases/</url>
+                    <url>https://nexus.prod-bip-ci.ssb.no/repository/maven-releases/</url>
                 </repository>
                 <snapshotRepository>
                     <id>ssb-bip-snapshots</id>
                     <name>SSB Snapshot Repository</name>
-                    <url>https://nexus.prod-bip-ci.ssbmod.net/repository/maven-snapshots/</url>
+                    <url>https://nexus.prod-bip-ci.ssb.no/repository/maven-snapshots/</url>
                 </snapshotRepository>
             </distributionManagement>
         </profile>
