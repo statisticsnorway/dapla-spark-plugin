@@ -236,6 +236,9 @@
                                 <includes>
                                     <include>com.squareup.okhttp3:*</include>
                                     <include>com.squareup.okio:*</include>
+                                    <include>org.jetbrains.kotlin:kotlin-stdlib:*</include>
+                                    <include>org.jetbrains.kotlin:kotlin-stdlib-common:*</include>
+                                    <include>no.ssb.lds:lds-gsim-okhttp</include>
                                 </includes>
                             </artifactSet>
                             <minimizeJar>true</minimizeJar>
