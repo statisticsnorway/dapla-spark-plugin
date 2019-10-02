@@ -90,6 +90,10 @@ steps:
     auto_tag: true
     json_key:
       from_secret: gcr_credentials
+  when:
+    ref:
+      - refs/heads/develop
+      - refs/tags/*
   depends_on:
     - sonarqube
     - codacy
