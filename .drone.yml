@@ -69,7 +69,7 @@ steps:
 - name: publish-maven
   image: maven:3-jdk-11
   commands:
-    - mvn clean deploy -P ssb-bip, -DskipTests=true --batch-mode --global-settings settings.xml
+    - mvn clean package deploy -P ssb-bip, -DskipTests=true --batch-mode --global-settings settings.xml
   when:
     ref:
       - refs/heads/develop
@@ -85,7 +85,7 @@ steps:
 - name: publish-docker
   image: plugins/gcr
   settings:
-    repo: prod-bip/ssb/lds-zeppelin
+    repo: eu.gcr.io/prod-bip/ssb/lds-zeppelin
     registry: eu.gcr.io
     auto_tag: true
     json_key:

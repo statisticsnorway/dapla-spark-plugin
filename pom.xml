@@ -52,21 +52,6 @@
             </build>
         </profile>
         <profile>
-            <id>ssb</id>
-            <distributionManagement>
-                <repository>
-                    <id>ssb-releases</id>
-                    <name>SSB Nexus Releases</name>
-                    <url>https://nexus.ssb.no/repository/maven-releases/</url>
-                </repository>
-                <snapshotRepository>
-                    <id>ssb-snapshots</id>
-                    <name>SSB Snapshot Repository</name>
-                    <url>https://nexus.ssb.no/repository/maven-snapshots/</url>
-                </snapshotRepository>
-            </distributionManagement>
-        </profile>
-        <profile>
             <id>ssb-bip</id>
             <repositories>
                 <repository>
