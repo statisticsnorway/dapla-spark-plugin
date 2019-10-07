@@ -87,6 +87,7 @@ steps:
   commands:
     - ls -al
     - ls -al target
+    - env
   depends_on:
     - sonarqube
     - codacy
