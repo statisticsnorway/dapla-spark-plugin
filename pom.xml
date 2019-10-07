@@ -6,7 +6,7 @@
 
     <groupId>no.ssb.lds</groupId>
     <artifactId>lds-gsim-spark</artifactId>
-    <version>0.1.5</version>
+    <version>0.2.0</version>
 
     <name>lds-gsim-spark</name>
 
@@ -19,7 +19,7 @@
             <id>coverage</id>
             <properties>
                 <sonar.coverage.jacoco.xmlReportPaths>
-                    ${project.build.outputDirectory}/../site/jacoco/jacoco.xml
+                    target/site/jacoco/jacoco.xml
                 </sonar.coverage.jacoco.xmlReportPaths>
             </properties>
             <build>
@@ -50,21 +50,6 @@
                     </plugin>
                 </plugins>
             </build>
-        </profile>
-        <profile>
-            <id>ssb</id>
-            <distributionManagement>
-                <repository>
-                    <id>ssb-releases</id>
-                    <name>SSB Nexus Releases</name>
-                    <url>https://nexus.ssb.no/repository/maven-releases/</url>
-                </repository>
-                <snapshotRepository>
-                    <id>ssb-snapshots</id>
-                    <name>SSB Snapshot Repository</name>
-                    <url>https://nexus.ssb.no/repository/maven-snapshots/</url>
-                </snapshotRepository>
-            </distributionManagement>
         </profile>
         <profile>
             <id>ssb-bip</id>
@@ -232,6 +217,8 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <shadedClassifierName>shaded</shadedClassifierName>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
                             <artifactSet>
                                 <includes>
                                     <include>com.squareup.okhttp3:*</include>

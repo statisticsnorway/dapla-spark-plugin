@@ -13,7 +13,7 @@ steps:
 - name: build
   image: maven:3-jdk-11
   commands:
-    - mvn compile package -P ssb-bip -DskipTests=true -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
+    - mvn compile -P ssb-bip -DskipTests=true -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
   environment:
     MAVEN_HOME: /drone/src/.m2
     M2_HOME: /drone/src/.m2
@@ -69,7 +69,7 @@ steps:
 - name: publish-maven
   image: maven:3-jdk-11
   commands:
-    - mvn clean deploy -P ssb-bip, -DskipTests=true --batch-mode --global-settings settings.xml
+    - mvn clean package deploy -P ssb-bip, -DskipTests=true -Djdk.tls.client.protocols="TLSv1.2" --batch-mode --global-settings settings.xml
   when:
     ref:
       - refs/heads/develop
@@ -85,7 +85,7 @@ steps:
 - name: publish-docker
   image: plugins/gcr
   settings:
-    repo: prod-bip/ssb/lds-zeppelin
+    repo: eu.gcr.io/prod-bip/ssb/lds-zeppelin
     registry: eu.gcr.io
     auto_tag: true
     json_key:
@@ -95,9 +95,7 @@ steps:
       - refs/heads/develop
       - refs/tags/*
   depends_on:
-    - sonarqube
-    - codacy
-    - codecov
+    - publish-maven
 
 - name: slack
   image: plugins/slack
@@ -108,7 +106,6 @@ steps:
   when:
     status: [ success, failure ]
   depends_on:
-    - publish-docker
     - publish-maven
 
 ---
@@ -139,6 +136,6 @@ get:
 ---
 kind: secret
 name: gcr_credentials
-get:  
+get:
   path: drone-gcr-credentials
   name: gcr-credentials

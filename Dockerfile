@@ -2,7 +2,7 @@ FROM apache/zeppelin:0.8.1
 
 
 # Copy the library.
-COPY target/lds-gsim-spark-*.jar /zeppelin/lib/lds-gsim-spark.jar
+COPY target/lds-gsim-spark-*-shaded.jar /zeppelin/lib/lds-gsim-spark.jar
 
 # Copy zeppelin settings. This includes the library.
 # docker exec ID-OF-CONTAINER cat /zeppelin/conf/interpreter.json > interpreter.json
