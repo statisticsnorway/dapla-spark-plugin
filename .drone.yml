@@ -13,7 +13,7 @@ steps:
 - name: build
   image: maven:3-jdk-11
   commands:
-    - mvn compile package -P ssb-bip -DskipTests=true -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
+    - mvn compile -P ssb-bip -DskipTests=true -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
   environment:
     MAVEN_HOME: /drone/src/.m2
     M2_HOME: /drone/src/.m2
@@ -95,9 +95,7 @@ steps:
       - refs/heads/develop
       - refs/tags/*
   depends_on:
-    - sonarqube
-    - codacy
-    - codecov
+    - publish-maven
 
 - name: slack
   image: plugins/slack
@@ -108,7 +106,6 @@ steps:
   when:
     status: [ success, failure ]
   depends_on:
-    - publish-docker
     - publish-maven
 
 ---
