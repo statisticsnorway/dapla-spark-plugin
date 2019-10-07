@@ -69,7 +69,7 @@ steps:
 - name: publish-maven
   image: maven:3-jdk-11
   commands:
-    - mvn clean package deploy -P ssb-bip, -DskipTests=true --batch-mode --global-settings settings.xml
+    - mvn clean package deploy -P ssb-bip, -DskipTests=true -Djdk.tls.client.protocols="TLSv1.2" --batch-mode --global-settings settings.xml
   when:
     ref:
       - refs/heads/develop
