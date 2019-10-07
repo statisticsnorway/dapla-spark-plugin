@@ -82,6 +82,16 @@ steps:
     - codacy
     - codecov
 
+- name: debug
+  image: alpine
+  commands:
+    - ls -al
+    - ls -al target
+  depends_on:
+    - sonarqube
+    - codacy
+    - codecov
+
 - name: publish-docker
   image: plugins/gcr
   settings:
