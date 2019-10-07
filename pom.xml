@@ -19,7 +19,7 @@
             <id>coverage</id>
             <properties>
                 <sonar.coverage.jacoco.xmlReportPaths>
-                    ${project.build.outputDirectory}/../site/jacoco/jacoco.xml
+                    target/site/jacoco/jacoco.xml
                 </sonar.coverage.jacoco.xmlReportPaths>
             </properties>
             <build>
