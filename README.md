@@ -1,6 +1,6 @@
 # Spark integration with LDS GSIM
 
-[![Build Status](https://drone.infra.ssbmod.net/api/badges/statisticsnorway/lds-gsim-spark/status.svg)](https://drone.infra.ssbmod.net/statisticsnorway/lds-gsim-spark)
+[![Build Status](https://drone.prod-bip-ci.ssb.no/api/badges/statisticsnorway/lds-gsim-spark/status.svg?ref=refs/heads/develop)](https://drone.prod-bip-ci.ssb.no/statisticsnorway/lds-gsim-spark)
 
 This project integrates spark with LDS and the GSIM model. It implements a new format so that users can read from and write to a dataset that exists in a LDS instance.
 
