@@ -89,7 +89,19 @@
         <dependency>
             <groupId>no.ssb.lds</groupId>
             <artifactId>lds-gsim-okhttp</artifactId>
-            <version>0.0.3</version>
+            <version>0.0.4-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>no.ssb.avro.convert.gsim</groupId>
+            <artifactId>avro-buddy-lds-gsim</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-avro</artifactId>
+            <version>1.10.1</version>
         </dependency>
 
         <dependency>
@@ -225,7 +237,10 @@
                                     <include>com.squareup.okio:*</include>
                                     <include>org.jetbrains.kotlin:kotlin-stdlib:*</include>
                                     <include>org.jetbrains.kotlin:kotlin-stdlib-common:*</include>
+                                    <include>org.apache.parquet:parquet-avro</include>
                                     <include>no.ssb.lds:lds-gsim-okhttp</include>
+                                    <include>no.ssb.avro.convert.gsim:avro-buddy-lds-gsim</include>
+                                    <include>no.ssb.avro.convert.core:avro-buddy-core</include>
                                 </includes>
                             </artifactSet>
                             <minimizeJar>true</minimizeJar>

@@ -1,20 +1,27 @@
 package no.ssb.gsim.spark;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import no.ssb.avro.convert.gsim.LdsClient;
+import no.ssb.avro.convert.gsim.SchemaToGsim;
 import no.ssb.lds.gsim.okhttp.UnitDataset;
 import no.ssb.lds.gsim.okhttp.api.Client;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
+import org.apache.avro.Schema;
+import org.apache.parquet.schema.MessageType;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.execution.datasources.parquet.SparkToParquetSchemaConverter;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.RelationProvider;
+import org.apache.spark.sql.types.StructType;
 import scala.Option;
 import scala.collection.immutable.Map;
+import org.apache.parquet.avro.AvroSchemaConverter;
 
 import java.io.IOException;
 import java.net.URI;
@@ -73,6 +80,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
+        System.out.println(parameters);
+
         URI datasetUri = extractPath(parameters);
         String datasetId = extractDatasetId(datasetUri);
         Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
@@ -117,6 +126,17 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             dataset.setDataSourcePath(newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(",")));
             data.coalesce(1).write().parquet(newDataUri.toASCIIString());
 
+            Option<String> createResult = parameters.get("create");
+            if (createResult.isDefined()) {
+                Schema schema = getSchema(sqlContext, data.schema());
+
+                // To see this in zeppelin (Used for debugging now. Will be removed later)
+                System.out.println(schema.toString(true));
+
+                createGsimObjectInLds(schema, ldsClient, createResult.get());
+            }
+            System.out.println("Saving context:\n" + parameters);
+
             ldsClient.updateUnitDataset(datasetId, dataset).join();
             return createRelation(sqlContext, parameters);
         } catch (URISyntaxException e) {
@@ -124,6 +144,21 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } catch (IOException e) {
             throw new RuntimeException("could not update lds", e);
         }
+    }
+
+    private Schema getSchema(SQLContext sqlContext, StructType structType) {
+        SparkToParquetSchemaConverter sparkToParquetSchemaConverter = new SparkToParquetSchemaConverter(sqlContext.conf());
+        MessageType messageType = sparkToParquetSchemaConverter.convert(structType);
+        AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter();
+
+        return avroSchemaConverter.convert(messageType);
+    }
+
+    private void createGsimObjectInLds(Schema schema, Client client, String dataSetName) {
+        LdsClient ldsClient = new LdsClient(client);
+        SchemaToGsim schemaToGsim = new SchemaToGsim(schema, ldsClient);
+
+        schemaToGsim.generateGsimInLds(dataSetName);
     }
 
     private List<URI> extractUris(UnitDataset dataset) {
