@@ -86,4 +86,47 @@ public class GsimDatasourceTest {
         dataset.write().format("no.ssb.gsim.spark").mode(SaveMode.Append).save("lds+gsim://" + UNIT_DATASET_ID);
 
     }
+
+    @Test
+    public void testWriteAndCreateOfLdsObjects() throws InterruptedException {
+        this.server.enqueue(unitDatasetResponse);
+        this.server.enqueue(unitDatasetResponse);
+        this.server.enqueue(new MockResponse().setResponseCode(201));
+        this.server.enqueue(unitDatasetResponse);
+        this.server.enqueue(new MockResponse().setResponseCode(201));
+        this.server.enqueue(new MockResponse().setResponseCode(201));
+        this.server.enqueue(new MockResponse().setResponseCode(201));
+        this.server.enqueue(new MockResponse().setResponseCode(201));
+        this.server.enqueue(new MockResponse().setResponseCode(201));
+        this.server.enqueue(new MockResponse().setResponseCode(201));
+        this.server.enqueue(new MockResponse().setResponseCode(201));
+        this.server.enqueue(new MockResponse().setResponseCode(201));
+        this.server.enqueue(unitDatasetResponse);
+
+        Dataset<Row> dataset = sqlContext.read()
+                .format("no.ssb.gsim.spark")
+                .load("lds+gsim://" + UNIT_DATASET_ID);
+        dataset.printSchema();
+        dataset.show();
+
+        dataset.write()
+                .format("no.ssb.gsim.spark")
+                .mode(SaveMode.Append)
+                .option("create", "dataSetName")
+                .save("lds+gsim://create");
+
+        System.out.println(server.takeRequest());
+        System.out.println(server.takeRequest());
+        System.out.println(server.takeRequest());
+        System.out.println(server.takeRequest());
+        System.out.println(server.takeRequest());
+        System.out.println(server.takeRequest());
+        System.out.println(server.takeRequest());
+        System.out.println(server.takeRequest());
+        System.out.println(server.takeRequest());
+        System.out.println(server.takeRequest());
+        System.out.println(server.takeRequest());
+        System.out.println(server.takeRequest());
+        System.out.println(server.takeRequest());
+    }
 }

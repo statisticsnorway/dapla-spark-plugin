@@ -19,6 +19,7 @@ import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.RelationProvider;
 import org.apache.spark.sql.types.StructType;
+import org.jetbrains.annotations.NotNull;
 import scala.Option;
 import scala.collection.immutable.Map;
 import org.apache.parquet.avro.AvroSchemaConverter;
@@ -80,7 +81,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
-        System.out.println(parameters);
+        System.out.println("createRelation:" + parameters);
 
         URI datasetUri = extractPath(parameters);
         String datasetId = extractDatasetId(datasetUri);
@@ -92,18 +93,66 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
+        Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
+
+        Option<String> createNewDataset = parameters.get("create");
 
         URI datasetUri = extractPath(parameters);
-        String datasetId = extractDatasetId(datasetUri);
-        Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
-        UnitDataset dataset = ldsClient.fetchUnitDataset(datasetId, Instant.now()).join();
+        String datasetId;
+        UnitDataset dataset;
+        if (createNewDataset.isEmpty()) {
+            // update existing UnitDataSet in lds
+            datasetId = extractDatasetId(datasetUri);
+            dataset = ldsClient.fetchUnitDataset(datasetId, Instant.now()).join();
+            System.out.println("updating existing dataset" + dataset.getId());
+        } else {
+            // create new UnitDataSet in lds
+            Schema schema = getSchema(sqlContext, data.schema());
+            // To see this in zeppelin (Used for debugging now. Will be removed later)
+            System.out.println(schema.toString(true));
+
+            dataset = createGsimObjectInLds(schema, ldsClient, createNewDataset.get());
+            datasetId = dataset.getId();
+            System.out.println("Dataset id created:" + datasetId);
+
+            try {
+                datasetUri = new URI(datasetUri.toString().replace("create", datasetId));
+            } catch (URISyntaxException e) {
+                throw new RuntimeException("could not generate new file uri", e);
+            }
+        }
         List<URI> dataUris = extractUris(dataset);
 
         // Create a new path with the current time.
+        URI newDataUri = getDataSetUri(sqlContext, datasetUri);
+
+        String dataSourcePath = getDataSourcePath(mode, dataUris, newDataUri);
+        System.out.println("dataSourcePath:" + dataSourcePath);
+
+        dataset.setDataSourcePath(dataSourcePath);
+        data.coalesce(1).write().parquet(newDataUri.toASCIIString());
+
+        System.out.println("Saving context:\n" + parameters);
+
+        try {
+            ldsClient.updateUnitDataset(datasetId, dataset).join();
+            return createRelation(sqlContext, parameters);
+        } catch (IOException e) {
+            throw new RuntimeException("could not update lds", e);
+        }
+    }
+
+    private String getDataSourcePath(SaveMode mode, List<URI> dataUris, URI newDataUri) {
+        List<URI> newDataUris = getUris(mode, dataUris, newDataUri);
+        return newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(","));
+    }
+
+    @NotNull
+    private URI getDataSetUri(SQLContext sqlContext, URI datasetUri) {
         try {
             String locationPrefix = sqlContext.getConf(CONFIG_LOCATION_PREFIX);
             URI prefixUri = URI.create(locationPrefix);
-            URI newDataUri = new URI(
+            return new URI(
                     prefixUri.getScheme(),
                     String.format("%s/%s/%d",
                             prefixUri.getSchemeSpecificPart(),
@@ -111,39 +160,25 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                     ),
                     null
             );
-
-            List<URI> newDataUris;
-            if (mode.equals(SaveMode.Overwrite)) {
-                newDataUris = Collections.singletonList(newDataUri);
-            } else if (mode.equals(SaveMode.Append)) {
-                newDataUris = new ArrayList<>();
-                newDataUris.add(newDataUri);
-                newDataUris.addAll(dataUris);
-            } else {
-                throw new IllegalArgumentException("Unsupported mode " + mode);
-            }
-
-            dataset.setDataSourcePath(newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(",")));
-            data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-
-            Option<String> createResult = parameters.get("create");
-            if (createResult.isDefined()) {
-                Schema schema = getSchema(sqlContext, data.schema());
-
-                // To see this in zeppelin (Used for debugging now. Will be removed later)
-                System.out.println(schema.toString(true));
-
-                createGsimObjectInLds(schema, ldsClient, createResult.get());
-            }
-            System.out.println("Saving context:\n" + parameters);
-
-            ldsClient.updateUnitDataset(datasetId, dataset).join();
-            return createRelation(sqlContext, parameters);
         } catch (URISyntaxException e) {
             throw new RuntimeException("could not generate new file uri", e);
-        } catch (IOException e) {
-            throw new RuntimeException("could not update lds", e);
+
         }
+    }
+
+    @NotNull
+    private List<URI> getUris(SaveMode mode, List<URI> dataUris, URI newDataUri) {
+        List<URI> newDataUris;
+        if (mode.equals(SaveMode.Overwrite)) {
+            newDataUris = Collections.singletonList(newDataUri);
+        } else if (mode.equals(SaveMode.Append)) {
+            newDataUris = new ArrayList<>();
+            newDataUris.add(newDataUri);
+            newDataUris.addAll(dataUris);
+        } else {
+            throw new IllegalArgumentException("Unsupported mode " + mode);
+        }
+        return newDataUris;
     }
 
     private Schema getSchema(SQLContext sqlContext, StructType structType) {
@@ -154,11 +189,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         return avroSchemaConverter.convert(messageType);
     }
 
-    private void createGsimObjectInLds(Schema schema, Client client, String dataSetName) {
+    private UnitDataset createGsimObjectInLds(Schema schema, Client client, String dataSetName) {
         LdsClient ldsClient = new LdsClient(client);
         SchemaToGsim schemaToGsim = new SchemaToGsim(schema, ldsClient);
 
-        schemaToGsim.generateGsimInLds(dataSetName);
+        return schemaToGsim.generateGsimInLds(dataSetName);
     }
 
     private List<URI> extractUris(UnitDataset dataset) {
