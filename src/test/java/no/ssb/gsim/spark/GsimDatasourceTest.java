@@ -102,7 +102,6 @@ public class GsimDatasourceTest {
         this.server.enqueue(new MockResponse().setResponseCode(201));
         this.server.enqueue(new MockResponse().setResponseCode(201));
         this.server.enqueue(new MockResponse().setResponseCode(201));
-        this.server.enqueue(unitDatasetResponse);
 
         Dataset<Row> dataset = sqlContext.read()
                 .format("no.ssb.gsim.spark")
@@ -116,7 +115,6 @@ public class GsimDatasourceTest {
                 .option("create", "dataSetName")
                 .save("lds+gsim://create");
 
-        System.out.println(server.takeRequest());
         System.out.println(server.takeRequest());
         System.out.println(server.takeRequest());
         System.out.println(server.takeRequest());

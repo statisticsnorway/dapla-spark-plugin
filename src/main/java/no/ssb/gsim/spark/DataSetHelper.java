@@ -9,7 +9,11 @@ import scala.collection.immutable.Map;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static scala.Predef.conforms;
@@ -93,7 +97,6 @@ class DataSetHelper {
     }
 
     void createdUnitDataSet(UnitDataset dataset) {
-//        dataset.setDataSourcePath(getDataSourcePath());
         this.dataset = dataset;
 
         java.util.Map<String, String> parametersAsJavaMap = JavaConverters.mapAsJavaMapConverter(parameters).asJava();
@@ -148,7 +151,7 @@ class DataSetHelper {
         }
     }
 
-    String getDataSourcePath() {
+    private String getDataSourcePath() {
         List<URI> newDataUris = getUris(saveMode, extractUris(), getDataSetUri());
         return newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(","));
     }

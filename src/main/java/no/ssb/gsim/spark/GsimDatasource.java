@@ -82,7 +82,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         String datasetId = dataSetHelper.getDatasetId();
         Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
-        // TODO: send object in params if we have it
         UnitDataset dataset = ldsClient.fetchUnitDataset(datasetId, Instant.now()).join();
         dataSetHelper.setExistingUnitDataSet(dataset);
         List<URI> dataUris = dataSetHelper.extractUris();
@@ -116,7 +115,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             System.out.println("DataSourcePath: " + dataSetHelper.getDataset().getDataSourcePath());
             ldsClient.updateUnitDataset(dataSetHelper.getDatasetId(), dataSetHelper.getDataset()).join();
 
-            return createRelation(sqlContext, dataSetHelper.getParameters());
+            return new GsimRelation(sqlContext, dataSetHelper.extractUris());
         } catch (IOException e) {
             throw new RuntimeException("could not update lds", e);
         }
