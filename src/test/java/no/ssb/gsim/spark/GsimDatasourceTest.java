@@ -14,7 +14,8 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static no.ssb.gsim.spark.GsimDatasource.*;
+import static no.ssb.gsim.spark.GsimDatasource.CONFIG_LDS_URL;
+import static no.ssb.gsim.spark.GsimDatasource.CONFIG_LOCATION_PREFIX;
 
 public class GsimDatasourceTest {
 
@@ -62,7 +63,7 @@ public class GsimDatasourceTest {
     }
 
     @Test
-    public void testReadWithId() throws IOException {
+    public void testReadWithId() {
         this.server.enqueue(unitDatasetResponse);
         Dataset<Row> dataset = sqlContext.read()
                 .format("no.ssb.gsim.spark")
@@ -111,7 +112,7 @@ public class GsimDatasourceTest {
 
         dataset.write()
                 .format("no.ssb.gsim.spark")
-                .mode(SaveMode.Append)
+                .mode(SaveMode.Overwrite)
                 .option("create", "dataSetName")
                 .save("lds+gsim://create");
 

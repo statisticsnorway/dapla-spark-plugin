@@ -21,9 +21,7 @@ import org.apache.spark.sql.sources.RelationProvider;
 import org.apache.spark.sql.types.StructType;
 import org.jetbrains.annotations.NotNull;
 import scala.Option;
-import scala.Predef;
 import scala.collection.immutable.Map;
-import scala.collection.JavaConverters;
 import org.apache.parquet.avro.AvroSchemaConverter;
 
 import java.io.IOException;
@@ -93,25 +91,17 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         return new GsimRelation(sqlContext, dataUris);
     }
 
-    private static Map<String, String> toScalaMap(java.util.Map<String, String> map) {
-        return JavaConverters.mapAsScalaMapConverter(map).asScala().toMap(
-                Predef.conforms()
-        );
-    }
-
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
         Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
 
-        Option<String> createNewDataset = parameters.get("create");
+        DataSetHelper dataSetHelper = new DataSetHelper(parameters);
 
-        URI datasetUri = extractPath(parameters);
-        String datasetId;
-        UnitDataset dataset;
-        if (createNewDataset.isEmpty()) {
+        URI datasetUri = dataSetHelper.extractPath();
+        if (dataSetHelper.upDateExistingDataset()) {
             // update existing UnitDataSet in lds
-            datasetId = extractDatasetId(datasetUri);
-            dataset = ldsClient.fetchUnitDataset(datasetId, Instant.now()).join();
+            UnitDataset dataset = ldsClient.fetchUnitDataset(dataSetHelper.getDatasetId(), Instant.now()).join();
+            dataSetHelper.existingUnitDataSet(dataset);
             System.out.println("updating existing dataset" + dataset.getId());
         } else {
             // create new UnitDataSet in lds
@@ -119,26 +109,19 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // To see this in zeppelin (Used for debugging now. Will be removed later)
             System.out.println(schema.toString(true));
 
-            dataset = createGsimObjectInLds(schema, ldsClient, createNewDataset.get());
-            datasetId = dataset.getId();
-            System.out.println("Dataset id created:" + datasetId);
+            UnitDataset dataset = createGsimObjectInLds(schema, ldsClient, dataSetHelper.getNewDatasetName());
+            dataSetHelper.createdUnitDataSet(dataset);
 
-            java.util.Map<String, String> parametersAsJavaMap = JavaConverters.mapAsJavaMapConverter(parameters).asJava();
-            HashMap<String, String> stringStringHashMap = new HashMap<>(parametersAsJavaMap);
-
-            stringStringHashMap.put("dataSetId", datasetId);
-
-            // Hack for now, need to refactor this
-            parameters = toScalaMap(stringStringHashMap);
+            System.out.println("Dataset id created:" + dataSetHelper.getDataset().getId());
 
             try {
                 // Find a better way to do this
-                datasetUri = new URI(datasetUri.toString().replace("create", datasetId));
+                datasetUri = new URI(datasetUri.toString().replace("create", dataSetHelper.getDatasetId()));
             } catch (URISyntaxException e) {
                 throw new RuntimeException("could not generate new file uri", e);
             }
         }
-        List<URI> dataUris = extractUris(dataset);
+        List<URI> dataUris = dataSetHelper.extractUris();
 
         // Create a new path with the current time.
         URI newDataUri = getDataSetUri(sqlContext, datasetUri);
@@ -146,15 +129,17 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String dataSourcePath = getDataSourcePath(mode, dataUris, newDataUri);
         System.out.println("dataSourcePath:" + dataSourcePath);
 
-        dataset.setDataSourcePath(dataSourcePath);
+        // TODO: fix
+        dataSetHelper.getDataset().setDataSourcePath(dataSourcePath);
+
         data.coalesce(1).write().parquet(newDataUri.toASCIIString());
 
         System.out.println("Saving context:\n" + parameters);
 
         try {
-            ldsClient.updateUnitDataset(datasetId, dataset).join();
+            ldsClient.updateUnitDataset(dataSetHelper.getDatasetId(), dataSetHelper.getDataset()).join();
 
-            return createRelation(sqlContext, parameters);
+            return createRelation(sqlContext, dataSetHelper.getParameters());
         } catch (IOException e) {
             throw new RuntimeException("could not update lds", e);
         }
@@ -221,7 +206,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     }
 
     private URI extractPath(Map<String, String> parameters) {
-        Option<String> dataSetId = parameters.get("dataSetId");
+        Option<String> dataSetId = parameters.get("datasetId");
         if (dataSetId.isDefined()) {
             System.out.println("Making path from new datasetId" + dataSetId.get());
             return URI.create("gsim+lds://" + dataSetId.get());
