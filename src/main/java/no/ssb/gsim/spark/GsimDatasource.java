@@ -21,7 +21,9 @@ import org.apache.spark.sql.sources.RelationProvider;
 import org.apache.spark.sql.types.StructType;
 import org.jetbrains.annotations.NotNull;
 import scala.Option;
+import scala.Predef;
 import scala.collection.immutable.Map;
+import scala.collection.JavaConverters;
 import org.apache.parquet.avro.AvroSchemaConverter;
 
 import java.io.IOException;
@@ -91,6 +93,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         return new GsimRelation(sqlContext, dataUris);
     }
 
+    private static Map<String, String> toScalaMap(java.util.Map<String, String> map) {
+        return JavaConverters.mapAsScalaMapConverter(map).asScala().toMap(
+                Predef.conforms()
+        );
+    }
+
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
         Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
@@ -115,7 +123,16 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             datasetId = dataset.getId();
             System.out.println("Dataset id created:" + datasetId);
 
+            java.util.Map<String, String> parametersAsJavaMap = JavaConverters.mapAsJavaMapConverter(parameters).asJava();
+            HashMap<String, String> stringStringHashMap = new HashMap<>(parametersAsJavaMap);
+
+            stringStringHashMap.put("dataSetId", datasetId);
+
+            // Hack for now, need to refactor this
+            parameters = toScalaMap(stringStringHashMap);
+
             try {
+                // Find a better way to do this
                 datasetUri = new URI(datasetUri.toString().replace("create", datasetId));
             } catch (URISyntaxException e) {
                 throw new RuntimeException("could not generate new file uri", e);
@@ -136,6 +153,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         try {
             ldsClient.updateUnitDataset(datasetId, dataset).join();
+
             return createRelation(sqlContext, parameters);
         } catch (IOException e) {
             throw new RuntimeException("could not update lds", e);
@@ -203,6 +221,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     }
 
     private URI extractPath(Map<String, String> parameters) {
+        Option<String> dataSetId = parameters.get("dataSetId");
+        if (dataSetId.isDefined()) {
+            System.out.println("Making path from new datasetId" + dataSetId.get());
+            return URI.create("gsim+lds://" + dataSetId.get());
+        }
+
         Option<String> pathOption = parameters.get(PATH);
         if (pathOption.isEmpty()) {
             throw new RuntimeException("'path' must be set");
