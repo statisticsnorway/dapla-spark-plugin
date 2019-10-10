@@ -1,19 +1,21 @@
 package no.ssb.gsim.spark;
 
 import no.ssb.lds.gsim.okhttp.UnitDataset;
+import org.jetbrains.annotations.NotNull;
 import scala.Option;
-import scala.Predef;
 import scala.collection.JavaConverters;
 import scala.collection.immutable.Map;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
-class DataSetHelper {
+import static scala.Predef.conforms;
 
+class DataSetHelper {
     private static final String PATH = "path";
     private static final String CREATE_DATASET = "create";
     private static final String DATASET_ID = "datasetId";
@@ -72,7 +74,8 @@ class DataSetHelper {
         return extractDatasetId(extractPath());
     }
 
-    void existingUnitDataSet(UnitDataset dataset) {
+    void setExistingUnitDataSet(UnitDataset dataset) {
+        System.out.println("updating existing dataset" + dataset.getId());
         this.dataset = dataset;
     }
 
@@ -106,9 +109,34 @@ class DataSetHelper {
         return dataSources.stream().map(URI::create).collect(Collectors.toList());
     }
 
+    /**
+     * Create a new path with the current time.
+     * @param locationPrefix Example: hdfs://hadoop:9000
+     * @return
+     */
+    @NotNull
+    URI getDataSetUri(String locationPrefix) {
+        URI datasetUri = extractPath();
+
+        try {
+            URI prefixUri = URI.create(locationPrefix);
+            return new URI(
+                    prefixUri.getScheme(),
+                    String.format("%s/%s/%d",
+                            prefixUri.getSchemeSpecificPart(),
+                            datasetUri.getSchemeSpecificPart(), System.currentTimeMillis()
+                    ),
+                    null
+            );
+        } catch (URISyntaxException e) {
+            throw new RuntimeException("could not generate new file uri", e);
+
+        }
+    }
+
     private static Map<String, String> toScalaMap(java.util.Map<String, String> map) {
         return JavaConverters.mapAsScalaMapConverter(map).asScala().toMap(
-                Predef.conforms()
+                conforms()
         );
     }
 

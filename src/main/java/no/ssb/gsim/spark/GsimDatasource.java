@@ -83,11 +83,13 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         System.out.println("createRelation:" + parameters);
 
-        URI datasetUri = extractPath(parameters);
-        String datasetId = extractDatasetId(datasetUri);
+        DataSetHelper dataSetHelper = new DataSetHelper(parameters);
+
+        String datasetId = dataSetHelper.getDatasetId();
         Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
         UnitDataset dataset = ldsClient.fetchUnitDataset(datasetId, Instant.now()).join();
-        List<URI> dataUris = extractUris(dataset);
+        dataSetHelper.setExistingUnitDataSet(dataset);
+        List<URI> dataUris = dataSetHelper.extractUris();
         return new GsimRelation(sqlContext, dataUris);
     }
 
@@ -97,37 +99,23 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         DataSetHelper dataSetHelper = new DataSetHelper(parameters);
 
-        URI datasetUri = dataSetHelper.extractPath();
         if (dataSetHelper.upDateExistingDataset()) {
             // update existing UnitDataSet in lds
             UnitDataset dataset = ldsClient.fetchUnitDataset(dataSetHelper.getDatasetId(), Instant.now()).join();
-            dataSetHelper.existingUnitDataSet(dataset);
-            System.out.println("updating existing dataset" + dataset.getId());
+            dataSetHelper.setExistingUnitDataSet(dataset);
         } else {
             // create new UnitDataSet in lds
             Schema schema = getSchema(sqlContext, data.schema());
-            // To see this in zeppelin (Used for debugging now. Will be removed later)
-            System.out.println(schema.toString(true));
-
             UnitDataset dataset = createGsimObjectInLds(schema, ldsClient, dataSetHelper.getNewDatasetName());
             dataSetHelper.createdUnitDataSet(dataset);
-
             System.out.println("Dataset id created:" + dataSetHelper.getDataset().getId());
-
-            try {
-                // Find a better way to do this
-                datasetUri = new URI(datasetUri.toString().replace("create", dataSetHelper.getDatasetId()));
-            } catch (URISyntaxException e) {
-                throw new RuntimeException("could not generate new file uri", e);
-            }
         }
         List<URI> dataUris = dataSetHelper.extractUris();
 
-        // Create a new path with the current time.
-        URI newDataUri = getDataSetUri(sqlContext, datasetUri);
+        String locationPrefix = sqlContext.getConf(CONFIG_LOCATION_PREFIX);
+        URI newDataUri = dataSetHelper.getDataSetUri(locationPrefix);
 
         String dataSourcePath = getDataSourcePath(mode, dataUris, newDataUri);
-        System.out.println("dataSourcePath:" + dataSourcePath);
 
         // TODO: fix
         dataSetHelper.getDataset().setDataSourcePath(dataSourcePath);
@@ -148,25 +136,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     private String getDataSourcePath(SaveMode mode, List<URI> dataUris, URI newDataUri) {
         List<URI> newDataUris = getUris(mode, dataUris, newDataUri);
         return newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(","));
-    }
-
-    @NotNull
-    private URI getDataSetUri(SQLContext sqlContext, URI datasetUri) {
-        try {
-            String locationPrefix = sqlContext.getConf(CONFIG_LOCATION_PREFIX);
-            URI prefixUri = URI.create(locationPrefix);
-            return new URI(
-                    prefixUri.getScheme(),
-                    String.format("%s/%s/%d",
-                            prefixUri.getSchemeSpecificPart(),
-                            datasetUri.getSchemeSpecificPart(), System.currentTimeMillis()
-                    ),
-                    null
-            );
-        } catch (URISyntaxException e) {
-            throw new RuntimeException("could not generate new file uri", e);
-
-        }
     }
 
     @NotNull
@@ -197,40 +166,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         SchemaToGsim schemaToGsim = new SchemaToGsim(schema, ldsClient);
 
         return schemaToGsim.generateGsimInLds(dataSetName);
-    }
-
-    private List<URI> extractUris(UnitDataset dataset) {
-        // Find all the files for the dataset.
-        List<String> dataSources = Arrays.asList(dataset.getDataSourcePath().split(","));
-        return dataSources.stream().map(URI::create).collect(Collectors.toList());
-    }
-
-    private URI extractPath(Map<String, String> parameters) {
-        Option<String> dataSetId = parameters.get("datasetId");
-        if (dataSetId.isDefined()) {
-            System.out.println("Making path from new datasetId" + dataSetId.get());
-            return URI.create("gsim+lds://" + dataSetId.get());
-        }
-
-        Option<String> pathOption = parameters.get(PATH);
-        if (pathOption.isEmpty()) {
-            throw new RuntimeException("'path' must be set");
-        }
-        return URI.create(pathOption.get());
-    }
-
-    private String extractDatasetId(URI pathUri) {
-        List<String> schemes = Arrays.asList(pathUri.getScheme().split("\\+"));
-        if (!schemes.contains("lds") || !schemes.contains("gsim")) {
-            throw new IllegalArgumentException("invalid scheme. Please use lds+gsim://[port[:post]]/path");
-        }
-
-        String path = pathUri.getPath();
-        if (path == null || path.isEmpty()) {
-            // No path. Use the host as id.
-            path = pathUri.getHost();
-        }
-        return path;
     }
 
     public static class Configuration {
