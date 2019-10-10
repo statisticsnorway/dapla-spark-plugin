@@ -1,6 +1,7 @@
 package no.ssb.gsim.spark;
 
 import no.ssb.lds.gsim.okhttp.UnitDataset;
+import org.apache.spark.sql.SaveMode;
 import org.jetbrains.annotations.NotNull;
 import scala.Option;
 import scala.collection.JavaConverters;
@@ -8,9 +9,7 @@ import scala.collection.immutable.Map;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static scala.Predef.conforms;
@@ -21,15 +20,30 @@ class DataSetHelper {
     private static final String DATASET_ID = "datasetId";
 
     private final Map<String, String> parameters;
+    private final String locationPrefix;
+    private final SaveMode saveMode;
     private Map<String, String> modifiedParameters;
 
     private UnitDataset dataset;
 
-    DataSetHelper(Map<String, String> parameters) {
+    /**
+     * @param parameters     option from spark.write.format("no.ssb.gsim.spark).option("key", "value")
+     * @param locationPrefix Example: hdfs://hadoop:9000
+     */
+    DataSetHelper(Map<String, String> parameters, String locationPrefix, SaveMode saveMode) {
         this.parameters = parameters;
+        this.locationPrefix = locationPrefix;
+        this.saveMode = saveMode;
+    }
+
+    DataSetHelper(Map<String, String> parameters, String locationPrefix) {
+        this(parameters, locationPrefix, null);
     }
 
     UnitDataset getDataset() {
+        if(saveMode != null) {
+            dataset.setDataSourcePath(getDataSourcePath());
+        }
         return dataset;
     }
 
@@ -40,7 +54,7 @@ class DataSetHelper {
         return parameters;
     }
 
-    boolean upDateExistingDataset() {
+    boolean updateExistingDataset() {
         Option<String> createNewDataset = parameters.get(CREATE_DATASET);
         return createNewDataset.isEmpty();
     }
@@ -54,8 +68,8 @@ class DataSetHelper {
         return createNewDataset.get();
     }
 
-    URI extractPath() {
-        Option<String> dataSetId = parameters.get("dataSetId");
+    private URI extractPath() {
+        Option<String> dataSetId = parameters.get(DATASET_ID);
         if (dataSetId.isDefined()) {
             return URI.create("gsim+lds://" + dataSetId.get());
         }
@@ -75,11 +89,11 @@ class DataSetHelper {
     }
 
     void setExistingUnitDataSet(UnitDataset dataset) {
-        System.out.println("updating existing dataset" + dataset.getId());
         this.dataset = dataset;
     }
 
     void createdUnitDataSet(UnitDataset dataset) {
+//        dataset.setDataSourcePath(getDataSourcePath());
         this.dataset = dataset;
 
         java.util.Map<String, String> parametersAsJavaMap = JavaConverters.mapAsJavaMapConverter(parameters).asJava();
@@ -111,11 +125,11 @@ class DataSetHelper {
 
     /**
      * Create a new path with the current time.
-     * @param locationPrefix Example: hdfs://hadoop:9000
-     * @return
+     *
+     * @return URI
      */
     @NotNull
-    URI getDataSetUri(String locationPrefix) {
+    URI getDataSetUri() {
         URI datasetUri = extractPath();
 
         try {
@@ -132,6 +146,26 @@ class DataSetHelper {
             throw new RuntimeException("could not generate new file uri", e);
 
         }
+    }
+
+    String getDataSourcePath() {
+        List<URI> newDataUris = getUris(saveMode, extractUris(), getDataSetUri());
+        return newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(","));
+    }
+
+    @NotNull
+    private List<URI> getUris(SaveMode mode, List<URI> dataUris, URI newDataUri) {
+        List<URI> newDataUris;
+        if (mode.equals(SaveMode.Overwrite)) {
+            newDataUris = Collections.singletonList(newDataUri);
+        } else if (mode.equals(SaveMode.Append)) {
+            newDataUris = new ArrayList<>();
+            newDataUris.add(newDataUri);
+            newDataUris.addAll(dataUris);
+        } else {
+            throw new IllegalArgumentException("Unsupported mode " + mode);
+        }
+        return newDataUris;
     }
 
     private static Map<String, String> toScalaMap(java.util.Map<String, String> map) {

@@ -19,17 +19,14 @@ import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.RelationProvider;
 import org.apache.spark.sql.types.StructType;
-import org.jetbrains.annotations.NotNull;
-import scala.Option;
 import scala.collection.immutable.Map;
 import org.apache.parquet.avro.AvroSchemaConverter;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.Instant;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Optional;
 
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider {
 
@@ -48,8 +45,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     private static final String CONFIG_LDS_OAUTH_USER_NAME = CONFIG + "oauth.userName";
     private static final String CONFIG_LDS_OAUTH_PASSWORD = CONFIG + "oauth.password";
     private static final String CONFIG_LDS_OAUTH_GRANT_TYPE = CONFIG + "oauth.grantType";
-
-    private static final String PATH = "path";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -83,10 +78,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         System.out.println("createRelation:" + parameters);
 
-        DataSetHelper dataSetHelper = new DataSetHelper(parameters);
+        DataSetHelper dataSetHelper = new DataSetHelper(parameters, sqlContext.getConf(CONFIG_LOCATION_PREFIX));
 
         String datasetId = dataSetHelper.getDatasetId();
         Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
+        // TODO: send object in params if we have it
         UnitDataset dataset = ldsClient.fetchUnitDataset(datasetId, Instant.now()).join();
         dataSetHelper.setExistingUnitDataSet(dataset);
         List<URI> dataUris = dataSetHelper.extractUris();
@@ -97,9 +93,9 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
         Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
 
-        DataSetHelper dataSetHelper = new DataSetHelper(parameters);
+        DataSetHelper dataSetHelper = new DataSetHelper(parameters, sqlContext.getConf(CONFIG_LOCATION_PREFIX), mode);
 
-        if (dataSetHelper.upDateExistingDataset()) {
+        if (dataSetHelper.updateExistingDataset()) {
             // update existing UnitDataSet in lds
             UnitDataset dataset = ldsClient.fetchUnitDataset(dataSetHelper.getDatasetId(), Instant.now()).join();
             dataSetHelper.setExistingUnitDataSet(dataset);
@@ -110,47 +106,20 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             dataSetHelper.createdUnitDataSet(dataset);
             System.out.println("Dataset id created:" + dataSetHelper.getDataset().getId());
         }
-        List<URI> dataUris = dataSetHelper.extractUris();
 
-        String locationPrefix = sqlContext.getConf(CONFIG_LOCATION_PREFIX);
-        URI newDataUri = dataSetHelper.getDataSetUri(locationPrefix);
-
-        String dataSourcePath = getDataSourcePath(mode, dataUris, newDataUri);
-
-        // TODO: fix
-        dataSetHelper.getDataset().setDataSourcePath(dataSourcePath);
-
+        URI newDataUri = dataSetHelper.getDataSetUri();
         data.coalesce(1).write().parquet(newDataUri.toASCIIString());
 
         System.out.println("Saving context:\n" + parameters);
 
         try {
+            System.out.println("DataSourcePath: " + dataSetHelper.getDataset().getDataSourcePath());
             ldsClient.updateUnitDataset(dataSetHelper.getDatasetId(), dataSetHelper.getDataset()).join();
 
             return createRelation(sqlContext, dataSetHelper.getParameters());
         } catch (IOException e) {
             throw new RuntimeException("could not update lds", e);
         }
-    }
-
-    private String getDataSourcePath(SaveMode mode, List<URI> dataUris, URI newDataUri) {
-        List<URI> newDataUris = getUris(mode, dataUris, newDataUri);
-        return newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(","));
-    }
-
-    @NotNull
-    private List<URI> getUris(SaveMode mode, List<URI> dataUris, URI newDataUri) {
-        List<URI> newDataUris;
-        if (mode.equals(SaveMode.Overwrite)) {
-            newDataUris = Collections.singletonList(newDataUri);
-        } else if (mode.equals(SaveMode.Append)) {
-            newDataUris = new ArrayList<>();
-            newDataUris.add(newDataUri);
-            newDataUris.addAll(dataUris);
-        } else {
-            throw new IllegalArgumentException("Unsupported mode " + mode);
-        }
-        return newDataUris;
     }
 
     private Schema getSchema(SQLContext sqlContext, StructType structType) {
