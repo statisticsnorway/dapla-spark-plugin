@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 class DatasetHelper {
     private static final String PATH = "path";
     private static final String CREATE_DATASET = "create";
-    private static final String DATASET_ID = "datasetId";
 
     private final Map<String, String> parameters;
     private final String locationPrefix;
@@ -66,7 +65,7 @@ class DatasetHelper {
     }
 
     private URI extractPath() {
-        Option<String> dataSetId = parameters.get(DATASET_ID);
+        Option<String> dataSetId = parameters.get(CREATE_DATASET);
         if (dataSetId.isDefined()) {
             return URI.create("gsim+lds://" + dataSetId.get());
         }

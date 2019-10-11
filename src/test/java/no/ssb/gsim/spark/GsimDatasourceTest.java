@@ -113,7 +113,7 @@ public class GsimDatasourceTest {
                 .format("no.ssb.gsim.spark")
                 .mode(SaveMode.Overwrite)
                 .option("create", "dataSetName")
-                .save("lds+gsim://create");
+                .save();
 
         System.out.println(server.takeRequest());
         System.out.println(server.takeRequest());
