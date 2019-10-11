@@ -44,9 +44,6 @@ class DatasetHelper {
     }
 
     UnitDataset getDataset() {
-        if (saveMode != null) {
-            dataset.setDataSourcePath(getDataSourcePath());
-        }
         return dataset;
     }
 
@@ -87,6 +84,9 @@ class DatasetHelper {
 
     void setDataSet(UnitDataset dataset) {
         this.dataset = dataset;
+        if (saveMode != null) {
+            dataset.setDataSourcePath(getDataSourcePath());
+        }
     }
 
     private String extractDatasetId(URI pathUri) {
