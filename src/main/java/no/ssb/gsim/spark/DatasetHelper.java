@@ -65,16 +65,17 @@ class DatasetHelper {
     }
 
     private URI extractPath() {
-        Option<String> dataSetId = parameters.get(CREATE_DATASET);
-        if (dataSetId.isDefined()) {
-            return URI.create("gsim+lds://" + dataSetId.get());
+        if (updateExistingDataset()) {
+            // extract path from save when we update/load existing dataset
+            // example: spark.read.format("no.ssb.gsim.spark").save("lds+gsim://3d062358-08c2-4287-a336-a62d25c72fb9")
+            Option<String> pathOption = parameters.get(PATH);
+            if (pathOption.isEmpty()) {
+                throw new RuntimeException("'path' must be set");
+            }
+            return URI.create(pathOption.get());
         }
 
-        Option<String> pathOption = parameters.get(PATH);
-        if (pathOption.isEmpty()) {
-            throw new RuntimeException("'path' must be set");
-        }
-        return URI.create(pathOption.get());
+        return URI.create("lds+gsim://" + dataset.getId());
     }
 
     String getDatasetId() {
