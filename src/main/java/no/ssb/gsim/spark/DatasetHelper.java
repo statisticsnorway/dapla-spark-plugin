@@ -2,9 +2,7 @@ package no.ssb.gsim.spark;
 
 import no.ssb.lds.gsim.okhttp.UnitDataset;
 import org.apache.spark.sql.SaveMode;
-import org.jetbrains.annotations.NotNull;
 import scala.Option;
-import scala.collection.JavaConverters;
 import scala.collection.immutable.Map;
 
 import java.net.URI;
@@ -12,13 +10,10 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static scala.Predef.conforms;
-
-class DataSetHelper {
+class DatasetHelper {
     private static final String PATH = "path";
     private static final String CREATE_DATASET = "create";
     private static final String DATASET_ID = "datasetId";
@@ -26,7 +21,6 @@ class DataSetHelper {
     private final Map<String, String> parameters;
     private final String locationPrefix;
     private final SaveMode saveMode;
-    private Map<String, String> modifiedParameters;
 
     private UnitDataset dataset;
 
@@ -34,28 +28,27 @@ class DataSetHelper {
      * @param parameters     option from spark.write.format("no.ssb.gsim.spark).option("key", "value")
      * @param locationPrefix Example: hdfs://hadoop:9000
      */
-    DataSetHelper(Map<String, String> parameters, String locationPrefix, SaveMode saveMode) {
+    DatasetHelper(Map<String, String> parameters, String locationPrefix, SaveMode saveMode) {
         this.parameters = parameters;
         this.locationPrefix = locationPrefix;
         this.saveMode = saveMode;
     }
 
-    DataSetHelper(Map<String, String> parameters, String locationPrefix) {
+    /**
+     * Used for loading dataset
+     *
+     * @param parameters     option from spark.read.format("no.ssb.gsim.spark).option("key", "value")
+     * @param locationPrefix Example: hdfs://hadoop:9000
+     */
+    DatasetHelper(Map<String, String> parameters, String locationPrefix) {
         this(parameters, locationPrefix, null);
     }
 
     UnitDataset getDataset() {
-        if(saveMode != null) {
+        if (saveMode != null) {
             dataset.setDataSourcePath(getDataSourcePath());
         }
         return dataset;
-    }
-
-    Map<String, String> getParameters() {
-        if (modifiedParameters != null) {
-            return modifiedParameters;
-        }
-        return parameters;
     }
 
     boolean updateExistingDataset() {
@@ -92,18 +85,8 @@ class DataSetHelper {
         return extractDatasetId(extractPath());
     }
 
-    void setExistingUnitDataSet(UnitDataset dataset) {
+    void setDataSet(UnitDataset dataset) {
         this.dataset = dataset;
-    }
-
-    void createdUnitDataSet(UnitDataset dataset) {
-        this.dataset = dataset;
-
-        java.util.Map<String, String> parametersAsJavaMap = JavaConverters.mapAsJavaMapConverter(parameters).asJava();
-        java.util.HashMap<String, String> stringStringHashMap = new HashMap<>(parametersAsJavaMap);
-        stringStringHashMap.put(DATASET_ID, dataset.getId());
-
-        modifiedParameters = toScalaMap(stringStringHashMap);
     }
 
     private String extractDatasetId(URI pathUri) {
@@ -129,9 +112,8 @@ class DataSetHelper {
     /**
      * Create a new path with the current time.
      *
-     * @return URI
+     * @return URI. Examples: hdfs://hadoop:9000/datasets////3d062358-08c2-4287-a336-a62d25c72fb9/1570712831638
      */
-    @NotNull
     URI getDataSetUri() {
         URI datasetUri = extractPath();
 
@@ -156,7 +138,6 @@ class DataSetHelper {
         return newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(","));
     }
 
-    @NotNull
     private List<URI> getUris(SaveMode mode, List<URI> dataUris, URI newDataUri) {
         List<URI> newDataUris;
         if (mode.equals(SaveMode.Overwrite)) {
@@ -170,11 +151,4 @@ class DataSetHelper {
         }
         return newDataUris;
     }
-
-    private static Map<String, String> toScalaMap(java.util.Map<String, String> map) {
-        return JavaConverters.mapAsScalaMapConverter(map).asScala().toMap(
-                conforms()
-        );
-    }
-
 }

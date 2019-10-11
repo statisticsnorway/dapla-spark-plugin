@@ -19,6 +19,8 @@ import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.RelationProvider;
 import org.apache.spark.sql.types.StructType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.collection.immutable.Map;
 import org.apache.parquet.avro.AvroSchemaConverter;
 
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider {
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     private static final String CONFIG = "spark.ssb.gsim.";
 
@@ -76,43 +79,40 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
-        System.out.println("createRelation:" + parameters);
+        log.info("CreateRelation on load {}", parameters);
 
-        DataSetHelper dataSetHelper = new DataSetHelper(parameters, sqlContext.getConf(CONFIG_LOCATION_PREFIX));
+        DatasetHelper dataSetHelper = new DatasetHelper(parameters, sqlContext.getConf(CONFIG_LOCATION_PREFIX));
 
         String datasetId = dataSetHelper.getDatasetId();
         Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
         UnitDataset dataset = ldsClient.fetchUnitDataset(datasetId, Instant.now()).join();
-        dataSetHelper.setExistingUnitDataSet(dataset);
+        dataSetHelper.setDataSet(dataset);
         List<URI> dataUris = dataSetHelper.extractUris();
         return new GsimRelation(sqlContext, dataUris);
     }
 
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
+        log.info("CreateRelation on write {}", parameters);
         Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
 
-        DataSetHelper dataSetHelper = new DataSetHelper(parameters, sqlContext.getConf(CONFIG_LOCATION_PREFIX), mode);
+        DatasetHelper dataSetHelper = new DatasetHelper(parameters, sqlContext.getConf(CONFIG_LOCATION_PREFIX), mode);
 
         if (dataSetHelper.updateExistingDataset()) {
-            // update existing UnitDataSet in lds
+            // get existing UnitDataSet from lds
             UnitDataset dataset = ldsClient.fetchUnitDataset(dataSetHelper.getDatasetId(), Instant.now()).join();
-            dataSetHelper.setExistingUnitDataSet(dataset);
+            dataSetHelper.setDataSet(dataset);
         } else {
             // create new UnitDataSet in lds
             Schema schema = getSchema(sqlContext, data.schema());
             UnitDataset dataset = createGsimObjectInLds(schema, ldsClient, dataSetHelper.getNewDatasetName());
-            dataSetHelper.createdUnitDataSet(dataset);
-            System.out.println("Dataset id created:" + dataSetHelper.getDataset().getId());
+            dataSetHelper.setDataSet(dataset);
         }
 
         URI newDataUri = dataSetHelper.getDataSetUri();
+        log.info("writing file(s) to: {}", newDataUri);
         data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-
-        System.out.println("Saving context:\n" + parameters);
-
         try {
-            System.out.println("DataSourcePath: " + dataSetHelper.getDataset().getDataSourcePath());
             ldsClient.updateUnitDataset(dataSetHelper.getDatasetId(), dataSetHelper.getDataset()).join();
 
             return new GsimRelation(sqlContext, dataSetHelper.extractUris());
@@ -121,6 +121,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         }
     }
 
+    /**
+     * Convert from parquet schema to avro schema
+     *
+     * @return {@link Schema}
+     */
     private Schema getSchema(SQLContext sqlContext, StructType structType) {
         SparkToParquetSchemaConverter sparkToParquetSchemaConverter = new SparkToParquetSchemaConverter(sqlContext.conf());
         MessageType messageType = sparkToParquetSchemaConverter.convert(structType);
