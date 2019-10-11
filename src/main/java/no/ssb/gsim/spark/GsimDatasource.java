@@ -1,7 +1,7 @@
 package no.ssb.gsim.spark;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import no.ssb.avro.convert.gsim.LdsClient;
+import no.ssb.avro.convert.gsim.LdsGsimWriter;
 import no.ssb.avro.convert.gsim.SchemaToGsim;
 import no.ssb.lds.gsim.okhttp.UnitDataset;
 import no.ssb.lds.gsim.okhttp.api.Client;
@@ -135,8 +135,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     }
 
     private UnitDataset createGsimObjectInLds(Schema schema, Client client, String dataSetName) {
-        LdsClient ldsClient = new LdsClient(client);
-        SchemaToGsim schemaToGsim = new SchemaToGsim(schema, ldsClient);
+        LdsGsimWriter ldsGsimWriter = new LdsGsimWriter(client);
+        SchemaToGsim schemaToGsim = new SchemaToGsim(schema, ldsGsimWriter);
 
         return schemaToGsim.generateGsimInLds(dataSetName);
     }
