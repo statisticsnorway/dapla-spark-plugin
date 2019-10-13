@@ -15,7 +15,10 @@ import java.util.stream.Collectors;
 
 class DatasetHelper {
     private static final String PATH = "path";
-    private static final String CREATE_DATASET = "create";
+
+    static final String CREATE_DATASET = "create-new-dataset";
+    static final String CRATE_GSIM_OBJECTS = "crate-gsim-objects";
+    static final String DESCRIPTION = "description";
 
     private final Map<String, String> parameters;
     private final String locationPrefix;
@@ -50,6 +53,19 @@ class DatasetHelper {
     boolean updateExistingDataset() {
         Option<String> createNewDataset = parameters.get(CREATE_DATASET);
         return createNewDataset.isEmpty();
+    }
+
+    boolean createGsimObjects() {
+        Option<String> option = parameters.get(CRATE_GSIM_OBJECTS);
+        return option.isEmpty();
+    }
+
+    String getDescription() {
+        Option<String> option = parameters.get(DESCRIPTION);
+        if (option.isDefined()) {
+            return option.get();
+        }
+        return null;
     }
 
     String getNewDatasetName() {

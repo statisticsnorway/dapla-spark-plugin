@@ -1,6 +1,7 @@
 package no.ssb.gsim.spark;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import no.ssb.avro.convert.gsim.GsimBuilder;
 import no.ssb.lds.gsim.okhttp.InstanceVariable;
 import no.ssb.lds.gsim.okhttp.LogicalRecord;
 import no.ssb.lds.gsim.okhttp.UnitDataStructure;
@@ -21,6 +22,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 
 import static no.ssb.gsim.spark.GsimDatasource.CONFIG_LDS_URL;
 import static no.ssb.gsim.spark.GsimDatasource.CONFIG_LOCATION_PREFIX;
@@ -122,7 +125,8 @@ public class GsimDatasourceTest {
         dataset.write()
                 .format("no.ssb.gsim.spark")
                 .mode(SaveMode.Overwrite)
-                .option("create", "dataSetName")
+                .option(DatasetHelper.CREATE_DATASET, "dataset_name")
+                .option(DatasetHelper.DESCRIPTION, "description of dataset")
                 .save();
 
         assertThat(getResponse().getMethod()).isEqualTo("GET");
@@ -132,6 +136,11 @@ public class GsimDatasourceTest {
         });
 
         checkUnitDataSetResponse(unitDataset -> {
+            List<Map<String, String>> name = GsimBuilder.createListOfMap("nb", "dataset_name");
+            assertThat(unitDataset.getUnknownProperties().get("name")).isEqualTo(name);
+
+            List<Map<String, String>> description = GsimBuilder.createListOfMap("nb", "description of dataset");
+            assertThat(unitDataset.getUnknownProperties().get("description")).isEqualTo(description);
             assertThat(unitDataset.getDataSourcePath()).isEqualTo("/path");
         });
 
