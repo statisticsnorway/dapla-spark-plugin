@@ -16,13 +16,15 @@ import java.util.stream.Collectors;
 class DatasetHelper {
     private static final String PATH = "path";
 
-    static final String CREATE_DATASET = "create-new-dataset";
-    static final String CRATE_GSIM_OBJECTS = "crate-gsim-objects";
+    static final String CREATE_DATASET = "create";
+    static final String USER_NAME = "user_name";
+    static final String CRATE_GSIM_OBJECTS = "crate_gsim_objects";
     static final String DESCRIPTION = "description";
 
     private final Map<String, String> parameters;
     private final String locationPrefix;
     private final SaveMode saveMode;
+    private URI cachedDatasetUri;
 
     private UnitDataset dataset;
 
@@ -60,6 +62,14 @@ class DatasetHelper {
         return option.isEmpty();
     }
 
+    String getUserName() {
+        Option<String> option = parameters.get(USER_NAME);
+        if (option.isDefined()) {
+            return option.get();
+        }
+        return null;
+    }
+
     String getDescription() {
         Option<String> option = parameters.get(DESCRIPTION);
         if (option.isDefined()) {
@@ -77,7 +87,12 @@ class DatasetHelper {
         return createNewDataset.get();
     }
 
-    private URI extractPath() {
+    /**
+     * Get path to dataset
+     *
+     * @return Example lds+gsim://3d062358-08c2-4287-a336-a62d25c72fb9
+     */
+    URI extractPath() {
         if (updateExistingDataset()) {
             // extract path from save when we update/load existing dataset
             // example: spark.read.format("no.ssb.gsim.spark").save("lds+gsim://3d062358-08c2-4287-a336-a62d25c72fb9")
@@ -131,6 +146,14 @@ class DatasetHelper {
      * @return URI. Examples: hdfs://hadoop:9000/datasets////3d062358-08c2-4287-a336-a62d25c72fb9/1570712831638
      */
     URI getDataSetUri() {
+        if (cachedDatasetUri != null) {
+            return cachedDatasetUri;
+        }
+        cachedDatasetUri = crateDataSetUri();
+        return cachedDatasetUri;
+    }
+
+    private URI crateDataSetUri() {
         URI datasetUri = extractPath();
 
         try {

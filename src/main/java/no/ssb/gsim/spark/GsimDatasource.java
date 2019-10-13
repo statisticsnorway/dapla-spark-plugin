@@ -107,6 +107,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             Schema schema = getSchema(sqlContext, data.schema());
             UnitDataset dataset = createGsimObjectInLds(schema, ldsClient, dataSetHelper.getNewDatasetName(), dataSetHelper.getDescription());
             dataSetHelper.setDataSet(dataset);
+            System.out.println("new dataset: " + dataSetHelper.extractPath());
         }
 
         URI newDataUri = dataSetHelper.getDataSetUri();
