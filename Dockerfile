@@ -22,7 +22,7 @@ RUN mv gcs-connector-hadoop2-latest.jar lib/gcs-connector-hadoop.jar
 # Spark 2.4.3 (git revision f60fb14) built for Hadoop 2.9.2
 # (Build flags: -B -e -Dhadoop.version=2.9.2 -Dyarn.version=2.9.2 -Dzookeeper.version=3.4.13
 #   -Dprotobuf.version=2.5.0 -Dscala.version=2.11.12 -Dscala.binary.version=2.11 -Pscala-2.11 -Pflume -Phive -Phive-thriftserver -Pkubernetes)
-RUN wget http://apache.uib.no/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz \
+RUN wget http://archive.apache.org/dist/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz \
 &&  tar -xzf spark-2.4.3-bin-hadoop2.7.tgz \
 &&  mv spark-2.4.3-bin-hadoop2.7 /opt/spark
 
