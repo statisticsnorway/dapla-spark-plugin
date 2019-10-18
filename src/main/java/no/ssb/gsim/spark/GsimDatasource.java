@@ -105,7 +105,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } else {
             // create new UnitDataSet in lds
             Schema schema = getSchema(sqlContext, data.schema());
-            UnitDataset dataset = createGsimObjectInLds(schema, ldsClient, dataSetHelper.getNewDatasetName(), dataSetHelper.getDescription());
+            UnitDataset dataset = createGsimObjectInLds(schema, ldsClient, dataSetHelper);
             dataSetHelper.setDataSet(dataset);
             System.out.println("new dataset: " + dataSetHelper.extractPath());
         }
@@ -135,11 +135,16 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         return avroSchemaConverter.convert(messageType);
     }
 
-    private UnitDataset createGsimObjectInLds(Schema schema, Client client, String dataSetName, String description) {
+    private UnitDataset createGsimObjectInLds(Schema schema, Client client, DatasetHelper datasetHelper) {
         LdsGsimWriter ldsGsimWriter = new LdsGsimWriter(client);
         SchemaToGsim schemaToGsim = new SchemaToGsim(schema, ldsGsimWriter);
 
-        return schemaToGsim.generateGsimInLds(dataSetName, description);
+        return schemaToGsim.generateGsimInLds(
+                datasetHelper.getNewDatasetId(),
+                datasetHelper.getNewDatasetName(),
+                datasetHelper.getDescription(),
+                datasetHelper.getUserName(),
+                datasetHelper.createGsimObjects());
     }
 
     public static class Configuration {

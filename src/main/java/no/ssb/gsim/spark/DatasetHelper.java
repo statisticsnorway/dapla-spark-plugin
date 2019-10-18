@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 class DatasetHelper {
@@ -19,12 +20,14 @@ class DatasetHelper {
     static final String CREATE_DATASET = "create";
     static final String USER_NAME = "user_name";
     static final String CRATE_GSIM_OBJECTS = "crate_gsim_objects";
+    static final String USE_THIS_ID = "user_this_id";
     static final String DESCRIPTION = "description";
 
     private final Map<String, String> parameters;
     private final String locationPrefix;
     private final SaveMode saveMode;
     private URI cachedDatasetUri;
+    private final String cachedNewDataSetId = UUID.randomUUID().toString();
 
     private UnitDataset dataset;
 
@@ -59,11 +62,27 @@ class DatasetHelper {
 
     boolean createGsimObjects() {
         Option<String> option = parameters.get(CRATE_GSIM_OBJECTS);
-        return option.isEmpty();
+        if (option.isEmpty()) {
+            return false;
+        }
+        try {
+            return Boolean.parseBoolean(option.get());
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+        return false;
     }
 
     String getUserName() {
         Option<String> option = parameters.get(USER_NAME);
+        if (option.isDefined()) {
+            return option.get();
+        }
+        return null;
+    }
+
+    String userThisId() {
+        Option<String> option = parameters.get(USE_THIS_ID);
         if (option.isDefined()) {
             return option.get();
         }
@@ -189,5 +208,14 @@ class DatasetHelper {
             throw new IllegalArgumentException("Unsupported mode " + mode);
         }
         return newDataUris;
+    }
+
+    String getNewDatasetId() {
+        String id = userThisId();
+        if (id != null) {
+            return id;
+        }
+
+        return cachedNewDataSetId;
     }
 }

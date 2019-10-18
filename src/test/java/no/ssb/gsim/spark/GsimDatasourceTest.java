@@ -125,6 +125,7 @@ public class GsimDatasourceTest {
         dataset.write()
                 .format("no.ssb.gsim.spark")
                 .mode(SaveMode.Overwrite)
+                .option(DatasetHelper.CRATE_GSIM_OBJECTS, "true")
                 .option(DatasetHelper.CREATE_DATASET, "dataset_name")
                 .option(DatasetHelper.DESCRIPTION, "description of dataset")
                 .save();
