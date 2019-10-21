@@ -145,10 +145,6 @@ public class GsimDatasourceTest {
             assertThat(unitDataset.getDataSourcePath()).isEqualTo("/path");
         });
 
-        checkLogicalRecordResponse(logicalRecord -> {
-            assertThat(logicalRecord.getShortName()).isEqualTo("spark_schema");
-        });
-
         checkInstanceVariableResponse(instanceVariable -> {
             assertThat(instanceVariable.getShortName()).isEqualTo("PERSON_ID");
         });

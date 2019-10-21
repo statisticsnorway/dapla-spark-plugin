@@ -137,14 +137,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     private UnitDataset createGsimObjectInLds(Schema schema, Client client, DatasetHelper datasetHelper) {
         LdsGsimWriter ldsGsimWriter = new LdsGsimWriter(client);
-        SchemaToGsim schemaToGsim = new SchemaToGsim(schema, ldsGsimWriter);
+        SchemaToGsim schemaToGsim = new SchemaToGsim(schema, ldsGsimWriter, datasetHelper.getUserName(), datasetHelper.createGsimObjects());
 
         return schemaToGsim.generateGsimInLds(
                 datasetHelper.getNewDatasetId(),
                 datasetHelper.getNewDatasetName(),
-                datasetHelper.getDescription(),
-                datasetHelper.getUserName(),
-                datasetHelper.createGsimObjects());
+                datasetHelper.getDescription());
     }
 
     public static class Configuration {
