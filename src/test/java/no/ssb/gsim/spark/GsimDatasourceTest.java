@@ -198,25 +198,33 @@ public class GsimDatasourceTest {
     private void checkUnitDataSetResponse(UnitDatasetAction unitDatasetAction) throws IOException, InterruptedException {
         RecordedRequest recordedRequest = server.takeRequest();
         ObjectMapper mapper = new ObjectMapper();
-        unitDatasetAction.onRequest(mapper.readValue(recordedRequest.getBody().readByteArray(), UnitDataset.class));
+        Class<UnitDataset> type = UnitDataset.class;
+        assertThat(recordedRequest.getPath()).contains(UnitDataset.UNIT_DATA_SET_NAME);
+        unitDatasetAction.onRequest(mapper.readValue(recordedRequest.getBody().readByteArray(), type));
     }
 
     private void checkUnitDataStructureResponse(UnitDataStructureAction action) throws IOException, InterruptedException {
         RecordedRequest recordedRequest = server.takeRequest();
         ObjectMapper mapper = new ObjectMapper();
-        action.onRequest(mapper.readValue(recordedRequest.getBody().readByteArray(), UnitDataStructure.class));
+        Class<UnitDataStructure> type = UnitDataStructure.class;
+        assertThat(recordedRequest.getPath()).contains(type.getSimpleName());
+        action.onRequest(mapper.readValue(recordedRequest.getBody().readByteArray(), type));
     }
 
     private void checkLogicalRecordResponse(LogicalRecordAction action) throws IOException, InterruptedException {
         RecordedRequest recordedRequest = server.takeRequest();
         ObjectMapper mapper = new ObjectMapper();
-        action.onRequest(mapper.readValue(recordedRequest.getBody().readByteArray(), LogicalRecord.class));
+        Class<LogicalRecord> type = LogicalRecord.class;
+        assertThat(recordedRequest.getPath()).contains(type.getSimpleName());
+        action.onRequest(mapper.readValue(recordedRequest.getBody().readByteArray(), type));
     }
 
     private void checkInstanceVariableResponse(InstanceVariableAction action) throws IOException, InterruptedException {
         RecordedRequest recordedRequest = server.takeRequest();
         ObjectMapper mapper = new ObjectMapper();
-        action.onRequest(mapper.readValue(recordedRequest.getBody().readByteArray(), InstanceVariable.class));
+        Class<InstanceVariable> type = InstanceVariable.class;
+        assertThat(recordedRequest.getPath()).contains(type.getSimpleName());
+        action.onRequest(mapper.readValue(recordedRequest.getBody().readByteArray(), type));
     }
 
     private RecordedRequest getResponse() throws InterruptedException {
