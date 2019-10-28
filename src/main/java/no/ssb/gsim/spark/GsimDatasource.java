@@ -1,29 +1,37 @@
 package no.ssb.gsim.spark;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import no.ssb.avro.convert.gsim.LdsGsimWriter;
+import no.ssb.avro.convert.gsim.SchemaToGsim;
 import no.ssb.lds.gsim.okhttp.UnitDataset;
 import no.ssb.lds.gsim.okhttp.api.Client;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
+import org.apache.avro.Schema;
+import org.apache.parquet.schema.MessageType;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.execution.datasources.parquet.SparkToParquetSchemaConverter;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.RelationProvider;
-import scala.Option;
+import org.apache.spark.sql.types.StructType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.collection.immutable.Map;
+import org.apache.parquet.avro.AvroSchemaConverter;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.Instant;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Optional;
 
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider {
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     private static final String CONFIG = "spark.ssb.gsim.";
 
@@ -40,8 +48,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     private static final String CONFIG_LDS_OAUTH_USER_NAME = CONFIG + "oauth.userName";
     private static final String CONFIG_LDS_OAUTH_PASSWORD = CONFIG + "oauth.password";
     private static final String CONFIG_LDS_OAUTH_GRANT_TYPE = CONFIG + "oauth.grantType";
-
-    private static final String PATH = "path";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -73,85 +79,70 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
-        URI datasetUri = extractPath(parameters);
-        String datasetId = extractDatasetId(datasetUri);
+        log.info("CreateRelation on load {}", parameters);
+
+        DatasetHelper dataSetHelper = new DatasetHelper(parameters, sqlContext.getConf(CONFIG_LOCATION_PREFIX));
+
+        String datasetId = dataSetHelper.getDatasetId();
         Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
         UnitDataset dataset = ldsClient.fetchUnitDataset(datasetId, Instant.now()).join();
-        List<URI> dataUris = extractUris(dataset);
+        dataSetHelper.setDataSet(dataset);
+        List<URI> dataUris = dataSetHelper.extractUris();
         return new GsimRelation(sqlContext, dataUris);
     }
 
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
-
-        URI datasetUri = extractPath(parameters);
-        String datasetId = extractDatasetId(datasetUri);
+        log.info("CreateRelation on write {}", parameters);
         Client ldsClient = createLdsClient(sqlContext.sparkContext().conf());
-        UnitDataset dataset = ldsClient.fetchUnitDataset(datasetId, Instant.now()).join();
-        List<URI> dataUris = extractUris(dataset);
 
-        // Create a new path with the current time.
+        DatasetHelper dataSetHelper = new DatasetHelper(parameters, sqlContext.getConf(CONFIG_LOCATION_PREFIX), mode);
+
+        if (dataSetHelper.updateExistingDataset()) {
+            // get existing UnitDataSet from lds
+            UnitDataset dataset = ldsClient.fetchUnitDataset(dataSetHelper.getDatasetId(), Instant.now()).join();
+            dataSetHelper.setDataSet(dataset);
+        } else {
+            // create new UnitDataSet in lds
+            Schema schema = getSchema(sqlContext, data.schema());
+            UnitDataset dataset = createGsimObjectInLds(schema, ldsClient, dataSetHelper);
+            dataSetHelper.setDataSet(dataset);
+            System.out.println("new dataset: " + dataSetHelper.extractPath());
+        }
+
+        URI newDataUri = dataSetHelper.getDataSetUri();
+        log.info("writing file(s) to: {}", newDataUri);
+        data.coalesce(1).write().parquet(newDataUri.toASCIIString());
         try {
-            String locationPrefix = sqlContext.getConf(CONFIG_LOCATION_PREFIX);
-            URI prefixUri = URI.create(locationPrefix);
-            URI newDataUri = new URI(
-                    prefixUri.getScheme(),
-                    String.format("%s/%s/%d",
-                            prefixUri.getSchemeSpecificPart(),
-                            datasetUri.getSchemeSpecificPart(), System.currentTimeMillis()
-                    ),
-                    null
-            );
+            ldsClient.updateUnitDataset(dataSetHelper.getDatasetId(), dataSetHelper.getDataset()).join();
 
-            List<URI> newDataUris;
-            if (mode.equals(SaveMode.Overwrite)) {
-                newDataUris = Collections.singletonList(newDataUri);
-            } else if (mode.equals(SaveMode.Append)) {
-                newDataUris = new ArrayList<>();
-                newDataUris.add(newDataUri);
-                newDataUris.addAll(dataUris);
-            } else {
-                throw new IllegalArgumentException("Unsupported mode " + mode);
-            }
-
-            dataset.setDataSourcePath(newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(",")));
-            data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-
-            ldsClient.updateUnitDataset(datasetId, dataset).join();
-            return createRelation(sqlContext, parameters);
-        } catch (URISyntaxException e) {
-            throw new RuntimeException("could not generate new file uri", e);
+            return new GsimRelation(sqlContext, dataSetHelper.extractUris());
         } catch (IOException e) {
             throw new RuntimeException("could not update lds", e);
         }
     }
 
-    private List<URI> extractUris(UnitDataset dataset) {
-        // Find all the files for the dataset.
-        List<String> dataSources = Arrays.asList(dataset.getDataSourcePath().split(","));
-        return dataSources.stream().map(URI::create).collect(Collectors.toList());
+    /**
+     * Convert from parquet schema to avro schema
+     *
+     * @return {@link Schema}
+     */
+    private Schema getSchema(SQLContext sqlContext, StructType structType) {
+        SparkToParquetSchemaConverter sparkToParquetSchemaConverter = new SparkToParquetSchemaConverter(sqlContext.conf());
+        MessageType messageType = sparkToParquetSchemaConverter.convert(structType);
+        AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter();
+
+        return avroSchemaConverter.convert(messageType);
     }
 
-    private URI extractPath(Map<String, String> parameters) {
-        Option<String> pathOption = parameters.get(PATH);
-        if (pathOption.isEmpty()) {
-            throw new RuntimeException("'path' must be set");
-        }
-        return URI.create(pathOption.get());
-    }
+    private UnitDataset createGsimObjectInLds(Schema schema, Client client, DatasetHelper datasetHelper) {
+        LdsGsimWriter ldsGsimWriter = new LdsGsimWriter(client);
+        SchemaToGsim schemaToGsim = new SchemaToGsim(schema, ldsGsimWriter, datasetHelper.getUserName(), datasetHelper.createGsimObjects());
 
-    private String extractDatasetId(URI pathUri) {
-        List<String> schemes = Arrays.asList(pathUri.getScheme().split("\\+"));
-        if (!schemes.contains("lds") || !schemes.contains("gsim")) {
-            throw new IllegalArgumentException("invalid scheme. Please use lds+gsim://[port[:post]]/path");
-        }
-
-        String path = pathUri.getPath();
-        if (path == null || path.isEmpty()) {
-            // No path. Use the host as id.
-            path = pathUri.getHost();
-        }
-        return path;
+        return schemaToGsim.generateGsimInLds(
+                datasetHelper.getNewDatasetId(),
+                datasetHelper.getNewDatasetName(),
+                datasetHelper.getDescription());
     }
 
     public static class Configuration {
