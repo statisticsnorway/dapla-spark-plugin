@@ -81,7 +81,8 @@ public class GsimDatasourceTest {
         Dataset<Row> dataset = sqlContext.read()
                 .format("no.ssb.gsim.spark")
                 .load("lds+gsim://" + UNIT_DATASET_ID);
-        dataset.show();
+        assertThat(dataset).isNotNull();
+        assertThat(dataset.isEmpty()).isFalse();
     }
 
     @Test
