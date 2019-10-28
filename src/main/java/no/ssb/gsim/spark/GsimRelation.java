@@ -42,7 +42,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan {
 
     @Override
     public int hashCode() {
-        return Objects.hash(files);
+        return files.hashCode();
     }
 
     @Override
