@@ -19,8 +19,8 @@ class DatasetHelper {
 
     static final String CREATE_DATASET = "create";
     static final String USER_NAME = "user_name";
-    static final String CRATE_GSIM_OBJECTS = "crate_gsim_objects";
-    static final String USE_THIS_ID = "user_this_id";
+    static final String CRATE_GSIM_OBJECTS = "create_gsim_objects";
+    static final String USE_THIS_ID = "use_this_id";
     static final String DESCRIPTION = "description";
 
     private final Map<String, String> parameters;
@@ -64,13 +64,9 @@ class DatasetHelper {
         Option<String> option = parameters.get(CRATE_GSIM_OBJECTS);
         if (option.isEmpty()) {
             return false;
-        }
-        try {
+        } else {
             return Boolean.parseBoolean(option.get());
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
         }
-        return false;
     }
 
     String getUserName() {
@@ -81,7 +77,7 @@ class DatasetHelper {
         return null;
     }
 
-    String userThisId() {
+    String useThisId() {
         Option<String> option = parameters.get(USE_THIS_ID);
         if (option.isDefined()) {
             return option.get();
@@ -102,7 +98,6 @@ class DatasetHelper {
         if (createNewDataset.isEmpty()) {
             throw new IllegalArgumentException(CREATE_DATASET + " missing from spark option on write");
         }
-
         return createNewDataset.get();
     }
 
@@ -117,7 +112,7 @@ class DatasetHelper {
             // example: spark.read.format("no.ssb.gsim.spark").save("lds+gsim://3d062358-08c2-4287-a336-a62d25c72fb9")
             Option<String> pathOption = parameters.get(PATH);
             if (pathOption.isEmpty()) {
-                throw new RuntimeException("'path' must be set");
+                throw new IllegalArgumentException("'path' must be set");
             }
             return URI.create(pathOption.get());
         }
@@ -142,7 +137,9 @@ class DatasetHelper {
     private String extractDatasetId(URI pathUri) {
         List<String> schemes = Arrays.asList(pathUri.getScheme().split("\\+"));
         if (!schemes.contains("lds") || !schemes.contains("gsim")) {
-            throw new IllegalArgumentException("invalid scheme. Please use lds+gsim://[port[:post]]/path");
+            throw new IllegalArgumentException(
+                    String.format("invalid scheme in url '%s'. Please use lds+gsim://[port[:post]]/path",
+                            pathUri.toString()));
         }
 
         String path = pathUri.getPath();
@@ -165,29 +162,32 @@ class DatasetHelper {
      * @return URI. Examples: hdfs://hadoop:9000/datasets////3d062358-08c2-4287-a336-a62d25c72fb9/1570712831638
      */
     URI getDataSetUri() {
-        if (cachedDatasetUri != null) {
-            return cachedDatasetUri;
+        if (cachedDatasetUri == null) {
+            cachedDatasetUri = createDataSetUri();
         }
-        cachedDatasetUri = crateDataSetUri();
         return cachedDatasetUri;
     }
 
-    private URI crateDataSetUri() {
+    private URI createDataSetUri() {
         URI datasetUri = extractPath();
-
         try {
-            URI prefixUri = URI.create(locationPrefix);
-            return new URI(
-                    prefixUri.getScheme(),
-                    String.format("%s/%s/%d",
-                            prefixUri.getSchemeSpecificPart(),
-                            datasetUri.getSchemeSpecificPart(), System.currentTimeMillis()
-                    ),
-                    null
-            );
-        } catch (URISyntaxException e) {
-            throw new RuntimeException("could not generate new file uri", e);
-
+            URI scheme = URI.create(locationPrefix);
+                // prepend the locationPrefix's ssp to the datasetUri's ssp
+                // and add the current time in ms.
+                String sspWithPrefixAndVersion = String.format("%s/%s/%d",
+                        scheme.getSchemeSpecificPart(),
+                        datasetUri.getSchemeSpecificPart(),
+                        System.currentTimeMillis()
+                );
+            try {
+                return new URI(scheme.getScheme(), sspWithPrefixAndVersion, null);
+            } catch (URISyntaxException e) {
+                throw new IllegalArgumentException(String.format("could not generate versioned URI %s",
+                        sspWithPrefixAndVersion), e);
+            }
+        } catch (IllegalArgumentException | NullPointerException e) {
+            // TODO: Refactor so that the validation of the prefix happens earlier.
+            throw new IllegalArgumentException(String.format("location prefix '%s' is invalid", locationPrefix),e);
         }
     }
 
@@ -211,11 +211,10 @@ class DatasetHelper {
     }
 
     String getNewDatasetId() {
-        String id = userThisId();
+        String id = useThisId();
         if (id != null) {
             return id;
         }
-
         return cachedNewDataSetId;
     }
 }
