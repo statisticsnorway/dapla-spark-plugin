@@ -138,7 +138,7 @@ class DatasetHelper {
         List<String> schemes = Arrays.asList(pathUri.getScheme().split("\\+"));
         if (!schemes.contains("lds") || !schemes.contains("gsim")) {
             throw new IllegalArgumentException(
-                    String.format("invalid scheme in url '%s'. Please use lds+gsim://[port[:post]]/path",
+                    String.format("invalid scheme in url '%s'. Expects 'lds+gsim://[host[:port]]/path'",
                             pathUri.toString()));
         }
 
