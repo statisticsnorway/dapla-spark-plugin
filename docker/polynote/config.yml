@@ -40,13 +40,11 @@ dependencies:
 # Spark config params can be set by uncommenting and editing the following lines:
 spark:
   spark.master: "spark://spark-master:7077"
-  spark.ssb.gsim:
-    location: $LDS_GSIM_SPARK_LOCATION
-    ldsUrl: $LDS_GSIM_SPARK_LDS_URL
-    oauth:
-      tokenUrl: $LDS_GSIM_SPARK_OAUTH_TOKEN_URL
-      grantType: $LDS_GSIM_SPARK_OAUTH_GRANT_TYPE
-      clientId: $LDS_GSIM_SPARK_OAUTH_CLIENT_ID
-      clientSecret: $LDS_GSIM_SPARK_OAUTH_CLIENT_SECRET
-      userName: $LDS_GSIM_SPARK_OAUTH_USERNAME
-      password: $LDS_GSIM_SPARK_OAUTH_PASSWORD
+  spark.ssb.gsim.location: "$LDS_GSIM_SPARK_LOCATION"
+  spark.ssb.gsim.ldsUrl: "$LDS_GSIM_SPARK_LDS_URL"
+  spark.ssb.gsim.oauth.tokenUrl: "$LDS_GSIM_SPARK_OAUTH_TOKEN_URL"
+  spark.ssb.gsim.oauth.grantType: "$LDS_GSIM_SPARK_OAUTH_GRANT_TYPE"
+  spark.ssb.gsim.oauth.clientId: "$LDS_GSIM_SPARK_OAUTH_CLIENT_ID"
+  spark.ssb.gsim.oauth.clientSecret: "$LDS_GSIM_SPARK_OAUTH_CLIENT_SECRET"
+  spark.ssb.gsim.oauth.userName: "$LDS_GSIM_SPARK_OAUTH_USERNAME"
+  spark.ssb.gsim.oauth.password: "$LDS_GSIM_SPARK_OAUTH_PASSWORD"

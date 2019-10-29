@@ -10,6 +10,22 @@ services:
       - "7077:7077"
     environment:
       - INIT_DAEMON_STEP=setup_spark
+  zeppelin:
+    image: zeppelin
+    container_name: zeppelin
+    volumes:
+      - ./data:/data
+    build:
+      context: ./zeppelin
+      dockerfile: ./zeppelin/Dockerfile
+    depends_on:
+      - spark-master
+    ports:
+      - "8008:8080"
+    env_file:
+      - .env
+    environment:
+      - SPARK_MASTER_HOST=spark://spark-master
   polynote:
     image: polynote
     container_name: polynote
@@ -22,6 +38,8 @@ services:
       - spark-master
     ports:
       - "8192:8192"
+    env_file:
+      - .env
     environment:
       - SPARK_MASTER_HOST=spark://spark-master
   spark-worker-1:
