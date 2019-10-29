@@ -9,6 +9,19 @@ This project integrates spark with LDS and the GSIM model. It implements a new f
 The project contains Docker images with the Zeppelin and Polynote notebook UIs. 
 They both includes the Google Cloud Storage connector and the gsim integration jar file. 
 s
+
+A docker compose file with a three-nodes spark cluster as well as zeppelin and polynote. 
+When using the docker compose the environment variables can be set up in a `.env` file at the
+root.   
+
+```bash
+# Compile the project
+> mvn clean package
+# edit env variables
+> vim .env
+> docker-compose up
+```
+
 The following environment variables are required.
 *Note that if one of the oAuth variable is missing, the module with try to access the lds resources __without__
 authentication*
@@ -24,21 +37,35 @@ authentication*
 |LDS_GSIM_SPARK_OAUTH_USERNAME|spark.ssb.gsim.oauth.userName|OAUTH username|
 |LDS_GSIM_SPARK_OAUTH_PASSWORD|spark.ssb.gsim.oauth.password|OAUTH password|
 
+Using only docker, on can build and run zeppelin or polynote with the following commands:  
+
 ```bash
-# Compile the project
-mvn clean package
-# Build the image locally
-docker build -t polynote -f docker/polynote/Dockerfile .
-docker build -t zeppelin -f docker/zeppelin/Dockerfile .
-# Start the service
-docker run -p 8080:8080 -e LDS_GSIM_SPARK_LDS_URL=https://lds-c.staging.ssbmod.net/ns/ \
-                        -e LDS_GSIM_SPARK_LOCATION=gs://bucker/prefix/ \
+> # Compile the project
+> mvn clean package
+
+> # Build & start zeppelin
+> docker build -t lds-zeppelin -f docker/zeppelin/Dockerfile .
+> docker run -p 8080:8080 -e LDS_GSIM_SPARK_LDS_URL=https://lds-c.staging.ssbmod.net/ns/ \
+                        -e LDS_GSIM_SPARK_LOCATION=gs://bucket/prefix/ \
                         -e LDS_GSIM_SPARK_OAUTH_TOKEN_URL=https://keycloak.staging.ssbmod.net/auth/realms/ssb/protocol/openid-connect/token \
                         -e LDS_GSIM_SPARK_OAUTH_GRANT_TYPE=password \
                         -e LDS_GSIM_SPARK_OAUTH_CLIENT_ID=lds-c-postgres-gsim \
                         -e LDS_GSIM_SPARK_OAUTH_USERNAME=api-user-3 \
                         -e LDS_GSIM_SPARK_OAUTH_PASSWORD=PASSWORD \
-                        -v /full/path/to/sa.json:/gcloud/key.json lds-zeppelin-gsim
+                        -v /full/path/to/sa.json:/gcloud/key.json lds-zeppelin
+
+> # Build & start polynote
+> docker build -t lds-polynote -f docker/polynote/Dockerfile .
+> docker run -p 8192:8192 -e LDS_GSIM_SPARK_LDS_URL=https://lds-c.staging.ssbmod.net/ns/ \
+                        -e LDS_GSIM_SPARK_LOCATION=gs://bucket/prefix/ \
+                        -e LDS_GSIM_SPARK_OAUTH_TOKEN_URL=https://keycloak.staging.ssbmod.net/auth/realms/ssb/protocol/openid-connect/token \
+                        -e LDS_GSIM_SPARK_OAUTH_GRANT_TYPE=password \
+                        -e LDS_GSIM_SPARK_OAUTH_CLIENT_ID=lds-c-postgres-gsim \
+                        -e LDS_GSIM_SPARK_OAUTH_USERNAME=api-user-3 \
+                        -e LDS_GSIM_SPARK_OAUTH_PASSWORD=PASSWORD \
+                        -v /full/path/to/sa.json:/gcloud/key.json lds-polynote
+
+
 ```
 
 Open the zeppelin [interface](http://localhost:8080/).
