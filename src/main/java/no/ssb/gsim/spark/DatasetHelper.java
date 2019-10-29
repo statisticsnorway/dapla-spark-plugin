@@ -20,8 +20,11 @@ class DatasetHelper {
     static final String CREATE_DATASET = "create";
     static final String USER_NAME = "user_name";
     static final String CRATE_GSIM_OBJECTS = "create_gsim_objects";
+    static final String CREATE_GSIM_BUSINESS_OBJECTS = "create_gsim_business_objects";
     static final String USE_THIS_ID = "use_this_id";
     static final String DESCRIPTION = "description";
+    static final String NOTEBOOK_HOST = "notebook_host";
+    static final String NOTE_ID = "note_id";
 
     private final Map<String, String> parameters;
     private final String locationPrefix;
@@ -67,6 +70,31 @@ class DatasetHelper {
         } else {
             return Boolean.parseBoolean(option.get());
         }
+    }
+
+    boolean createGsimBusinessObjects() {
+        Option<String> option = parameters.get(CREATE_GSIM_BUSINESS_OBJECTS);
+        if (option.isEmpty()) {
+            return false;
+        } else {
+            return Boolean.parseBoolean(option.get());
+        }
+    }
+
+    String getNotebookHost() {
+        Option<String> option = parameters.get(NOTEBOOK_HOST);
+        if (option.isDefined()) {
+            return option.get();
+        }
+        return null;
+    }
+
+    String getNoteId() {
+        Option<String> option = parameters.get(NOTE_ID);
+        if (option.isDefined()) {
+            return option.get();
+        }
+        return null;
     }
 
     String getUserName() {
@@ -172,13 +200,13 @@ class DatasetHelper {
         URI datasetUri = extractPath();
         try {
             URI scheme = URI.create(locationPrefix);
-                // prepend the locationPrefix's ssp to the datasetUri's ssp
-                // and add the current time in ms.
-                String sspWithPrefixAndVersion = String.format("%s/%s/%d",
-                        scheme.getSchemeSpecificPart(),
-                        datasetUri.getSchemeSpecificPart(),
-                        System.currentTimeMillis()
-                );
+            // prepend the locationPrefix's ssp to the datasetUri's ssp
+            // and add the current time in ms.
+            String sspWithPrefixAndVersion = String.format("%s/%s/%d",
+                    scheme.getSchemeSpecificPart(),
+                    datasetUri.getSchemeSpecificPart(),
+                    System.currentTimeMillis()
+            );
             try {
                 return new URI(scheme.getScheme(), sspWithPrefixAndVersion, null);
             } catch (URISyntaxException e) {
@@ -187,7 +215,7 @@ class DatasetHelper {
             }
         } catch (IllegalArgumentException | NullPointerException e) {
             // TODO: Refactor so that the validation of the prefix happens earlier.
-            throw new IllegalArgumentException(String.format("location prefix '%s' is invalid", locationPrefix),e);
+            throw new IllegalArgumentException(String.format("location prefix '%s' is invalid", locationPrefix), e);
         }
     }
 

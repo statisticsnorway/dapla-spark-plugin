@@ -3,6 +3,8 @@ package no.ssb.gsim.spark;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import no.ssb.avro.convert.gsim.LdsGsimWriter;
 import no.ssb.avro.convert.gsim.SchemaToGsim;
+import no.ssb.avro.convert.gsim.zeppelin.NoteToBusinessProcess;
+import no.ssb.avro.convert.gsim.zeppelin.ZeppelinClient;
 import no.ssb.lds.gsim.okhttp.UnitDataset;
 import no.ssb.lds.gsim.okhttp.api.Client;
 import okhttp3.HttpUrl;
@@ -113,12 +115,29 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         URI newDataUri = dataSetHelper.getDataSetUri();
         log.info("writing file(s) to: {}", newDataUri);
         data.coalesce(1).write().parquet(newDataUri.toASCIIString());
+
+        createGsimBusinessObjects(dataSetHelper, ldsClient);
         try {
             ldsClient.updateUnitDataset(dataSetHelper.getDatasetId(), dataSetHelper.getDataset()).join();
 
             return new GsimRelation(sqlContext, dataSetHelper.extractUris());
         } catch (IOException e) {
             throw new RuntimeException("could not update lds", e);
+        }
+    }
+
+    private void createGsimBusinessObjects(DatasetHelper datasetHelper, Client ldsClient) {
+        if(!datasetHelper.createGsimBusinessObjects()) {
+            return;
+        }
+
+        ZeppelinClient zeppelinClient = new ZeppelinClient(datasetHelper.getNotebookHost());
+        LdsGsimWriter ldsGsimWriter = new LdsGsimWriter(ldsClient);
+        NoteToBusinessProcess noteToBusinessProcess = new NoteToBusinessProcess(zeppelinClient, ldsGsimWriter);
+        try {
+            noteToBusinessProcess.run(datasetHelper.getNoteId());
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Could not generate business objects for note:" + datasetHelper.getNoteId());
         }
     }
 
