@@ -5,6 +5,7 @@ import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.execution.FileRelation;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.Filter;
 import org.apache.spark.sql.sources.PrunedFilteredScan;
@@ -15,7 +16,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class GsimRelation extends BaseRelation implements PrunedFilteredScan {
+public class GsimRelation extends BaseRelation implements PrunedFilteredScan, FileRelation {
 
     private final SQLContext context;
     private final Set<String> files;
@@ -52,28 +53,21 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan {
 
     @Override
     public synchronized StructType schema() {
-        // Memoize.
-        if (schema == null) {
-            StructType readSchema = this.sqlContext().read()
-                    .parquet(files.toArray(new String[]{})).schema();
-            List<StructField> modifiedFields = new ArrayList<>();
-            for (StructField field : readSchema.fields()) {
-                if (field.name().equals("MUNICIPALITY")) {
-                    modifiedFields.add(new StructField("MUNICIPALITY", DataTypes.StringType, true,
-                            Metadata.fromJson("{\"test\": true}")));
-                } else {
-                    modifiedFields.add(field);
-                }
-            }
-            schema = new StructType(modifiedFields.toArray(new StructField[]{}));
+        if (schema == null) { // Memoize.
+            schema = this.sqlContext().read().parquet(inputFiles()).schema();
         }
         return schema;
     }
 
     @Override
     public RDD<Row> buildScan(String[] requiredColumns, Filter[] filters) {
-        Dataset<Row> dataset = this.sqlContext().read().parquet(files.toArray(new String[]{}));
+        Dataset<Row> dataset = this.sqlContext().read().parquet(inputFiles());
         Column[] columns = Stream.of(requiredColumns).map(dataset::col).toArray(Column[]::new);
         return dataset.select(columns).rdd();
+    }
+
+    @Override
+    public String[] inputFiles() {
+        return files.toArray(new String[]{});
     }
 }
