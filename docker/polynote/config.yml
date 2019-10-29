@@ -25,9 +25,10 @@ listen:
 #      changing: true
 
 # Default dependencies can be specified. Uncommenting the following lines would add some default dependencies which a>
-#dependencies:
-#  scala:
-#    - org.typelevel:cats-core_2.11:1.6.0
+dependencies:
+  scala:
+    - file:/polynote/lds-gsim-spark.jar
+    - file:/polynote/gcs-connector-hadoop.jar
 #    - com.mycompany:my-library:jar:all:1.0.0
 #  python:
 #    - requests
@@ -39,6 +40,13 @@ listen:
 # Spark config params can be set by uncommenting and editing the following lines:
 spark:
   spark.master: "spark://spark-master:7077"
+  spark.ssb.gsim:
+    location:
+    ldsUrl:
+    oauth:
+      tokenUrl:
+      grantType:
+      
 #  spark.driver.userClasspathFirst: true
 #  spark.executor.userClasspathFirst: true
 

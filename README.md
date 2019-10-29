@@ -6,7 +6,8 @@ This project integrates spark with LDS and the GSIM model. It implements a new f
 
 ## Test it
 
-The project contains a Dockerfile based on `apache/zeppelin`. It includes the Google Cloud Storage connector and the built jar file.
+The project contains Docker images with the Zeppelin and Polynote notebooks. 
+They both includes the Google Cloud Storage connector and the built jar file. 
 
 The following environment variables are required.
 *Note that if one of the oAuth variable is missing, the module with try to access the lds resources __without__

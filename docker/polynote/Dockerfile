@@ -2,15 +2,19 @@ FROM bde2020/spark-base
 
 RUN wget https://github.com/polynote/polynote/releases/download/0.2.8/polynote-dist.tar.gz
 RUN tar xzf polynote-dist.tar.gz
+RUN rm polynote-dist.tar.gz
 
-COPY config.yml polynote/config.yml
-COPY config.yml polynote/config.yml
+RUN wget https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-latest.jar
+RUN mv gcs-connector-hadoop2-latest.jar /polynote/gcs-connector-hadoop.jar
 
-COPY docker-run-spark-env.sh /
+COPY docker/polynote/config.yml polynote/config.yml
+COPY docker/polynote/docker-run-spark-env.sh /
 RUN chmod +x docker-run-spark-env.sh
 
 ENV SPARK_HOME=/spark
 ENV PATH=${PATH}:${SPARK_HOME}/bin
+
+COPY target/lds-gsim-spark-*-shaded.jar /polynote/lds-gsim-spark.jar
 
 EXPOSE 8192
 
