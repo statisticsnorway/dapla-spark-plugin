@@ -82,10 +82,27 @@ steps:
     - codacy
     - codecov
 
-- name: publish-docker
+- name: publish-docker-zeppelin
   image: plugins/gcr
   settings:
+    dockerfile: docker/zeppelin/Dockerfile
     repo: eu.gcr.io/prod-bip/ssb/lds-zeppelin
+    registry: eu.gcr.io
+    auto_tag: true
+    json_key:
+      from_secret: gcr_credentials
+  when:
+    ref:
+      - refs/heads/develop
+      - refs/tags/*
+  depends_on:
+    - publish-maven
+
+- name: publish-docker-polynote
+  image: plugins/gcr
+  settings:
+    dockerfile: docker/polynote/Dockerfile
+    repo: eu.gcr.io/prod-bip/ssb/lds-polynote
     registry: eu.gcr.io
     auto_tag: true
     json_key:
@@ -107,6 +124,8 @@ steps:
     status: [ success, failure ]
   depends_on:
     - publish-maven
+    - publish-docker-zeppelin
+    - publish-docker-polynote
 
 ---
 kind: secret

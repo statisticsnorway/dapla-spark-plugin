@@ -6,8 +6,9 @@ This project integrates spark with LDS and the GSIM model. It implements a new f
 
 ## Test it
 
-The project contains a Dockerfile based on `apache/zeppelin`. It includes the Google Cloud Storage connector and the built jar file.
-
+The project contains Docker images with the Zeppelin and Polynote notebook UIs. 
+They both includes the Google Cloud Storage connector and the gsim integration jar file. 
+s
 The following environment variables are required.
 *Note that if one of the oAuth variable is missing, the module with try to access the lds resources __without__
 authentication*
@@ -27,7 +28,8 @@ authentication*
 # Compile the project
 mvn clean package
 # Build the image locally
-docker build -t lds-zeppelin-gsim .
+docker build -t polynote -f docker/polynote/Dockerfile .
+docker build -t zeppelin -f docker/zeppelin/Dockerfile .
 # Start the service
 docker run -p 8080:8080 -e LDS_GSIM_SPARK_LDS_URL=https://lds-c.staging.ssbmod.net/ns/ \
                         -e LDS_GSIM_SPARK_LOCATION=gs://bucker/prefix/ \
