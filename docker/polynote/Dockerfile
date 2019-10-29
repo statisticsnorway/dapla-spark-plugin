@@ -7,7 +7,9 @@ RUN rm polynote-dist.tar.gz
 RUN wget https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-latest.jar
 RUN mv gcs-connector-hadoop2-latest.jar /polynote/gcs-connector-hadoop.jar
 
-COPY docker/polynote/config.yml polynote/config.yml
+RUN apk update && apk add gettext && rm -rf /var/cache/apk/*
+
+COPY docker/polynote/config.yml polynote/config-template.yml
 COPY docker/polynote/docker-run-spark-env.sh /
 RUN chmod +x docker-run-spark-env.sh
 

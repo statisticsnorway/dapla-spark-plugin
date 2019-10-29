@@ -41,12 +41,12 @@ dependencies:
 spark:
   spark.master: "spark://spark-master:7077"
   spark.ssb.gsim:
-    location:
-    ldsUrl:
+    location: $LDS_GSIM_SPARK_LOCATION
+    ldsUrl: $LDS_GSIM_SPARK_LDS_URL
     oauth:
-      tokenUrl:
-      grantType:
-      
-#  spark.driver.userClasspathFirst: true
-#  spark.executor.userClasspathFirst: true
-
+      tokenUrl: $LDS_GSIM_SPARK_OAUTH_TOKEN_URL
+      grantType: $LDS_GSIM_SPARK_OAUTH_GRANT_TYPE
+      clientId: $LDS_GSIM_SPARK_OAUTH_CLIENT_ID
+      clientSecret: $LDS_GSIM_SPARK_OAUTH_CLIENT_SECRET
+      userName: $LDS_GSIM_SPARK_OAUTH_USERNAME
+      password: $LDS_GSIM_SPARK_OAUTH_PASSWORD
