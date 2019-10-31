@@ -81,8 +81,26 @@ public class GsimDatasourceTest {
         Dataset<Row> dataset = sqlContext.read()
                 .format("no.ssb.gsim.spark")
                 .load("lds+gsim://" + UNIT_DATASET_ID);
+
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
+    }
+
+    @Test
+    public void testReadWriteWithIdShortName() {
+        this.server.enqueue(unitDatasetResponse);
+        this.server.enqueue(unitDatasetResponse);
+        this.server.enqueue(new MockResponse().setResponseCode(201));
+        this.server.enqueue(unitDatasetResponse);
+
+        Dataset<Row> dataset = sqlContext.read()
+                .format("gsim")
+                .load("lds+gsim://" + UNIT_DATASET_ID);
+
+        assertThat(dataset).isNotNull();
+        assertThat(dataset.isEmpty()).isFalse();
+
+        dataset.write().format("gsim").mode(SaveMode.Append).save("lds+gsim://" + UNIT_DATASET_ID);
     }
 
     @Test
@@ -95,8 +113,10 @@ public class GsimDatasourceTest {
         Dataset<Row> dataset = sqlContext.read()
                 .format("no.ssb.gsim.spark")
                 .load("lds+gsim://" + UNIT_DATASET_ID);
-        dataset.printSchema();
-        dataset.show();
+
+        assertThat(dataset).isNotNull();
+        assertThat(dataset.isEmpty()).isFalse();
+
 
         dataset.write().format("no.ssb.gsim.spark").mode(SaveMode.Append).save("lds+gsim://" + UNIT_DATASET_ID);
 

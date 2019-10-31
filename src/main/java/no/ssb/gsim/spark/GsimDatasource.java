@@ -17,6 +17,7 @@ import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.execution.datasources.parquet.SparkToParquetSchemaConverter;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
+import org.apache.spark.sql.sources.DataSourceRegister;
 import org.apache.spark.sql.sources.RelationProvider;
 import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
@@ -30,8 +31,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-public class GsimDatasource implements RelationProvider, CreatableRelationProvider {
+public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
+
+    private static final String SHORT_NAME = "gsim";
 
     private static final String CONFIG = "spark.ssb.gsim.";
 
@@ -143,6 +146,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                 datasetHelper.getNewDatasetId(),
                 datasetHelper.getNewDatasetName(),
                 datasetHelper.getDescription());
+    }
+
+    @Override
+    public String shortName() {
+        return SHORT_NAME;
     }
 
     public static class Configuration {
