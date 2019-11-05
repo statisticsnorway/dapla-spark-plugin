@@ -1,34 +1,34 @@
 package no.ssb.gsim.spark;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import no.ssb.lds.gsim.okhttp.UnitDataset;
+import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
-import scala.Option;
+import org.jetbrains.annotations.NotNull;
 import scala.collection.immutable.Map;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 class DatasetHelper {
-    private static final String PATH = "path";
-
     static final String CREATE_DATASET = "create";
     static final String USER_NAME = "user_name";
     static final String CRATE_GSIM_OBJECTS = "create_gsim_objects";
     static final String USE_THIS_ID = "use_this_id";
     static final String DESCRIPTION = "description";
-
+    private static final String PATH = "path";
     private final Map<String, String> parameters;
     private final String locationPrefix;
     private final SaveMode saveMode;
-    private URI cachedDatasetUri;
     private final String cachedNewDataSetId = UUID.randomUUID().toString();
-
+    private URI cachedDatasetUri;
     private UnitDataset dataset;
 
     /**
@@ -51,170 +51,123 @@ class DatasetHelper {
         this(parameters, locationPrefix, null);
     }
 
-    UnitDataset getDataset() {
-        return dataset;
+    public static List<URI> splitDataURIs(String paths) {
+        return Stream.of(paths.split(",")).map(URI::create).collect(Collectors.toList());
     }
 
-    boolean updateExistingDataset() {
-        Option<String> createNewDataset = parameters.get(CREATE_DATASET);
-        return createNewDataset.isEmpty();
+    public static String joinDataURIs(List<URI> URIs) {
+        return URIs.stream().map(URI::toASCIIString).collect(Collectors.joining(","));
     }
 
-    boolean createGsimObjects() {
-        Option<String> option = parameters.get(CRATE_GSIM_OBJECTS);
-        if (option.isEmpty()) {
-            return false;
-        } else {
-            return Boolean.parseBoolean(option.get());
-        }
-    }
-
-    String getUserName() {
-        Option<String> option = parameters.get(USER_NAME);
-        if (option.isDefined()) {
-            return option.get();
-        }
-        return null;
-    }
-
-    String useThisId() {
-        Option<String> option = parameters.get(USE_THIS_ID);
-        if (option.isDefined()) {
-            return option.get();
-        }
-        return null;
-    }
-
-    String getDescription() {
-        Option<String> option = parameters.get(DESCRIPTION);
-        if (option.isDefined()) {
-            return option.get();
-        }
-        return null;
-    }
-
-    String getNewDatasetName() {
-        Option<String> createNewDataset = parameters.get(CREATE_DATASET);
-        if (createNewDataset.isEmpty()) {
-            throw new IllegalArgumentException(CREATE_DATASET + " missing from spark option on write");
-        }
-        return createNewDataset.get();
-    }
-
-    /**
-     * Get path to dataset
-     *
-     * @return Example lds+gsim://3d062358-08c2-4287-a336-a62d25c72fb9
-     */
-    URI extractPath() {
-        if (updateExistingDataset()) {
-            // extract path from save when we update/load existing dataset
-            // example: spark.read.format("no.ssb.gsim.spark").save("lds+gsim://3d062358-08c2-4287-a336-a62d25c72fb9")
-            Option<String> pathOption = parameters.get(PATH);
-            if (pathOption.isEmpty()) {
-                throw new IllegalArgumentException("'path' must be set");
-            }
-            return URI.create(pathOption.get());
-        }
-
-        return URI.create("lds+gsim://" + dataset.getId());
-    }
-
-    String getDatasetId() {
-        if (dataset != null) {
-            return dataset.getId();
-        }
-        return extractDatasetId(extractPath());
-    }
-
-    void setDataSet(UnitDataset dataset) {
-        this.dataset = dataset;
-        if (saveMode != null) {
-            dataset.setDataSourcePath(getDataSourcePath());
-        }
-    }
-
-    private String extractDatasetId(URI pathUri) {
-        List<String> schemes = Arrays.asList(pathUri.getScheme().split("\\+"));
-        if (!schemes.contains("lds") || !schemes.contains("gsim")) {
-            throw new IllegalArgumentException(
-                    String.format("invalid scheme in url '%s'. Expects 'lds+gsim://[host[:port]]/path'",
-                            pathUri.toString()));
-        }
-
-        String path = pathUri.getPath();
-        if (path == null || path.isEmpty()) {
-            // No path. Use the host as id.
-            path = pathUri.getHost();
-        }
-        return path;
-    }
-
-    List<URI> extractUris() {
-        // Find all the files for the dataset.
-        List<String> dataSources = Arrays.asList(dataset.getDataSourcePath().split(","));
-        return dataSources.stream().map(URI::create).collect(Collectors.toList());
-    }
-
-    /**
-     * Create a new path with the current time.
-     *
-     * @return URI. Examples: hdfs://hadoop:9000/datasets////3d062358-08c2-4287-a336-a62d25c72fb9/1570712831638
-     */
-    URI getDataSetUri() {
-        if (cachedDatasetUri == null) {
-            cachedDatasetUri = createDataSetUri();
-        }
-        return cachedDatasetUri;
-    }
-
-    private URI createDataSetUri() {
-        URI datasetUri = extractPath();
+    public static URI createNewDataURI(URI locationPrefix, String id) {
+        // prepend the locationPrefix's ssp to the datasetUri's ssp
+        // and add the current time in ms.
+        String sspWithPrefixAndVersion = String.format("%s/%s/%d",
+                locationPrefix.getSchemeSpecificPart(),
+                id,
+                System.currentTimeMillis()
+        );
         try {
-            URI scheme = URI.create(locationPrefix);
-                // prepend the locationPrefix's ssp to the datasetUri's ssp
-                // and add the current time in ms.
-                String sspWithPrefixAndVersion = String.format("%s/%s/%d",
-                        scheme.getSchemeSpecificPart(),
-                        datasetUri.getSchemeSpecificPart(),
-                        System.currentTimeMillis()
-                );
-            try {
-                return new URI(scheme.getScheme(), sspWithPrefixAndVersion, null);
-            } catch (URISyntaxException e) {
-                throw new IllegalArgumentException(String.format("could not generate versioned URI %s",
-                        sspWithPrefixAndVersion), e);
-            }
-        } catch (IllegalArgumentException | NullPointerException e) {
-            // TODO: Refactor so that the validation of the prefix happens earlier.
-            throw new IllegalArgumentException(String.format("location prefix '%s' is invalid", locationPrefix),e);
+            return new URI(locationPrefix.getScheme(), sspWithPrefixAndVersion, null);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException(String.format("could not generate versioned URI %s",
+                    sspWithPrefixAndVersion), e);
         }
     }
 
-    private String getDataSourcePath() {
-        List<URI> newDataUris = getUris(saveMode, extractUris(), getDataSetUri());
-        return newDataUris.stream().map(URI::toASCIIString).collect(Collectors.joining(","));
+    static String extractId(final URI uri) {
+        List<String> pathParts = Arrays.asList(uri.getPath().split("/"));
+        return pathParts.get(pathParts.size() - 1);
     }
 
-    private List<URI> getUris(SaveMode mode, List<URI> dataUris, URI newDataUri) {
-        List<URI> newDataUris;
-        if (mode.equals(SaveMode.Overwrite)) {
-            newDataUris = Collections.singletonList(newDataUri);
-        } else if (mode.equals(SaveMode.Append)) {
-            newDataUris = new ArrayList<>();
-            newDataUris.add(newDataUri);
-            newDataUris.addAll(dataUris);
+    static Instant extractTimestamp(final URI uri) {
+        String fragment = uri.getFragment();
+        if (fragment == null) {
+            return Instant.now();
         } else {
-            throw new IllegalArgumentException("Unsupported mode " + mode);
+            return Instant.parse(fragment);
         }
-        return newDataUris;
     }
 
-    String getNewDatasetId() {
-        String id = useThisId();
-        if (id != null) {
-            return id;
+    /**
+     * Normalize the URI.
+     */
+    static URI normalizeURI(final URI uri, final URI ldsUri) throws URISyntaxException {
+        if (uri.isAbsolute()) {
+            String scheme = uri.getScheme();
+            if (!"lds+gsim".equals(scheme) && !"gsim+lds".equals(scheme)) {
+                throw new URISyntaxException("unsupported scheme", "", 0);
+            }
         }
-        return cachedNewDataSetId;
+        final String path;
+        if (uri.isOpaque()) {
+            path = uri.getSchemeSpecificPart();
+        } else {
+            if (uri.isAbsolute()) {
+                path = uri.getPath();
+            } else {
+                path = ldsUri.getPath() + "/" + uri.getPath();
+            }
+
+        }
+
+        final String scheme = ldsUri.getScheme();
+        final String host = uri.getHost() != null ? uri.getHost() : ldsUri.getHost();
+        final int port = uri.getHost() != null ? uri.getPort() : ldsUri.getPort();
+        final String fragment = uri.getFragment();
+        return new URI(
+                scheme,
+                null,
+                host,
+                port,
+                path,
+                null,
+                fragment
+        );
+    }
+
+    @NotNull
+    static URI validatePath(Map<String, String> parameters) {
+        URI pathURI;
+        try {
+            pathURI = new URI(parameters.get("PATH").get());
+        } catch (NoSuchElementException nse) {
+            pathURI = URI.create("");
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("path was not an URI");
+        }
+        return pathURI;
+    }
+
+    @NotNull
+    static URI validateLocationPrefix(SQLContext sqlContext) {
+        URI locationPrefix;
+        try {
+            locationPrefix = new URI(sqlContext.getConf(GsimDatasource.CONFIG_LOCATION_PREFIX));
+        } catch (NoSuchElementException nse) {
+            throw new IllegalArgumentException("location prefix not set", nse);
+        } catch (URISyntaxException use) {
+            throw new IllegalArgumentException("location prefix was not an URI", use);
+        }
+        return locationPrefix;
+    }
+
+    public static class CreateParameters {
+
+        @JsonProperty(value = "create", required = true)
+        public String name;
+
+        @JsonProperty(value = "description", required = true)
+        public String description;
+
+        @JsonProperty(value = "use_this_id")
+        public String id;
+
+        @JsonProperty(value = "user_name")
+        public String createdBy;
+
+        @JsonProperty(value = "create_gsim_objects")
+        public Boolean createGsimObjects;
+
     }
 }

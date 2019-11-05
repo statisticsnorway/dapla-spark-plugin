@@ -20,8 +20,11 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -73,6 +76,55 @@ public class GsimDatasourceTest {
         this.sparkContext = session.sparkContext();
         this.sqlContext = session.sqlContext();
 
+    }
+
+    @Test
+    public void testSupportedUris() {
+
+        String prefix = "http://lds:123/prefix";
+        Map<String, String> uriStrings = new LinkedHashMap<>();
+
+        // Non absolute
+        uriStrings.put("datasetId", "http://lds:123/prefix/datasetId");
+        uriStrings.put("datasetId#2000-01-01T00:00:00+00:00", "http://lds:123/prefix/datasetId#2000-01-01T00:00:00+00:00");
+        uriStrings.put("datasetId#2000-01-01T00:00:00Z", "http://lds:123/prefix/datasetId#2000-01-01T00:00:00Z");
+
+        // Non absolute
+        uriStrings.put("ns/datasetId", "http://lds:123/prefix/ns/datasetId");
+        uriStrings.put("ns/datasetId#2000-01-01T00:00:00+00:00", "http://lds:123/prefix/ns/datasetId#2000-01-01T00:00:00+00:00");
+        uriStrings.put("ns/datasetId#2000-01-01T00:00:00Z", "http://lds:123/prefix/ns/datasetId#2000-01-01T00:00:00Z");
+
+        // Opaque.
+        uriStrings.put("lds+gsim:datasetId", "http://lds:123/prefix/datasetId");
+        uriStrings.put("lds+gsim:datasetId#2000-01-01T00:00:00+00:00", "http://lds:123/prefix/datasetId#2000-01-01T00:00:00+00:00");
+        uriStrings.put("lds+gsim:datasetId#2000-01-01T00:00:00Z", "http://lds:123/prefix/datasetId#2000-01-01T00:00:00Z");
+
+        uriStrings.put("lds+gsim:///datasetId", "http://lds:123/datasetId");
+        uriStrings.put("lds+gsim:///datasetId#2000-01-01T00:00:00+00:00", "http://lds:123/datasetId#2000-01-01T00:00:00+00:00");
+        uriStrings.put("lds+gsim:///datasetId#2000-01-01T00:00:00Z", "http://lds:123/datasetId#2000-01-01T00:00:00Z");
+
+        uriStrings.put("lds+gsim://host/datasetId", "http://host/datasetId");
+        uriStrings.put("lds+gsim://host/datasetId#2000-01-01T00:00:00+00:00", "http://host/datasetId#2000-01-01T00:00:00+00:00");
+        uriStrings.put("lds+gsim://host/datasetId#2000-01-01T00:00:00Z", "http://host/datasetId#2000-01-01T00:00:00Z");
+
+        uriStrings.put("lds+gsim://host:321/datasetId", "http://host:321/datasetId");
+        uriStrings.put("lds+gsim://host:321/datasetId#2000-01-01T00:00:00+00:00", "http://host:321/datasetId#2000-01-01T00:00:00+00:00");
+        uriStrings.put("lds+gsim://host:321/datasetId#2000-01-01T00:00:00Z", "http://host:321/datasetId#2000-01-01T00:00:00Z");
+
+        uriStrings.put("lds+gsim://host:321/namespace/datasetId", "http://host:321/namespace/datasetId");
+        uriStrings.put("lds+gsim://host:321/namespace/datasetId#2000-01-01T00:00:00+00:00", "http://host:321/namespace/datasetId#2000-01-01T00:00:00+00:00");
+        uriStrings.put("lds+gsim://host:321/namespace/../../datasetId#2000-01-01T00:00:00Z", "http://host:321/namespace/../../datasetId#2000-01-01T00:00:00Z");
+
+        for (Map.Entry<String, String> uriEntry : uriStrings.entrySet()) {
+            URI uri = URI.create(uriEntry.getKey());
+            URI expectedUri = URI.create(uriEntry.getValue());
+            try {
+                URI result = DatasetHelper.normalizeURI(uri, URI.create(prefix));
+                assertThat(result).isEqualTo(expectedUri);
+            } catch (URISyntaxException e) {
+                System.out.println("Failed: " + e.getMessage());
+            }
+        }
     }
 
     @Test
@@ -200,22 +252,6 @@ public class GsimDatasourceTest {
         });
     }
 
-    interface UnitDatasetAction {
-        void onRequest(UnitDataset unitDataset);
-    }
-
-    interface UnitDataStructureAction {
-        void onRequest(UnitDataStructure dataStructure);
-    }
-
-    interface LogicalRecordAction {
-        void onRequest(LogicalRecord logicalRecord);
-    }
-
-    interface InstanceVariableAction {
-        void onRequest(InstanceVariable instanceVariable);
-    }
-
     private void checkUnitDataSetResponse(UnitDatasetAction unitDatasetAction) throws IOException, InterruptedException {
         RecordedRequest recordedRequest = server.takeRequest();
         ObjectMapper mapper = new ObjectMapper();
@@ -254,5 +290,21 @@ public class GsimDatasourceTest {
         System.out.println(json);
 
         return recordedRequest;
+    }
+
+    interface UnitDatasetAction {
+        void onRequest(UnitDataset unitDataset);
+    }
+
+    interface UnitDataStructureAction {
+        void onRequest(UnitDataStructure dataStructure);
+    }
+
+    interface LogicalRecordAction {
+        void onRequest(LogicalRecord logicalRecord);
+    }
+
+    interface InstanceVariableAction {
+        void onRequest(InstanceVariable instanceVariable);
     }
 }
