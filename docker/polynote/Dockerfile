@@ -1,6 +1,6 @@
 FROM bde2020/spark-base
 
-RUN wget https://github.com/polynote/polynote/releases/download/0.2.8/polynote-dist.tar.gz
+RUN wget https://github.com/polynote/polynote/releases/download/0.2.11/polynote-dist.tar.gz
 RUN tar xzf polynote-dist.tar.gz
 RUN rm polynote-dist.tar.gz
 
