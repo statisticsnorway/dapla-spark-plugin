@@ -48,3 +48,4 @@ spark:
   spark.ssb.gsim.oauth.clientSecret: "$LDS_GSIM_SPARK_OAUTH_CLIENT_SECRET"
   spark.ssb.gsim.oauth.userName: "$LDS_GSIM_SPARK_OAUTH_USERNAME"
   spark.ssb.gsim.oauth.password: "$LDS_GSIM_SPARK_OAUTH_PASSWORD"
+  spark.hadoop.fs.gs.impl: "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"
