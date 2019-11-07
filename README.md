@@ -4,11 +4,38 @@
 
 This project integrates spark with LDS and the GSIM model. It implements a new format so that users can read from and write to a dataset that exists in a LDS instance.
 
+## Usage
+
+The integration is implemented as a custom `gsim` (or `no.ssb.gsim.spark`) format. You can read and write datasets from a GSIM
+LDS instance using a special URI with the scheme `lds+gsim`. 
+
+```scala
+// Read 
+val latestDataset = spark.read.format("gsim")
+  .load("lds+gsim:///b9c10b86-5867-4270-b56e-ee7439fe381e")
+```
+
+The complete URI format is as follow: 
+
+`[lds+gsim://][host[:port]]/[prefix/][dataset id][#timestamp]`
+
+The `host`, `port` and `prefix` parts of the URI are not supported yet. When reading a 
+dataset, the `fragment` part of the URI is interpreted as a date-time in ISO-8601 format.
+This date-time (together with the versioned nature of the LDS GSIM metadata) allows
+ to read historical versions of a dataset:  
+
+```scala
+// Read dataset as of first of january 2000
+val snapshotDataset = spark.read.format("gsim")
+  .load("lds+gsim:///b9c10b86-5867-4270-b56e-ee7439fe381e#2000-01-01T00:00:00Z")
+```
+
+
+
 ## Test it
 
 The project contains Docker images with the Zeppelin and Polynote notebook UIs. 
 They both includes the Google Cloud Storage connector and the gsim integration jar file. 
-s
 
 A docker compose file with a three-nodes spark cluster as well as zeppelin and polynote. 
 When using the docker compose the environment variables can be set up in a `.env` file at the
@@ -22,9 +49,10 @@ root.
 > docker-compose up
 ```
 
-The following environment variables are required.
-*Note that if one of the oAuth variable is missing, the module with try to access the lds resources __without__
-authentication*
+In order to function, the following environment variables need to be sent to the 
+zeppelin and polynote docker images.
+*Note that if one of the oAuth variable is missing, the module with try to access 
+the lds resources __without__ authentication*
 
 |ENV Variable| Spark variable|Purpose|
 |---|---|---|
@@ -37,7 +65,7 @@ authentication*
 |LDS_GSIM_SPARK_OAUTH_USERNAME|spark.ssb.gsim.oauth.userName|OAUTH username|
 |LDS_GSIM_SPARK_OAUTH_PASSWORD|spark.ssb.gsim.oauth.password|OAUTH password|
 
-Using only docker, on can build and run zeppelin or polynote with the following commands:  
+Using only docker, one can build and run zeppelin or polynote with the following commands:  
 
 ```bash
 > # Compile the project
@@ -101,9 +129,7 @@ pWithIncome <- sql("SELECT * FROM personWithIncome")
 head(pWithIncome)
 ```
 
-
 Write to a dataset. Note the mode.
-
 
 ```scala
 val myProcessedDataset = Seq(
