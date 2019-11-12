@@ -211,10 +211,10 @@ public class GsimDatasourceTest {
         });
 
         checkUnitDataSetResponse(unitDataset -> {
-            List<Map<String, String>> name = GsimBuilder.createListOfMap("nb", "dataset_name");
+            List<Map<String, Object>> name = GsimBuilder.createListOfMap("nb", "dataset_name");
             assertThat(unitDataset.getUnknownProperties().get("name")).isEqualTo(name);
 
-            List<Map<String, String>> description = GsimBuilder.createListOfMap("nb", "description of dataset");
+            List<Map<String, Object>> description = GsimBuilder.createListOfMap("nb", "description of dataset");
             assertThat(unitDataset.getUnknownProperties().get("description")).isEqualTo(description);
             assertThat(unitDataset.getDataSourcePath()).isEqualTo("/path");
         });

@@ -3,6 +3,8 @@ package no.ssb.gsim.spark;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import no.ssb.avro.convert.gsim.LdsGsimWriter;
 import no.ssb.avro.convert.gsim.SchemaToGsim;
+import no.ssb.avro.convert.gsim.zeppelin.NoteToBusinessProcess;
+import no.ssb.avro.convert.gsim.zeppelin.ZeppelinClient;
 import no.ssb.lds.gsim.okhttp.UnitDataset;
 import no.ssb.lds.gsim.okhttp.api.Client;
 import okhttp3.HttpUrl;
@@ -148,6 +150,16 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                 dataset = schemaToGsim.generateGsimInLds(
                         createParameters.id != null ? createParameters.id : UUID.randomUUID().toString(),
                         createParameters.name, createParameters.description);
+
+                if (createParameters.createGsimBusinessObjects) {
+                    ZeppelinClient zeppelinClient = new ZeppelinClient(createParameters.notebookHost);
+                    NoteToBusinessProcess noteToBusinessProcess = new NoteToBusinessProcess(zeppelinClient, ldsGsimWriter);
+                    try {
+                        noteToBusinessProcess.run(createParameters.nodeId);
+                    } catch (IOException e) {
+                        throw new IllegalArgumentException("Could not generate business objects for note:" + createParameters.nodeId);
+                    }
+                }
 
             } else {
 

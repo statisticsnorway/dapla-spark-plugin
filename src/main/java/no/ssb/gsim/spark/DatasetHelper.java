@@ -169,5 +169,14 @@ class DatasetHelper {
         @JsonProperty(value = "create_gsim_objects")
         public Boolean createGsimObjects;
 
+        @JsonProperty(value = "create_gsim_business_objects")
+        public Boolean createGsimBusinessObjects;
+
+        @JsonProperty(value = "notebook_host")
+        public String notebookHost;
+
+        @JsonProperty(value = "note_id")
+        public String nodeId;
+
     }
 }
