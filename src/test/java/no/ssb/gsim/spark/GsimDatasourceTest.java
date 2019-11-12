@@ -191,7 +191,8 @@ public class GsimDatasourceTest {
 
         Dataset<Row> dataset = sqlContext.read()
                 .format("no.ssb.gsim.spark")
-                .load("lds+gsim://" + UNIT_DATASET_ID);
+                .load("lds+gsim://" + UNIT_DATASET_ID)
+                .filter("GENDER = '1' and INCOME > 5000");
         dataset.printSchema();
         dataset.show();
 
