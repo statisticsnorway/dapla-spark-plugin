@@ -152,31 +152,30 @@ class DatasetHelper {
         return locationPrefix;
     }
 
-    public static class CreateParameters {
+    static class CreateParameters {
 
         @JsonProperty(value = "create", required = true)
-        public String name;
+        String name;
 
         @JsonProperty(value = "description", required = true)
-        public String description;
+        String description;
 
         @JsonProperty(value = "use_this_id")
-        public String id;
+        String id;
 
         @JsonProperty(value = "user_name")
-        public String createdBy;
+        String createdBy;
 
         @JsonProperty(value = "create_gsim_objects")
-        public Boolean createGsimObjects;
+        boolean createGsimObjects;
 
         @JsonProperty(value = "create_gsim_business_objects")
-        public Boolean createGsimBusinessObjects;
+        boolean createGsimBusinessObjects;
 
         @JsonProperty(value = "notebook_host")
-        public String notebookHost;
+        String notebookHost;
 
         @JsonProperty(value = "note_id")
-        public String nodeId;
-
+        String nodeId;
     }
 }
