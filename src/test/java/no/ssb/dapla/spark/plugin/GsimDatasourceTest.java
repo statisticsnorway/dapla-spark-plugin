@@ -1,4 +1,4 @@
-package no.ssb.gsim.spark;
+package no.ssb.dapla.spark.plugin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import no.ssb.avro.convert.gsim.GsimBuilder;
@@ -28,8 +28,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static no.ssb.gsim.spark.GsimDatasource.CONFIG_LDS_URL;
-import static no.ssb.gsim.spark.GsimDatasource.CONFIG_LOCATION_PREFIX;
+import static no.ssb.dapla.spark.plugin.GsimDatasource.CONFIG_LDS_URL;
+import static no.ssb.dapla.spark.plugin.GsimDatasource.CONFIG_LOCATION_PREFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class GsimDatasourceTest {
@@ -131,7 +131,7 @@ public class GsimDatasourceTest {
     public void testReadWithId() {
         this.server.enqueue(unitDatasetResponse);
         Dataset<Row> dataset = sqlContext.read()
-                .format("no.ssb.gsim.spark")
+                .format("no.ssb.dapla.spark.plugin")
                 .load("lds+gsim://" + UNIT_DATASET_ID);
 
         assertThat(dataset).isNotNull();
@@ -163,14 +163,14 @@ public class GsimDatasourceTest {
         this.server.enqueue(unitDatasetResponse);
 
         Dataset<Row> dataset = sqlContext.read()
-                .format("no.ssb.gsim.spark")
+                .format("no.ssb.dapla.spark.plugin")
                 .load("lds+gsim://" + UNIT_DATASET_ID);
 
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
 
 
-        dataset.write().format("no.ssb.gsim.spark").mode(SaveMode.Append).save("lds+gsim://" + UNIT_DATASET_ID);
+        dataset.write().format("no.ssb.dapla.spark.plugin").mode(SaveMode.Append).save("lds+gsim://" + UNIT_DATASET_ID);
 
     }
 
@@ -190,14 +190,14 @@ public class GsimDatasourceTest {
         this.server.enqueue(new MockResponse().setResponseCode(201));
 
         Dataset<Row> dataset = sqlContext.read()
-                .format("no.ssb.gsim.spark")
+                .format("no.ssb.dapla.spark.plugin")
                 .load("lds+gsim://" + UNIT_DATASET_ID)
                 .filter("GENDER = '1' and INCOME > 5000");
         dataset.printSchema();
         dataset.show();
 
         dataset.write()
-                .format("no.ssb.gsim.spark")
+                .format("no.ssb.dapla.spark.plugin")
                 .mode(SaveMode.Overwrite)
                 .option(DatasetHelper.CRATE_GSIM_OBJECTS, "true")
                 .option(DatasetHelper.CREATE_DATASET, "dataset_name")
@@ -211,10 +211,10 @@ public class GsimDatasourceTest {
         });
 
         checkUnitDataSetResponse(unitDataset -> {
-            List<Map<String, String>> name = GsimBuilder.createListOfMap("nb", "dataset_name");
+            List<Map<String, Object>> name = GsimBuilder.createListOfMap("nb", "dataset_name");
             assertThat(unitDataset.getUnknownProperties().get("name")).isEqualTo(name);
 
-            List<Map<String, String>> description = GsimBuilder.createListOfMap("nb", "description of dataset");
+            List<Map<String, Object>> description = GsimBuilder.createListOfMap("nb", "description of dataset");
             assertThat(unitDataset.getUnknownProperties().get("description")).isEqualTo(description);
             assertThat(unitDataset.getDataSourcePath()).isEqualTo("/path");
         });

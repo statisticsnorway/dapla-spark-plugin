@@ -1,4 +1,4 @@
-package no.ssb.gsim.spark;
+package no.ssb.dapla.spark.plugin;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import no.ssb.lds.gsim.okhttp.UnitDataset;

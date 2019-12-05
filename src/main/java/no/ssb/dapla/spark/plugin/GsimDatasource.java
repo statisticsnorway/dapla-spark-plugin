@@ -1,4 +1,4 @@
-package no.ssb.gsim.spark;
+package no.ssb.dapla.spark.plugin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import no.ssb.avro.convert.gsim.LdsGsimWriter;

@@ -1,4 +1,4 @@
-package no.ssb.gsim.spark;
+package no.ssb.dapla.spark.plugin;
 
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
