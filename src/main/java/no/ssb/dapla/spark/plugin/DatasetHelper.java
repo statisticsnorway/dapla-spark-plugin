@@ -1,7 +1,6 @@
 package no.ssb.dapla.spark.plugin;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import no.ssb.lds.gsim.okhttp.UnitDataset;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
 import org.jetbrains.annotations.NotNull;
@@ -29,7 +28,6 @@ class DatasetHelper {
     private final SaveMode saveMode;
     private final String cachedNewDataSetId = UUID.randomUUID().toString();
     private URI cachedDatasetUri;
-    private UnitDataset dataset;
 
     /**
      * @param parameters     option from spark.write.format("no.ssb.gsim.spark).option("key", "value")

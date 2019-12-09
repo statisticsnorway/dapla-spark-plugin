@@ -1,6 +1,5 @@
 package no.ssb.dapla.spark.plugin;
 
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
@@ -14,8 +13,10 @@ import org.slf4j.LoggerFactory;
 import scala.Option;
 import scala.collection.immutable.Map;
 
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
@@ -36,6 +37,15 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.debug("CreateRelation via read {}", parameters);
         System.out.println("CreateRelation via read - " + parameters);
+        try {
+            InetAddress ip = InetAddress.getLocalHost();
+            System.out.println(ip.getHostName());
+            System.out.println(ip.getHostAddress());
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+
+        new SparkPluginClient().call(parameters.mkString());
 
         List<URI> dataURIs = getUriFromPath(parameters);
         return new GsimRelation(sqlContext, dataURIs);
