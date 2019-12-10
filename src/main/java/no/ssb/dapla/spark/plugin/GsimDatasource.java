@@ -24,19 +24,14 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
     private static final String SHORT_NAME = "gsim";
-    private static final String CONFIG = "spark.ssb.gsim.";
-    // The default location used when writing data.
-    static final String CONFIG_LOCATION_PREFIX = CONFIG + "location";
-    // The lds url to use. Required.
-    static final String CONFIG_LDS_URL = CONFIG + "ldsUrl";
-    // oAuth parameters. Must all be set to be used.
     private final Logger log = LoggerFactory.getLogger(this.getClass());
-
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.debug("CreateRelation via read {}", parameters);
         System.out.println("CreateRelation via read - " + parameters);
+
+        // For knowing where plugin is running, will remove when in production
         try {
             InetAddress ip = InetAddress.getLocalHost();
             System.out.println(ip.getHostName());
@@ -45,7 +40,17 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             e.printStackTrace();
         }
 
-        new SparkPluginClient().call(parameters.mkString());
+        // For testing call from spark on dataproc to service mesh
+        Option<String> uriToDaplaPluginServer = parameters.get("uri_to_dapla_plugin_server");
+        if (uriToDaplaPluginServer.isDefined()) {
+            String[] parts = uriToDaplaPluginServer.get().split(":");
+            if (parts.length < 2) {
+                throw new IllegalArgumentException("option 'uri_to_dapla_plugin_server' need to have a host:port, was " + uriToDaplaPluginServer.get());
+            }
+            String host = parts[0];
+            int port = Integer.parseInt(parts[1]);
+            new SparkPluginClient(host, port).sayHelloToServer(parameters.mkString());
+        }
 
         List<URI> dataURIs = getUriFromPath(parameters);
         return new GsimRelation(sqlContext, dataURIs);

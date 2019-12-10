@@ -8,16 +8,17 @@ import no.ssb.dapla.spark.protobuf.SparkPluginServiceGrpc;
 
 public class SparkPluginClient {
 
-    private SparkPluginServiceGrpc.SparkPluginServiceBlockingStub pluginClient;
+    private final SparkPluginServiceGrpc.SparkPluginServiceBlockingStub pluginClient;
 
-    public SparkPluginClient() {
-        ManagedChannelBuilder<?> channelBuilder = ManagedChannelBuilder.forAddress("host.docker.internal", 8092);
+    public SparkPluginClient(String host, int port) {
+        // "host.docker.internal"
+        ManagedChannelBuilder<?> channelBuilder = ManagedChannelBuilder.forAddress(host, port);
         channelBuilder.usePlaintext();
         ManagedChannel channel = channelBuilder.build();
         pluginClient = SparkPluginServiceGrpc.newBlockingStub(channel);
     }
 
-    void call(String message) {
+    void sayHelloToServer(String message) {
         HelloResponse helloFromClient = pluginClient.sayHello(HelloRequest.newBuilder().setGreeting(message).build());
 
         System.out.println(helloFromClient.getReply());
