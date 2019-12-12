@@ -32,10 +32,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         System.out.println("CreateRelation via read - " + parameters);
 
         // For knowing where plugin is running, will remove when in production
+        String hostName = "unknown";
+        String hostAddress = "unknown";
         try {
             InetAddress ip = InetAddress.getLocalHost();
-            System.out.println(ip.getHostName());
-            System.out.println(ip.getHostAddress());
+            hostName = ip.getHostName();
+            System.out.println(hostName);
+            hostAddress = ip.getHostAddress();
+            System.out.println(hostAddress);
         } catch (UnknownHostException e) {
             e.printStackTrace();
         }
@@ -49,7 +53,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             }
             String host = parts[0];
             int port = Integer.parseInt(parts[1]);
-            new SparkPluginClient(host, port).sayHelloToServer(parameters.mkString());
+            String message = "Hello from dapla-spark-plugin! host:'" + hostName + "' ip: '" + hostAddress + "'";
+            new SparkPluginClient(host, port).sayHelloToServer(message);
         }
 
         List<URI> dataURIs = getUriFromPath(parameters);
