@@ -86,10 +86,22 @@
     <dependencies>
 
         <dependency>
-            <groupId>no.ssb.dapla.spark.protobuf</groupId>
+            <groupId>no.ssb.dapla.spark</groupId>
             <artifactId>dapla-spark-protobuf</artifactId>
             <version>1.0-SNAPSHOT</version>
             <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf</artifactId>
+            <version>1.19.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+            <version>1.19.0</version>
         </dependency>
 
         <dependency>
@@ -287,7 +299,7 @@
                                     <include>com.google.api-client:*</include>
                                     <include>com.google.http-client:*</include>
                                     <include>io.opencensus:*</include>
-                                    <include>no.ssb.dapla.spark.protobuf:*</include>
+                                    <include>no.ssb.dapla.spark:*</include>
                                     <!-- Remove if google CredentialFactory is not used-->
                                     <include>com.google.cloud.bigdataoss:util</include>
                                     <include>com.google.oauth-client:*</include>
