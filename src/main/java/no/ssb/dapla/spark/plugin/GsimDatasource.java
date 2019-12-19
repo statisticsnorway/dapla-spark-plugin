@@ -1,9 +1,11 @@
 package no.ssb.dapla.spark.plugin;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.DataSourceRegister;
@@ -13,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import scala.Option;
 import scala.collection.immutable.Map;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -26,10 +29,32 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     private static final String SHORT_NAME = "gsim";
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
+    private SQLContext altContext(SQLContext sqlContext, Map<String, String> parameters) {
+        SparkSession sparkSession = sqlContext.sparkSession();
+        // This may be set from Spark/Pyspark extension
+        Option<String> authToken = parameters.get("authToken");
+        UserGroupInformation hadoopUser = getHadoopUser();
+        if (authToken.isEmpty() && hadoopUser == null) {
+            System.out.println("Can not find authToken or hadoop user name");
+        } else if (!authToken.isEmpty()) {
+            sparkSession.sqlContext().sessionState().conf().setConfString("fs.file.authToken", authToken.get());
+        } else if (hadoopUser != null) {
+            sparkSession.sqlContext().sessionState().conf().setConfString("fs.file.authToken", hadoopUser.getUserName());
+        }
+        return sparkSession.sqlContext();
+    }
+
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.debug("CreateRelation via read {}", parameters);
         System.out.println("CreateRelation via read - " + parameters);
+        // Current user?
+        try {
+            UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
+            System.out.println("Current user: " +  ugi.getUserName());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         // For knowing where plugin is running, will remove when in production
         String hostName = "unknown";
@@ -58,7 +83,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         }
 
         List<URI> dataURIs = getUriFromPath(parameters);
-        return new GsimRelation(sqlContext, dataURIs);
+        return new GsimRelation(altContext(sqlContext, parameters), dataURIs);
     }
 
     @Override
@@ -74,7 +99,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         try {
             log.debug("writing file(s) to: {}", newDataUri);
             data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-            return new GsimRelation(sqlContext, dataURIs);
+            return new GsimRelation(altContext(sqlContext, parameters), dataURIs);
         } finally {
             datasetLock.unlock();
         }
@@ -91,6 +116,15 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } catch (URISyntaxException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private UserGroupInformation getHadoopUser() {
+        try {
+            return UserGroupInformation.getCurrentUser();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override

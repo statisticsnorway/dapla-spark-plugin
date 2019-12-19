@@ -1335,13 +1335,13 @@
           "value": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem",
           "type": "string"
         },
+        "spark.hadoop.fs.gs.delegation.token.binding": {
+          "value": "no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding",
+          "type": "string"
+        },
         "spark.hadoop.google.cloud.auth.service.account.enable": {
           "value": true,
           "type": "checkbox"
-        },
-        "spark.hadoop.google.cloud.auth.service.account.json.keyfile": {
-          "value": "/gcloud/key.json",
-          "type": "string"
         }
       },
       "status": "READY",
@@ -1413,7 +1413,7 @@
       ],
       "dependencies": [
         {
-          "groupArtifactVersion": "/zeppelin/lib/lds-gsim-spark.jar",
+          "groupArtifactVersion": "/zeppelin/lib/dapla-spark-plugin.jar",
           "local": false
         },
         {

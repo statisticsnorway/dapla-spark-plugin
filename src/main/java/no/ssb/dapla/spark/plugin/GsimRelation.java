@@ -1,5 +1,6 @@
 package no.ssb.dapla.spark.plugin;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
@@ -14,7 +15,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class GsimRelation extends BaseRelation implements PrunedFilteredScan, FileRelation {
+public class GsimRelation extends BaseRelation implements PrunedFilteredScan, FileRelation, TableScan {
 
     private final SQLContext context;
     private final Set<String> files;
@@ -68,6 +69,11 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
             dataset = dataset.filter(filter.get());
         }
         return dataset.rdd();
+    }
+
+    @Override
+    public RDD<Row> buildScan() {
+        return this.sqlContext().read().parquet(inputFiles()).rdd();
     }
 
     /**

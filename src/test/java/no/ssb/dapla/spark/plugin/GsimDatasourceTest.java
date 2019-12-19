@@ -5,6 +5,7 @@ import io.grpc.ServerBuilder;
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
+import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.spark.protobuf.HelloRequest;
 import no.ssb.dapla.spark.protobuf.HelloResponse;
 import no.ssb.dapla.spark.protobuf.SparkPluginServiceGrpc;
@@ -12,6 +13,7 @@ import org.apache.spark.SparkContext;
 import org.apache.spark.sql.*;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -44,12 +46,16 @@ public class GsimDatasourceTest {
         InputStream parquetContent = this.getClass().getResourceAsStream("data/dataset.parquet");
         parquetFile = tempDirectory.toPath().resolve("dataset.parquet");
         Files.copy(parquetContent, parquetFile);
+        System.out.println("File created: " + parquetFile.toString());
+        // Mock user read by org.apache.hadoop.security.UserGroupInformation
+        System.setProperty("HADOOP_PROXY_USER", "dapla-test");
 
         // Read the unit dataset json example.
         SparkSession session = SparkSession.builder()
                 .appName(GsimDatasourceTest.class.getSimpleName())
                 .master("local")
                 .config("spark.ui.enabled", false)
+                .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
                 .getOrCreate();
 
         this.sparkContext = session.sparkContext();
@@ -60,13 +66,12 @@ public class GsimDatasourceTest {
     @Test
     public void testReadWithId() {
         Dataset<Row> dataset = sqlContext.read()
-                .format("no.ssb.dapla.spark.plugin")
+                .format("gsim")
                 .load(parquetFile.toString());
 
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
     }
-
 
     @Test
     public void testReadWrite() {
@@ -78,7 +83,19 @@ public class GsimDatasourceTest {
         assertThat(dataset.isEmpty()).isFalse();
 
         System.out.println(tempDirectory);
-        dataset.write().format("no.ssb.dapla.spark.plugin").mode(SaveMode.Overwrite).save(tempDirectory + "/out.parquet");
+        dataset.write().format("gsim").mode(SaveMode.Overwrite).save(tempDirectory + "/out.parquet");
+    }
+
+    @Test
+    @Ignore
+    public void testReadWithCredentials() throws Exception {
+        Dataset<Row> dataset = sqlContext.read()
+                //.format("gsim")
+                .option("authToken", "test")
+                .load("gs://dev-datalager-store/dapla-spark-plugin/dataset.parquet");
+
+        assertThat(dataset).isNotNull();
+        assertThat(dataset.isEmpty()).isFalse();
     }
 
     @Test

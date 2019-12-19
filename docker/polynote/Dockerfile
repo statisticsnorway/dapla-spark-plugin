@@ -16,7 +16,7 @@ RUN chmod +x docker-run-spark-env.sh
 ENV SPARK_HOME=/spark
 ENV PATH=${PATH}:${SPARK_HOME}/bin
 
-COPY target/lds-gsim-spark-*-shaded.jar /polynote/lds-gsim-spark.jar
+COPY target/dapla-spark-plugin-*-shaded.jar /polynote/dapla-spark-plugin.jar
 
 EXPOSE 8192
 

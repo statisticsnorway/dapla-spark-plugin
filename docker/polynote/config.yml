@@ -27,7 +27,7 @@ listen:
 # Default dependencies can be specified. Uncommenting the following lines would add some default dependencies which a>
 dependencies:
   scala:
-    - file:/polynote/lds-gsim-spark.jar
+    - file:/polynote/dapla-spark-plugin.jar
     - file:/polynote/gcs-connector-hadoop.jar
 #    - com.mycompany:my-library:jar:all:1.0.0
 #  python:

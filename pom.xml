@@ -10,6 +10,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <google-api-services-iam.version>v1-rev20191108-1.30.3</google-api-services-iam.version>
     </properties>
 
     <profiles>
@@ -126,6 +127,24 @@
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-scala_2.11</artifactId>
             <version>2.10.0.pr2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.cloud.bigdataoss</groupId>
+            <artifactId>gcs-connector</artifactId>
+            <version>hadoop2-2.0.0</version>
+        </dependency>
+
+        <!-- For access token provider -->
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
+            <version>0.16.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.apis</groupId>
+            <artifactId>google-api-services-iam</artifactId>
+            <version>${google-api-services-iam.version}</version>
         </dependency>
 
         <!-- this is available when running in spark cluster-->
@@ -263,8 +282,16 @@
                                     <include>io.grpc:*</include>
                                     <include>com.google.guava:*</include>
                                     <include>com.google.protobuf:*</include>
+                                    <include>com.google.auth:*</include>
+                                    <include>com.google.apis:*</include>
+                                    <include>com.google.api-client:*</include>
+                                    <include>com.google.http-client:*</include>
                                     <include>io.opencensus:*</include>
                                     <include>no.ssb.dapla.spark.protobuf:*</include>
+                                    <!-- Remove if google CredentialFactory is not used-->
+                                    <include>com.google.cloud.bigdataoss:util</include>
+                                    <include>com.google.oauth-client:*</include>
+                                    <include>com.google.flogger:*</include>
                                 </includes>
                             </artifactSet>
                             <minimizeJar>false</minimizeJar>

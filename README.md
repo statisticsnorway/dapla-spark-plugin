@@ -212,8 +212,8 @@ gcloud compute ssh --project "staging-bip" --zone "europe-north1-a" "lds-spark-g
 While staying connected to the master node, copy the file to Zeppelin folder while renaming it (drop the version number) and change permissions (file owner and group):
 
 ```bash
-sudo cp lds-gsim-spark-1.0-SNAPSHOT.jar /etc/zeppelin/lds-gsim-spark.jar
-sudo chown zeppelin:zeppelin /etc/zeppelin/lds-gsim-spark.jar
+sudo cp lds-gsim-spark-1.0-SNAPSHOT.jar /etc/zeppelin/dapla-spark-plugin.jar
+sudo chown zeppelin:zeppelin /etc/zeppelin/dapla-spark-plugin.jar
 ```
 
 ### Add configuration to the Zeppelin interface
@@ -222,7 +222,7 @@ sudo chown zeppelin:zeppelin /etc/zeppelin/lds-gsim-spark.jar
 
 2. Click the user menu at the right and select "Interpeter". Under "spark" interpeter, click "edit".
 
-3. Under Dependencies, add "/etc/zeppelin/lds-gsim-spark.jar" as artifact.
+3. Under Dependencies, add "/etc/zeppelin/dapla-spark-plugin.jar" as artifact.
 
 4. Under "Properties", add the settings, with string values:
 
