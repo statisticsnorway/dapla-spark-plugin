@@ -11,7 +11,7 @@ steps:
       from_secret: maven_servers
 
 - name: build
-  image: maven:3-jdk-11
+  image: maven:3-jdk-8
   commands:
     - mvn compile -P ssb-bip -DskipTests=true -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
   environment:
@@ -21,7 +21,7 @@ steps:
     - authenticate
 
 - name: test
-  image: maven:3-jdk-11
+  image: maven:3-jdk-8
   commands:
     - mvn verify test -P ssb-bip,coverage --batch-mode --global-settings settings.xml
   environment:
@@ -42,9 +42,9 @@ steps:
     - test
 
 - name: codacy
-  image: maven:3-jdk-11
+  image: maven:3-jdk-8
   commands:
-    - curl -Ls -o codacy-coverage-reporter "https://dl.bintray.com/codacy/Binaries/6.0.6/codacy-coverage-reporter-linux"
+    - curl -Ls -o codacy-coverage-reporter "https://github.com/codacy/codacy-coverage-reporter/releases/download/6.0.6/codacy-coverage-reporter-linux-6.0.6"
     - chmod +x codacy-coverage-reporter
     - ./codacy-coverage-reporter report -l Java -r target/site/jacoco/jacoco.xml
   environment:
@@ -54,7 +54,7 @@ steps:
     - test
 
 - name: sonarqube
-  image: maven:3-jdk-11
+  image: maven:3-jdk-8
   commands:
     - mvn -X -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_PROJECTKEY sonar:sonar -P ssb-bip,coverage -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
   environment:
@@ -67,7 +67,7 @@ steps:
     - test
 
 - name: publish-maven
-  image: maven:3-jdk-11
+  image: maven:3-jdk-8
   commands:
     - mvn clean package deploy -P ssb-bip, -DskipTests=true -Djdk.tls.client.protocols="TLSv1.2" --batch-mode --global-settings settings.xml
   when:
@@ -82,10 +82,27 @@ steps:
     - codacy
     - codecov
 
-- name: publish-docker
+- name: publish-docker-zeppelin
   image: plugins/gcr
   settings:
+    dockerfile: docker/zeppelin/Dockerfile
     repo: eu.gcr.io/prod-bip/ssb/lds-zeppelin
+    registry: eu.gcr.io
+    auto_tag: true
+    json_key:
+      from_secret: gcr_credentials
+  when:
+    ref:
+      - refs/heads/develop
+      - refs/tags/*
+  depends_on:
+    - publish-maven
+
+- name: publish-docker-polynote
+  image: plugins/gcr
+  settings:
+    dockerfile: docker/polynote/Dockerfile
+    repo: eu.gcr.io/prod-bip/ssb/lds-polynote
     registry: eu.gcr.io
     auto_tag: true
     json_key:
@@ -107,6 +124,8 @@ steps:
     status: [ success, failure ]
   depends_on:
     - publish-maven
+    - publish-docker-zeppelin
+    - publish-docker-polynote
 
 ---
 kind: secret

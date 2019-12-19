@@ -4,11 +4,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>no.ssb.lds</groupId>
-    <artifactId>lds-gsim-spark</artifactId>
-    <version>0.2.0</version>
-
-    <name>lds-gsim-spark</name>
+    <groupId>no.ssb.dapla.spark.plugin</groupId>
+    <artifactId>dapla-spark-plugin</artifactId>
+    <version>0.3.0-SNAPSHOT</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -63,7 +61,7 @@
                 </repository>
                 <repository>
                     <id>ssb-bip-snapshots</id>
-                    <url>https://nexus.prod-bip-ci.ssb.no/repository/maven-releases/</url>
+                    <url>https://nexus.prod-bip-ci.ssb.no/repository/maven-snapshots/</url>
                     <snapshots>
                         <enabled>true</enabled>
                     </snapshots>
@@ -87,39 +85,73 @@
     <dependencies>
 
         <dependency>
-            <groupId>no.ssb.lds</groupId>
-            <artifactId>lds-gsim-okhttp</artifactId>
-            <version>0.0.3</version>
+            <groupId>no.ssb.dapla.spark</groupId>
+            <artifactId>dapla-spark-protobuf</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf</artifactId>
+            <version>1.19.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+            <version>1.19.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-okhttp</artifactId>
+            <version>1.19.0</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-avro</artifactId>
+            <version>1.10.1</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.12</artifactId>
-            <version>2.4.2</version>
+            <artifactId>spark-core_2.11</artifactId>
+            <version>2.4.3</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.module</groupId>
-                    <artifactId>jackson-module-scala_2.12</artifactId>
+                    <artifactId>jackson-module-scala_2.11:2.10.0.pr2</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.12</artifactId>
-            <version>2.4.2</version>
+            <artifactId>spark-sql_2.11</artifactId>
+            <version>2.4.3</version>
         </dependency>
 
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
-            <artifactId>jackson-module-scala_2.12</artifactId>
+            <artifactId>jackson-module-scala_2.11</artifactId>
             <version>2.10.0.pr2</version>
         </dependency>
 
+        <!-- this is available when running in spark cluster-->
         <dependency>
-            <groupId>com.squareup.okhttp3</groupId>
-            <artifactId>mockwebserver</artifactId>
-            <version>4.2.0</version>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.10.0.pr2</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+            <version>1.19.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -204,7 +236,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <source>8</source>
-                    <release>8</release>
+                    <target>8</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -217,18 +249,37 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <transformers>
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.google.protobuf</pattern>
+                                    <shadedPattern>no.ssb.dapla.spark.plugin.com.google.protobuf</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>io.grpc</pattern>
+                                    <shadedPattern>no.ssb.dapla.spark.plugin.io.grpc</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>io.opencensus</pattern>
+                                    <shadedPattern>no.ssb.dapla.spark.io.opencensus</shadedPattern>
+                                </relocation>
+                            </relocations>
                             <shadedClassifierName>shaded</shadedClassifierName>
                             <shadedArtifactAttached>true</shadedArtifactAttached>
                             <artifactSet>
                                 <includes>
-                                    <include>com.squareup.okhttp3:*</include>
-                                    <include>com.squareup.okio:*</include>
-                                    <include>org.jetbrains.kotlin:kotlin-stdlib:*</include>
-                                    <include>org.jetbrains.kotlin:kotlin-stdlib-common:*</include>
-                                    <include>no.ssb.lds:lds-gsim-okhttp</include>
+                                    <include>org.apache.parquet:parquet-avro</include>
+                                    <include>io.grpc:*</include>
+                                    <include>com.google.guava:*</include>
+                                    <include>com.google.protobuf:*</include>
+                                    <include>io.opencensus:*</include>
+                                    <include>no.ssb.dapla.spark:*</include>
                                 </includes>
                             </artifactSet>
-                            <minimizeJar>true</minimizeJar>
+                            <minimizeJar>false</minimizeJar>
                         </configuration>
                     </execution>
                 </executions>
