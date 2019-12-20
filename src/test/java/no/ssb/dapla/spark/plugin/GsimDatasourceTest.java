@@ -5,15 +5,20 @@ import io.grpc.ServerBuilder;
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
+import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.spark.protobuf.HelloRequest;
 import no.ssb.dapla.spark.protobuf.HelloResponse;
 import no.ssb.dapla.spark.protobuf.SparkPluginServiceGrpc;
 import org.apache.spark.SparkContext;
-import org.apache.spark.sql.*;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.SparkSession;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
@@ -23,9 +28,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
 
 public class GsimDatasourceTest {
 
@@ -33,6 +39,18 @@ public class GsimDatasourceTest {
     private SparkContext sparkContext;
     private File tempDirectory;
     private Path parquetFile;
+    private static String keyFile;
+    private static String bucket;
+
+    @BeforeClass
+    public static void beforeClass() {
+        // Verify the test environment
+        keyFile = Optional.ofNullable(System.getenv().get(GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE))
+        .orElseThrow(() -> new RuntimeException("The environment variable " +
+                        GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE + " must be set"));
+        bucket = Optional.ofNullable(System.getenv().get("DAPLA_SPARK_TEST_BUCKET"))
+                .orElse("dev-datalager-store/dapla-spark-plugin");
+    }
 
     @After
     public void tearDown() {
@@ -87,12 +105,11 @@ public class GsimDatasourceTest {
     }
 
     @Test
-    @Ignore
-    public void testReadWithCredentials() throws Exception {
+    public void testReadFromBucket() {
         Dataset<Row> dataset = sqlContext.read()
                 //.format("gsim")
                 .option("authToken", "test")
-                .load("gs://dev-datalager-store/dapla-spark-plugin/dataset.parquet");
+                .load("gs://" + bucket + "/dataset.parquet");
 
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
