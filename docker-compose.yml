@@ -26,6 +26,7 @@ services:
       - .env
     environment:
       - SPARK_MASTER_HOST=spark://spark-master
+      - DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE=/secret/gcs_sa_test.json
   polynote:
     image: lds-polynote
     container_name: polynote

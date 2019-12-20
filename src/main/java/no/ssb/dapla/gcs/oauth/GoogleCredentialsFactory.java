@@ -16,6 +16,7 @@
 
 package no.ssb.dapla.gcs.oauth;
 
+import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.ComputeEngineCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.auth.oauth2.ServiceAccountCredentials;
@@ -25,12 +26,15 @@ import java.io.IOException;
 
 public class GoogleCredentialsFactory {
 
+    public static final String SERVICE_ACCOUNT_KEY_FILE = "DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE";
+
     public static GoogleCredentialsDetails createCredentialsDetails(boolean generateAccessToken, String... scopes) {
-        String jsonPath = System.getenv().get("GOOGLE_APPLICATION_CREDENTIALS");
+        String jsonPath = System.getenv().get(SERVICE_ACCOUNT_KEY_FILE);
         GoogleCredentials credentials;
         String email;
-        String accessToken = null;
+        AccessToken accessToken = null;
         if (jsonPath != null) {
+            System.out.println("Using Service Account key file");
             // Use the JSON private key if provided
             try {
                 credentials = ServiceAccountCredentials
@@ -48,12 +52,13 @@ public class GoogleCredentialsFactory {
         }
         if (generateAccessToken) {
             try {
-                accessToken = credentials.refreshAccessToken().getTokenValue();
+                accessToken = credentials.refreshAccessToken();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
-        return new GoogleCredentialsDetails(credentials, email, accessToken);
+        return new GoogleCredentialsDetails(credentials, email, accessToken.getTokenValue(),
+                accessToken.getExpirationTime().getTime());
     }
 
 }

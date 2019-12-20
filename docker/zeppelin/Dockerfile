@@ -8,6 +8,7 @@ COPY target/dapla-spark-plugin-*-shaded.jar /zeppelin/lib/dapla-spark-plugin.jar
 COPY docker/zeppelin/interpreter-template.json /zeppelin/conf/interpreter-template.json
 COPY docker/zeppelin/zeppelin-site.xml /zeppelin/conf/zeppelin-site.xml
 COPY docker/zeppelin/env.sh /env.sh
+COPY secret/gcs_sa_test.json /secret/gcs_sa_test.json
 
 # Add the GCS connector.
 # https://github.com/GoogleCloudPlatform/bigdata-interop/blob/master/gcs/INSTALL.md#configure-spark

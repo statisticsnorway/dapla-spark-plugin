@@ -86,7 +86,7 @@
     <dependencies>
 
         <dependency>
-            <groupId>no.ssb.dapla.spark</groupId>
+            <groupId>no.ssb.dapla.spark.protobuf</groupId>
             <artifactId>dapla-spark-protobuf</artifactId>
             <version>1.0-SNAPSHOT</version>
             <scope>compile</scope>

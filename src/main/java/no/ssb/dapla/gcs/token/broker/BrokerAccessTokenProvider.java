@@ -1,12 +1,14 @@
 package no.ssb.dapla.gcs.token.broker;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Calendar;
+import java.util.Date;
 
-import com.google.api.client.auth.oauth2.Credential;
-import com.google.cloud.hadoop.util.CredentialFactory;
+import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
+import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
-import no.ssb.dapla.gcs.token.issuer.SignedJWTProvider;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -24,7 +26,6 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
     private AccessToken accessToken;
     private BrokerTokenIdentifier tokenIdentifier;
     private Text service;
-    private CredentialFactory credentialFactory = new CredentialFactory();
 
     private final static AccessToken EXPIRED_TOKEN = new AccessToken("", -1L);
 
@@ -80,24 +81,20 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
         long expiresAt = response.getExpiresAt();
         accessToken = new AccessToken(tokenString, expiresAt);
          */
-        Calendar expires = Calendar.getInstance();
-        expires.add(Calendar.MINUTE, 5);
         System.out.println("Issuing access token");
         try {
-            //SignedJWTProvider jwtProvider = new SignedJWTProvider(true);
-            //accessToken = jwtProvider.getAccessToken(currentUser.getUserName(), BrokerTokenIdentifier.BROKER_SCOPE);
+            GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(true, BrokerTokenIdentifier.BROKER_SCOPE);
+            accessToken =  new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
+            System.out.println("Expiration time " + new Date(credential.getExpirationTime()));
+            try {
+                InetAddress ip = InetAddress.getLocalHost();
+                String hostName = ip.getHostName();
+                System.out.println("Hostname " + hostName);
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            }
         } catch (Exception e) {
-            System.out.println("SignedJWTProvider failed");
-            e.printStackTrace();
-        }
-        try {
-            // If parameter spark.hadoop.google.cloud.auth.service.account.json.keyfile is set
-            // credentialFactory.getCredentialFromJsonKeyFile(...)
-            Credential credential = credentialFactory.getCredentialFromMetadataServiceAccount();
-            accessToken =  new AccessToken(credential.getAccessToken(), credential.getExpirationTimeMilliseconds());
-            System.out.println("Issuing access token");
-        } catch (Exception e) {
-            System.out.println("credentialFactory failed");
+            System.out.println("GoogleCredentialsFactory failed");
             throw new RuntimeException(e);
         }
     }

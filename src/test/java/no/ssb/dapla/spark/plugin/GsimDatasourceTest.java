@@ -46,8 +46,7 @@ public class GsimDatasourceTest {
     public static void beforeClass() {
         // Verify the test environment
         keyFile = Optional.ofNullable(System.getenv().get(GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE))
-        .orElseThrow(() -> new RuntimeException("The environment variable " +
-                        GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE + " must be set"));
+        .orElse("/secret/gcs_sa_test.json");
         bucket = Optional.ofNullable(System.getenv().get("DAPLA_SPARK_TEST_BUCKET"))
                 .orElse("dev-datalager-store/dapla-spark-plugin");
     }

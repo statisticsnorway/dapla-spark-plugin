@@ -23,11 +23,13 @@ public class GoogleCredentialsDetails {
     private GoogleCredentials credentials;
     private String accessToken;
     private String email;
+    private long expirationTime;
 
-    GoogleCredentialsDetails(GoogleCredentials credentials, String email, String accessToken) {
+    GoogleCredentialsDetails(GoogleCredentials credentials, String email, String accessToken, long expirationTime) {
         this.credentials = credentials;
         this.email = email;
         this.accessToken = accessToken;
+        this.expirationTime = expirationTime;
     }
 
     public GoogleCredentials getCredentials() {
@@ -40,5 +42,9 @@ public class GoogleCredentialsDetails {
 
     public String getEmail() {
         return email;
+    }
+
+    public long getExpirationTime() {
+        return expirationTime;
     }
 }
