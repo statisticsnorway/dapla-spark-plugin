@@ -96,6 +96,12 @@
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
             <version>1.19.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -292,7 +298,6 @@
                                 <includes>
                                     <include>org.apache.parquet:parquet-avro</include>
                                     <include>io.grpc:*</include>
-                                    <include>com.google.guava:*</include>
                                     <include>com.google.protobuf:*</include>
                                     <include>com.google.auth:*</include>
                                     <include>com.google.apis:*</include>

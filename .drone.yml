@@ -30,6 +30,7 @@ steps:
   environment:
     MAVEN_HOME: /drone/src/.m2
     M2_HOME: /drone/src/.m2
+    DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE: ./secret/gcs_sa_test.json
     GAC:
       from_secret: gcs_credentials
   depends_on:

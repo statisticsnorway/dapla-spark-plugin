@@ -39,14 +39,15 @@ public class GsimDatasourceTest {
     private SparkContext sparkContext;
     private File tempDirectory;
     private Path parquetFile;
-    private static String keyFile;
     private static String bucket;
 
     @BeforeClass
     public static void beforeClass() {
         // Verify the test environment
-        keyFile = Optional.ofNullable(System.getenv().get(GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE))
-        .orElse("/secret/gcs_sa_test.json");
+        if (System.getenv().get(GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE) == null) {
+            throw new IllegalStateException(String.format("Missing environment variable: " +
+                    GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE));
+        }
         bucket = Optional.ofNullable(System.getenv().get("DAPLA_SPARK_TEST_BUCKET"))
                 .orElse("dev-datalager-store/dapla-spark-plugin");
     }
@@ -65,7 +66,7 @@ public class GsimDatasourceTest {
         Files.copy(parquetContent, parquetFile);
         System.out.println("File created: " + parquetFile.toString());
         // Mock user read by org.apache.hadoop.security.UserGroupInformation
-        System.setProperty("HADOOP_PROXY_USER", "dapla-test");
+        System.setProperty("HADOOP_USER_NAME", "dapla-test");
 
         // Read the unit dataset json example.
         SparkSession session = SparkSession.builder()
