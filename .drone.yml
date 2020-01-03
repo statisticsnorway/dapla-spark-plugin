@@ -22,10 +22,7 @@ steps:
 - name: build
   image: maven:3-jdk-8
   commands:
-    - mvn compile -P ssb-bip -DskipTests=true -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
-  environment:
-    MAVEN_HOME: /drone/src/.m2
-    M2_HOME: /drone/src/.m2
+    - mvn compile -P ssb-bip -Dmaven.repo.local=/drone/src/.m2/repository -DskipTests=true -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
   depends_on:
     - authenticate
     - restore-cache
@@ -36,10 +33,8 @@ steps:
     # Create a service account keyfile to be used by GCS tests
     - mkdir secret
     - printf "%s" "$GAC" > secret/gcs_sa_test.json
-    - mvn verify test -P ssb-bip,coverage --batch-mode --global-settings settings.xml
+    - mvn verify test -P ssb-bip,coverage -Dmaven.repo.local=/drone/src/.m2/repository --batch-mode --global-settings settings.xml
   environment:
-    MAVEN_HOME: /drone/src/.m2
-    M2_HOME: /drone/src/.m2
     DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE: secret/gcs_sa_test.json
     DAPLA_SPARK_TEST_BUCKET: bip-drone-dependency-cache
     GAC:
@@ -73,27 +68,22 @@ steps:
 - name: sonarqube
   image: maven:3-jdk-8
   commands:
-    - mvn -X -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_PROJECTKEY sonar:sonar -P ssb-bip,coverage -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
+    - mvn -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_PROJECTKEY sonar:sonar -P ssb-bip,coverage -Dmaven.repo.local=/drone/src/.m2/repository -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
   environment:
     SONAR_HOST_URL: https://sonarqube.prod-bip-ci.ssb.no
     SONAR_PROJECTKEY:
       from_secret: sonar_token
-    MAVEN_HOME: /drone/src/.m2
-    M2_HOME: /drone/src/.m2
   depends_on:
     - test
 
 - name: publish-maven
   image: maven:3-jdk-8
   commands:
-    - mvn clean package deploy -P ssb-bip, -DskipTests=true -Djdk.tls.client.protocols="TLSv1.2" --batch-mode --global-settings settings.xml
+    - mvn clean package deploy -P ssb-bip -Dmaven.repo.local=/drone/src/.m2/repository -DskipTests=true -Djdk.tls.client.protocols="TLSv1.2" --batch-mode --global-settings settings.xml
   when:
     ref:
       - refs/heads/develop
       - refs/tags/*
-  environment:
-    MAVEN_HOME: /drone/src/.m2
-    M2_HOME: /drone/src/.m2
   depends_on:
     - sonarqube
     - codacy
