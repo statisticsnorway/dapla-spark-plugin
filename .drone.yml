@@ -154,7 +154,7 @@ steps:
       from_secret: gcs_credentials
     rebuild: true
     mount:
-      - /drone/src/.m2/repository
+      - .m2/repository
   depends_on:
     - publish-maven
 
