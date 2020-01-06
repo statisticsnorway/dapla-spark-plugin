@@ -52,6 +52,8 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
         try {
             currentUser = UserGroupInformation.getCurrentUser();
             loginUser = UserGroupInformation.getLoginUser();
+            System.out.println("current user: " + currentUser.getUserName());
+            System.out.println("login user: " + loginUser.getUserName());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

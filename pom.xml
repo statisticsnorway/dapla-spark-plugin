@@ -10,7 +10,6 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <google-api-services-iam.version>v1-rev20191108-1.30.3</google-api-services-iam.version>
     </properties>
 
     <profiles>
@@ -164,11 +163,6 @@
                     <artifactId>guava</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>com.google.apis</groupId>
-            <artifactId>google-api-services-iam</artifactId>
-            <version>${google-api-services-iam.version}</version>
         </dependency>
 
         <!-- this is available when running in spark cluster-->
