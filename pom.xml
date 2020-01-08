@@ -271,6 +271,7 @@
                             <shadedArtifactAttached>true</shadedArtifactAttached>
                             <artifactSet>
                                 <includes>
+                                    <include>com.squareup.okhttp:*</include>
                                     <include>org.apache.parquet:parquet-avro</include>
                                     <include>io.grpc:*</include>
                                     <include>com.google.guava:*</include>

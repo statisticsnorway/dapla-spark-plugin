@@ -1,5 +1,9 @@
 package no.ssb.dapla.spark.plugin;
 
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.Response;
+import org.apache.directory.shared.kerberos.codec.apRep.actions.ApRepInit;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
@@ -13,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import scala.Option;
 import scala.collection.immutable.Map;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -29,7 +34,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.debug("CreateRelation via read {}", parameters);
-        System.out.println("CreateRelation via read - " + parameters);
+        System.out.println("CreateRelation via read - ");
 
         // For knowing where plugin is running, will remove when in production
         String hostName = "unknown";
@@ -57,8 +62,32 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             new SparkPluginClient(host, port).sayHelloToServer(message);
         }
 
+        Option<String> restUriToDaplaPluginServer = parameters.get("rest_uri_to_dapla_plugin_server");
+        Option<String> bearerToken = parameters.get("bearer_token");
+        if (restUriToDaplaPluginServer.isDefined()) {
+            String url = restUriToDaplaPluginServer.get();
+            String token = bearerToken.isDefined() ? bearerToken.get() : "";
+            simpleGet(url, "Bearer " + token);
+        }
+
         List<URI> dataURIs = getUriFromPath(parameters);
         return new GsimRelation(sqlContext, dataURIs);
+    }
+
+    private void simpleGet(String url, String bearerToken) {
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder()
+                .url(url)
+                .addHeader("Authorization", bearerToken)
+                .build();
+        try {
+            System.out.println("Running simple get:");
+            Response response = client.newCall(request).execute();
+            System.out.println(response);
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
