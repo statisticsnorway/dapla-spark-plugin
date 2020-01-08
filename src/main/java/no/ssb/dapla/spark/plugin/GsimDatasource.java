@@ -1,5 +1,6 @@
 package no.ssb.dapla.spark.plugin;
 
+import no.ssb.dapla.spark.plugin.pseudo.PseudoContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
@@ -30,6 +31,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.debug("CreateRelation via read {}", parameters);
         System.out.println("CreateRelation via read - " + parameters);
+        PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
         // For knowing where plugin is running, will remove when in production
         String hostName = "unknown";
@@ -58,13 +60,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         }
 
         List<URI> dataURIs = getUriFromPath(parameters);
-        return new GsimRelation(sqlContext, dataURIs);
+        return new GsimRelation(sqlContext, dataURIs, pseudoContext);
     }
 
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
         log.debug("CreateRelation via write {}", parameters);
         System.out.println("CreateRelation via write - " + parameters);
+        PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
         List<URI> dataURIs = getUriFromPath(parameters);
         URI newDataUri = dataURIs.get(0);
@@ -72,9 +75,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
         try {
+            data = pseudoContext.apply(data);
             log.debug("writing file(s) to: {}", newDataUri);
             data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-            return new GsimRelation(sqlContext, dataURIs);
+            return new GsimRelation(sqlContext, dataURIs, pseudoContext);
         } finally {
             datasetLock.unlock();
         }

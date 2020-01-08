@@ -1,5 +1,6 @@
 package no.ssb.dapla.spark.plugin;
 
+import no.ssb.dapla.spark.plugin.pseudo.PseudoContext;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
@@ -19,12 +20,14 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     private final SQLContext context;
     private final Set<String> files;
     private StructType schema;
+    private final PseudoContext pseudoContext;
 
-    public GsimRelation(SQLContext context, List<URI> uris) {
+    public GsimRelation(SQLContext context, List<URI> uris, PseudoContext pseudoContext) {
         this.context = context;
         this.files = uris.stream()
                 .map(URI::toASCIIString)
                 .collect(Collectors.toSet());
+        this.pseudoContext = pseudoContext;
     }
 
     /**
@@ -67,6 +70,11 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         if (filter.isPresent()) {
             dataset = dataset.filter(filter.get());
         }
+
+        if (pseudoContext != null) {
+            dataset = pseudoContext.restore(dataset);
+        }
+
         return dataset.rdd();
     }
 

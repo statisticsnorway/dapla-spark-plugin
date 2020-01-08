@@ -26,11 +26,11 @@ public class GsimRelationTest {
 
         for (int i = 0; i < 10; i++) {
             Collections.shuffle(uris);
-            GsimRelation relA = new GsimRelation(null, uris);
+            GsimRelation relA = new GsimRelation(null, uris, null);
             Collections.shuffle(uris);
-            GsimRelation relB = new GsimRelation(null, uris);
+            GsimRelation relB = new GsimRelation(null, uris, null);
             Collections.shuffle(otherUris);
-            GsimRelation relC = new GsimRelation(null, otherUris);
+            GsimRelation relC = new GsimRelation(null, otherUris, null);
 
             assertThat(relA).isEqualTo(relB);
             assertThat(relA.hashCode()).isEqualTo(relB.hashCode());
