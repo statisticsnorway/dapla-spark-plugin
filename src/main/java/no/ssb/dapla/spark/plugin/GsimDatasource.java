@@ -107,21 +107,17 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         return sparkSession.sqlContext();
     }
 
+    // TODO: This should only be set when the user has access to the current operation and namespace
     private void setUserContext(SparkSession sparkSession, String operation, Map<String, String> parameters) {
         String namespace = getNamespace(parameters);
         Text service = getService(parameters);
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
-        // TODO: Remove (just for POC)
-        if (namespace.endsWith("dataset2.parquet")) {
-            throw new IllegalStateException("You are not allowed to access namespace: " + namespace);
-        } else {
-            try {
-                UserGroupInformation.getCurrentUser().addToken(service,
-                        BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(namespace)));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        try {
+            UserGroupInformation.getCurrentUser().addToken(service,
+                    BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(namespace)));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
