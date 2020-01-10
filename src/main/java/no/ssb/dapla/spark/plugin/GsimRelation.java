@@ -1,6 +1,5 @@
 package no.ssb.dapla.spark.plugin;
 
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
@@ -78,17 +77,17 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     /**
      * Converts back filters to column expression.
-     *
+     * <p>
      * I could not find any function in spark to do this. This will be thrown away when
      * we migrate to DataSourceV2.
-     *
+     * <p>
      * Note that the filters we receive are canonical. Thus we do not handle and/or/not.
      */
     Column convertFilter(Filter filter) {
         if (filter instanceof EqualNullSafe) {
             EqualNullSafe equalNullSafe = (EqualNullSafe) filter;
             return new Column(equalNullSafe.attribute()).eqNullSafe(equalNullSafe.value());
-        }  else if (filter instanceof EqualTo) {
+        } else if (filter instanceof EqualTo) {
             EqualTo equalTo = (EqualTo) filter;
             return new Column(equalTo.attribute()).equalTo(equalTo.value());
         } else if (filter instanceof GreaterThan) {

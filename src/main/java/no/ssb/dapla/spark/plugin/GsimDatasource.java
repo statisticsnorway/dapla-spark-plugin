@@ -1,5 +1,8 @@
 package no.ssb.dapla.spark.plugin;
 
+import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
+import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -29,32 +32,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     private static final String SHORT_NAME = "gsim";
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    private SQLContext altContext(SQLContext sqlContext, Map<String, String> parameters) {
-        SparkSession sparkSession = sqlContext.sparkSession();
-        // This may be set from Spark/Pyspark extension
-        Option<String> authToken = parameters.get("authToken");
-        UserGroupInformation hadoopUser = getHadoopUser();
-        if (authToken.isEmpty() && hadoopUser == null) {
-            System.out.println("Can not find authToken or hadoop user name");
-        } else if (!authToken.isEmpty()) {
-            sparkSession.sqlContext().sessionState().conf().setConfString("fs.file.authToken", authToken.get());
-        } else if (hadoopUser != null) {
-            sparkSession.sqlContext().sessionState().conf().setConfString("fs.file.authToken", hadoopUser.getUserName());
-        }
-        return sparkSession.sqlContext();
-    }
-
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.debug("CreateRelation via read {}", parameters);
         System.out.println("CreateRelation via read - " + parameters);
-        // Current user?
-        try {
-            UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
-            System.out.println("Current user: " +  ugi.getUserName());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
         // For knowing where plugin is running, will remove when in production
         String hostName = "unknown";
@@ -83,7 +64,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         }
 
         List<URI> dataURIs = getUriFromPath(parameters);
-        return new GsimRelation(altContext(sqlContext, parameters), dataURIs);
+        return new GsimRelation(isolatedContext(sqlContext, parameters), dataURIs);
     }
 
     @Override
@@ -98,11 +79,61 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         datasetLock.lock();
         try {
             log.debug("writing file(s) to: {}", newDataUri);
+            setUserContext(sqlContext.sparkSession(), "write", parameters);
+            sqlContext.sparkSession().conf().set("fs.gs.impl.disable.cache", "false");
             data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-            return new GsimRelation(altContext(sqlContext, parameters), dataURIs);
+            return new GsimRelation(isolatedContext(sqlContext, parameters), dataURIs);
         } finally {
             datasetLock.unlock();
+            sqlContext.sparkSession().conf().set("fs.gs.impl.disable.cache", "true");
         }
+    }
+
+    /**
+     * Creates a new SQLContext with an isolated spark session.
+     *
+     * @param sqlContext the original SQLContext (which will be the parent context)
+     * @param parameters parameter map with additional spark options
+     * @return the new SQLContext
+     */
+    private SQLContext isolatedContext(SQLContext sqlContext, Map<String, String> parameters) {
+        // Temporary enable file system cache during execution. This aviods re-creating the GoogleHadoopFileSystem
+        // during multiple job executions within the spark session.
+        // For this to work, we must create an isolated configuration inside a new spark session
+        // Note: There is still only one spark context that is shared among sessions
+        SparkSession sparkSession = sqlContext.sparkSession().newSession();
+        sparkSession.conf().set("fs.gs.impl.disable.cache", "false");
+        setUserContext(sparkSession, "read", parameters);
+        return sparkSession.sqlContext();
+    }
+
+    private void setUserContext(SparkSession sparkSession, String operation, Map<String, String> parameters) {
+        String namespace = getNamespace(parameters);
+        Text service = getService(parameters);
+        sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
+        sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
+        // TODO: Remove (just for POC)
+        if (namespace.endsWith("dataset2.parquet")) {
+            throw new IllegalStateException("You are not allowed to access namespace: " + namespace);
+        } else {
+            try {
+                UserGroupInformation.getCurrentUser().addToken(service,
+                        BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(namespace)));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    // TODO: Replace by calling catalog service
+    private String getNamespace(Map<String, String> parameters) {
+        return getUriFromPath(parameters).get(0).toString();
+    }
+
+    // TODO: Replace by calling catalog service
+    private Text getService(Map<String, String> parameters) {
+        URI path = getUriFromPath(parameters).get(0);
+        return new Text(path.getScheme() + "://" + path.getAuthority());
     }
 
     private List<URI> getUriFromPath(Map<String, String> parameters) {
@@ -116,15 +147,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } catch (URISyntaxException e) {
             throw new IllegalStateException(e);
         }
-    }
-
-    private UserGroupInformation getHadoopUser() {
-        try {
-            return UserGroupInformation.getCurrentUser();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     @Override

@@ -27,6 +27,7 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -103,7 +104,9 @@ public class GsimDatasourceTest {
                 .appName(GsimDatasourceTest.class.getSimpleName())
                 .master("local")
                 .config("spark.ui.enabled", false)
+                .config("fs.gs.impl.disable.cache", true)
                 .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
+                //.config("spark.hadoop.fs.gs.auth.access.token.provider.impl", BrokerAccessTokenProvider.class.getCanonicalName())
                 .getOrCreate();
 
         this.sparkContext = session.sparkContext();
@@ -150,9 +153,25 @@ public class GsimDatasourceTest {
     @Test
     public void testReadFromBucket() {
         Dataset<Row> dataset = sqlContext.read()
-                //.format("gsim")
+                .format("gsim")
                 .option("authToken", "test")
                 .load("gs://" + blobId.getBucket() + "/" + blobId.getName());
+
+        assertThat(dataset).isNotNull();
+        assertThat(dataset.isEmpty()).isFalse();
+    }
+
+    @Test
+    @Ignore("Figure out why this fails")
+    public void testWriteBucket() {
+        BlobId outFile = BlobId.of(bucket, testFolder + "/outfile-" + UUID.randomUUID().toString() + ".dat");
+        Dataset<Row> dataset = sqlContext.read()
+                .format("gsim")
+                .load(parquetFile.toString());
+        dataset.write()
+                .format("gsim")
+                .mode(SaveMode.Ignore)
+                .save("gs://" + outFile.getBucket() + "/" + outFile.getName());
 
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();

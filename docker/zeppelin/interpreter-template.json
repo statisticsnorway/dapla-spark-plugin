@@ -1335,6 +1335,10 @@
           "value": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem",
           "type": "string"
         },
+        "fs.gs.impl.disable.cache": {
+          "value": "true",
+          "type": "string"
+        },
         "spark.hadoop.fs.gs.delegation.token.binding": {
           "value": "no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding",
           "type": "string"

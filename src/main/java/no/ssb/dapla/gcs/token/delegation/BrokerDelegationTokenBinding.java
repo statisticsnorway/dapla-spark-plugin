@@ -1,34 +1,68 @@
 package no.ssb.dapla.gcs.token.delegation;
 
-import java.io.IOException;
-
+import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystemBase;
+import com.google.cloud.hadoop.fs.gcs.auth.AbstractDelegationTokenBinding;
+import com.google.cloud.hadoop.util.AccessTokenProvider;
 import no.ssb.dapla.gcs.token.broker.BrokerAccessTokenProvider;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.delegation.web.DelegationTokenIdentifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.google.cloud.hadoop.util.AccessTokenProvider;
-import com.google.cloud.hadoop.fs.gcs.auth.AbstractDelegationTokenBinding;
-
-// See https://github.com/GoogleCloudPlatform/gcp-token-broker/
-
-
+/**
+ * A DelegationTokenBinding implementation that binds a file system to a BrokerAccessTokenProvider.
+ * Note that the BrokerAccessTokenProvider requires a "session token" (which is issued to the logged in user), so any
+ * attempt to obtain an access token without a DelegationTokenIdentifier ("session token") will fail.
+ */
 public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BrokerDelegationTokenBinding.class);
 
     public BrokerDelegationTokenBinding() {
         super(BrokerTokenIdentifier.KIND);
     }
 
+    /**
+     * Creates a security token ("session token") that can be added to the logged in user.
+     *
+     * @param service name of the service (i.e. bucket name) for the FS.
+     * @param operation the operation (read or write)
+     * @param namespace the namespace
+     * @return the token
+     */
+    public static Token<DelegationTokenIdentifier> createUserToken(Text service, Text operation, Text namespace) {
+        BrokerDelegationTokenBinding binding = new BrokerDelegationTokenBinding();
+        DelegationTokenIdentifier tokenIdentifier = new BrokerTokenIdentifier.Builder()
+                .withService(service)
+                .withOperation(operation)
+                .withNamespace(namespace)
+                .build();
+
+        Token<DelegationTokenIdentifier> token = new Token<>(tokenIdentifier, binding.secretManager);
+        token.setKind(binding.getKind());
+        token.setService(service);
+        LOG.debug("Created user token: " + token);
+        return token;
+    }
+
     @Override
     public AccessTokenProvider deployUnbonded() {
-        return new BrokerAccessTokenProvider(getService());
+        // This DelegationTokenBinding implementation requires a DelegationTokenIdentifier.
+        // When this method is called, it means that the file system cannot find a delegation token, and instead
+        // tries to use direct authentication.
+        throw new IllegalStateException("This operation is not allowed");
     }
 
     @Override
     public AccessTokenProvider bindToTokenIdentifier(DelegationTokenIdentifier retrievedIdentifier) {
-        return new BrokerAccessTokenProvider(
-                getService(),
-                (BrokerTokenIdentifier) retrievedIdentifier);
+        LOG.debug("bindToTokenIdentifier");
+        return new BrokerAccessTokenProvider(getService(), (BrokerTokenIdentifier) retrievedIdentifier);
+    }
+
+    @Override
+    public void bindToFileSystem(GoogleHadoopFileSystemBase fs, Text service) {
+        super.bindToFileSystem(fs, service);
     }
 
     @Override
@@ -37,24 +71,14 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
     }
 
     @Override
-    public DelegationTokenIdentifier createTokenIdentifier(Text renewer) throws IOException {
-        UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
-        String user = ugi.getUserName();
-        Text owner = new Text(user);
-        Text realUser = null;
-        if (ugi.getRealUser() != null) {
-            realUser = new Text(ugi.getRealUser().getUserName());
-        }
-        return new BrokerTokenIdentifier(
-                getFileSystem().getConf(),
-                owner,
-                renewer,
-                realUser,
-                getService());
+    public DelegationTokenIdentifier createTokenIdentifier(Text renewer) {
+        // Should not be used
+        return new BrokerTokenIdentifier();
     }
 
     @Override
     public DelegationTokenIdentifier createEmptyIdentifier() {
+        // Should not be used
         return new BrokerTokenIdentifier();
     }
 }
