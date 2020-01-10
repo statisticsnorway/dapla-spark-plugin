@@ -57,7 +57,8 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
          */
         LOG.debug("Issuing access token for service: " + this.service);
         try {
-            GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(false, BrokerTokenIdentifier.BROKER_SCOPE);
+            // TODO: Turn useComputeEngineFallback OFF when the following has been resolved: https://statistics-norway.atlassian.net/browse/BIP-379
+            GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(true, BrokerTokenIdentifier.BROKER_SCOPE);
             accessToken =  new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
         } catch (Exception e) {
             throw new RuntimeException("GoogleCredentialsFactory failed", e);
