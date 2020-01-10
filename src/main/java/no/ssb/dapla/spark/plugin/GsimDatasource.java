@@ -1,9 +1,14 @@
 package no.ssb.dapla.spark.plugin;
 
+import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
+import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.DataSourceRegister;
@@ -13,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import scala.Option;
 import scala.collection.immutable.Map;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -58,7 +64,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         }
 
         List<URI> dataURIs = getUriFromPath(parameters);
-        return new GsimRelation(sqlContext, dataURIs);
+        return new GsimRelation(isolatedContext(sqlContext, parameters), dataURIs);
     }
 
     @Override
@@ -73,11 +79,57 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         datasetLock.lock();
         try {
             log.debug("writing file(s) to: {}", newDataUri);
+            setUserContext(sqlContext.sparkSession(), "write", parameters);
+            sqlContext.sparkSession().conf().set("fs.gs.impl.disable.cache", "false");
             data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-            return new GsimRelation(sqlContext, dataURIs);
+            return new GsimRelation(isolatedContext(sqlContext, parameters), dataURIs);
         } finally {
             datasetLock.unlock();
+            sqlContext.sparkSession().conf().set("fs.gs.impl.disable.cache", "true");
         }
+    }
+
+    /**
+     * Creates a new SQLContext with an isolated spark session.
+     *
+     * @param sqlContext the original SQLContext (which will be the parent context)
+     * @param parameters parameter map with additional spark options
+     * @return the new SQLContext
+     */
+    private SQLContext isolatedContext(SQLContext sqlContext, Map<String, String> parameters) {
+        // Temporary enable file system cache during execution. This aviods re-creating the GoogleHadoopFileSystem
+        // during multiple job executions within the spark session.
+        // For this to work, we must create an isolated configuration inside a new spark session
+        // Note: There is still only one spark context that is shared among sessions
+        SparkSession sparkSession = sqlContext.sparkSession().newSession();
+        sparkSession.conf().set("fs.gs.impl.disable.cache", "false");
+        setUserContext(sparkSession, "read", parameters);
+        return sparkSession.sqlContext();
+    }
+
+    // TODO: This should only be set when the user has access to the current operation and namespace
+    private void setUserContext(SparkSession sparkSession, String operation, Map<String, String> parameters) {
+        String namespace = getNamespace(parameters);
+        Text service = getService(parameters);
+        sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
+        sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
+        try {
+            UserGroupInformation.getCurrentUser().addToken(service,
+                    BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(namespace)));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // TODO: Replace by calling catalog service
+    private String getNamespace(Map<String, String> parameters) {
+        return getUriFromPath(parameters).get(0).toString();
+    }
+
+    // TODO: Replace by calling catalog service
+    private Text getService(Map<String, String> parameters) {
+        URI path = getUriFromPath(parameters).get(0);
+        return new Text(path.getScheme() + "://" + path.getAuthority());
     }
 
     private List<URI> getUriFromPath(Map<String, String> parameters) {

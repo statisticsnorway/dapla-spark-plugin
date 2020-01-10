@@ -1,17 +1,33 @@
 package no.ssb.dapla.spark.plugin;
 
+import com.google.api.gax.paging.Page;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
+import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
+import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.spark.protobuf.HelloRequest;
 import no.ssb.dapla.spark.protobuf.HelloResponse;
 import no.ssb.dapla.spark.protobuf.SparkPluginServiceGrpc;
 import org.apache.spark.SparkContext;
-import org.apache.spark.sql.*;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.SparkSession;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -21,9 +37,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
 
 public class GsimDatasourceTest {
 
@@ -31,6 +51,36 @@ public class GsimDatasourceTest {
     private SparkContext sparkContext;
     private File tempDirectory;
     private Path parquetFile;
+    private static String bucket;
+    private static String testFolder;
+    private BlobId blobId;
+
+    @BeforeClass
+    public static void setupBucketFolder() {
+        // Verify the test environment
+        if (System.getenv().get(GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE) == null) {
+            throw new IllegalStateException(String.format("Missing environment variable: " +
+                    GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE));
+        }
+        // Setup GCS test bucket
+        bucket = Optional.ofNullable(System.getenv().get("DAPLA_SPARK_TEST_BUCKET")).orElse("dev-datalager-store");
+        testFolder = "dapla-spark-plugin-" + UUID.randomUUID().toString();
+    }
+
+    @AfterClass
+    public static void clearBucketFolder() {
+        final Storage storage = getStorage();
+        Page<Blob> page = storage.list(bucket, Storage.BlobListOption.prefix(testFolder + "/"));
+        BlobId[] blobs = StreamSupport.stream(page.iterateAll().spliterator(), false).map(BlobInfo::getBlobId).collect(Collectors.toList()).toArray(new BlobId[0]);
+        if (blobs.length > 0) {
+            List<Boolean> deletedList = storage.delete(blobs);
+            for (Boolean deleted : deletedList) {
+                if (!deleted) {
+                    throw new RuntimeException("Unable to delete blob in bucket");
+                }
+            }
+        }
+    }
 
     @After
     public void tearDown() {
@@ -44,12 +94,19 @@ public class GsimDatasourceTest {
         InputStream parquetContent = this.getClass().getResourceAsStream("data/dataset.parquet");
         parquetFile = tempDirectory.toPath().resolve("dataset.parquet");
         Files.copy(parquetContent, parquetFile);
+        System.out.println("File created: " + parquetFile.toString());
+        blobId = createBucketTestFile(Files.readAllBytes(parquetFile));
+        // Mock user read by org.apache.hadoop.security.UserGroupInformation
+        System.setProperty("HADOOP_USER_NAME", "dapla-test");
 
         // Read the unit dataset json example.
         SparkSession session = SparkSession.builder()
                 .appName(GsimDatasourceTest.class.getSimpleName())
                 .master("local")
                 .config("spark.ui.enabled", false)
+                .config("fs.gs.impl.disable.cache", true)
+                .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
+                //.config("spark.hadoop.fs.gs.auth.access.token.provider.impl", BrokerAccessTokenProvider.class.getCanonicalName())
                 .getOrCreate();
 
         this.sparkContext = session.sparkContext();
@@ -57,16 +114,28 @@ public class GsimDatasourceTest {
 
     }
 
+    private BlobId createBucketTestFile(byte[] bytes) {
+        BlobId blobId = BlobId.of(bucket, testFolder + "/dataset-" + UUID.randomUUID().toString() + ".dat");
+        getStorage().create(BlobInfo.newBuilder(blobId).build(), bytes, Storage.BlobTargetOption.doesNotExist());
+        System.out.println("Blob created: " + blobId.toString());
+        return blobId;
+    }
+
+    private static Storage getStorage() {
+        final GoogleCredentials credentials = GoogleCredentialsFactory.createCredentialsDetails(true,
+                "https://www.googleapis.com/auth/devstorage.full_control").getCredentials();
+        return StorageOptions.newBuilder().setCredentials(credentials).build().getService();
+    }
+
     @Test
     public void testReadWithId() {
         Dataset<Row> dataset = sqlContext.read()
-                .format("no.ssb.dapla.spark.plugin")
+                .format("gsim")
                 .load(parquetFile.toString());
 
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
     }
-
 
     @Test
     public void testReadWrite() {
@@ -78,7 +147,34 @@ public class GsimDatasourceTest {
         assertThat(dataset.isEmpty()).isFalse();
 
         System.out.println(tempDirectory);
-        dataset.write().format("no.ssb.dapla.spark.plugin").mode(SaveMode.Overwrite).save(tempDirectory + "/out.parquet");
+        dataset.write().format("gsim").mode(SaveMode.Overwrite).save(tempDirectory + "/out.parquet");
+    }
+
+    @Test
+    public void testReadFromBucket() {
+        Dataset<Row> dataset = sqlContext.read()
+                .format("gsim")
+                .option("authToken", "test")
+                .load("gs://" + blobId.getBucket() + "/" + blobId.getName());
+
+        assertThat(dataset).isNotNull();
+        assertThat(dataset.isEmpty()).isFalse();
+    }
+
+    @Test
+    @Ignore("Figure out why this fails")
+    public void testWriteBucket() {
+        BlobId outFile = BlobId.of(bucket, testFolder + "/outfile-" + UUID.randomUUID().toString() + ".dat");
+        Dataset<Row> dataset = sqlContext.read()
+                .format("gsim")
+                .load(parquetFile.toString());
+        dataset.write()
+                .format("gsim")
+                .mode(SaveMode.Ignore)
+                .save("gs://" + outFile.getBucket() + "/" + outFile.getName());
+
+        assertThat(dataset).isNotNull();
+        assertThat(dataset.isEmpty()).isFalse();
     }
 
     @Test

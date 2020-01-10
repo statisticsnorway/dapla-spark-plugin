@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class GsimRelation extends BaseRelation implements PrunedFilteredScan, FileRelation {
+public class GsimRelation extends BaseRelation implements PrunedFilteredScan, FileRelation, TableScan {
 
     private final SQLContext context;
     private final Set<String> files;
@@ -70,19 +70,24 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         return dataset.rdd();
     }
 
+    @Override
+    public RDD<Row> buildScan() {
+        return this.sqlContext().read().parquet(inputFiles()).rdd();
+    }
+
     /**
      * Converts back filters to column expression.
-     *
+     * <p>
      * I could not find any function in spark to do this. This will be thrown away when
      * we migrate to DataSourceV2.
-     *
+     * <p>
      * Note that the filters we receive are canonical. Thus we do not handle and/or/not.
      */
     Column convertFilter(Filter filter) {
         if (filter instanceof EqualNullSafe) {
             EqualNullSafe equalNullSafe = (EqualNullSafe) filter;
             return new Column(equalNullSafe.attribute()).eqNullSafe(equalNullSafe.value());
-        }  else if (filter instanceof EqualTo) {
+        } else if (filter instanceof EqualTo) {
             EqualTo equalTo = (EqualTo) filter;
             return new Column(equalTo.attribute()).equalTo(equalTo.value());
         } else if (filter instanceof GreaterThan) {

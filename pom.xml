@@ -140,12 +140,50 @@
             <version>2.10.0.pr2</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.google.cloud.bigdataoss</groupId>
+            <artifactId>gcs-connector</artifactId>
+            <version>hadoop2-2.0.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- For access token provider -->
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
+            <version>0.16.2</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- this is available when running in spark cluster-->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>2.10.0.pr2</version>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-storage</artifactId>
+            <version>1.99.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>28.1-jre</version>
         </dependency>
 
         <dependency>
@@ -275,8 +313,17 @@
                                     <include>io.grpc:*</include>
                                     <include>com.google.guava:*</include>
                                     <include>com.google.protobuf:*</include>
+                                    <include>com.google.auth:*</include>
+                                    <include>com.google.apis:*</include>
+                                    <include>com.google.api-client:*</include>
+                                    <include>com.google.http-client:*</include>
                                     <include>io.opencensus:*</include>
                                     <include>no.ssb.dapla.spark:*</include>
+                                    <!-- Remove if google CredentialFactory is not used
+                                    <include>com.google.cloud.bigdataoss:util</include>
+                                    -->
+                                    <include>com.google.oauth-client:*</include>
+                                    <include>com.google.flogger:*</include>
                                 </includes>
                             </artifactSet>
                             <minimizeJar>false</minimizeJar>
