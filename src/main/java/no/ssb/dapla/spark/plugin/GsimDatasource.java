@@ -36,6 +36,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.debug("CreateRelation via read {}", parameters);
         System.out.println("CreateRelation via read - " + parameters);
+        System.out.println("Custom user info " +  sqlContext.getConf("spark.ssb.user"));
 
         // For knowing where plugin is running, will remove when in production
         String hostName = "unknown";
