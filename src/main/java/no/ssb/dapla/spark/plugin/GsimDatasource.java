@@ -2,6 +2,7 @@ package no.ssb.dapla.spark.plugin;
 
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
+import no.ssb.dapla.spark.router.SparkServiceRouter;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.sql.Dataset;
@@ -19,71 +20,45 @@ import scala.Option;
 import scala.collection.immutable.Map;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.UnknownHostException;
-import java.util.Collections;
-import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
     private static final String SHORT_NAME = "gsim";
+    private static final String BUCKET = "gs://ssb-data-staging";
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.debug("CreateRelation via read {}", parameters);
-        System.out.println("CreateRelation via read - " + parameters);
-        System.out.println("Custom user info " +  sqlContext.getConf("spark.ssb.user"));
+        System.out.println("Leser datasett fra: " + getNamespace(parameters));
+        String userId = sqlContext.getConf("spark.ssb.user");
 
-        // For knowing where plugin is running, will remove when in production
-        String hostName = "unknown";
-        String hostAddress = "unknown";
-        try {
-            InetAddress ip = InetAddress.getLocalHost();
-            hostName = ip.getHostName();
-            System.out.println(hostName);
-            hostAddress = ip.getHostAddress();
-            System.out.println(hostAddress);
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        }
-
-        // For testing call from spark on dataproc to service mesh
-        Option<String> uriToDaplaPluginServer = parameters.get("uri_to_dapla_plugin_server");
-        if (uriToDaplaPluginServer.isDefined()) {
-            String[] parts = uriToDaplaPluginServer.get().split(":");
-            if (parts.length < 2) {
-                throw new IllegalArgumentException("option 'uri_to_dapla_plugin_server' need to have a host:port, was " + uriToDaplaPluginServer.get());
-            }
-            String host = parts[0];
-            int port = Integer.parseInt(parts[1]);
-            String message = "Hello from dapla-spark-plugin! host:'" + hostName + "' ip: '" + hostAddress + "'";
-            new SparkPluginClient(host, port).sayHelloToServer(message);
-        }
-
-        List<URI> dataURIs = getUriFromPath(parameters);
-        return new GsimRelation(isolatedContext(sqlContext, parameters), dataURIs);
+        SparkServiceRouter.DataLocation location = SparkServiceRouter.getInstance(BUCKET).read(userId, getNamespace(parameters));
+        return new GsimRelation(isolatedContext(sqlContext, location), location.getPaths());
     }
 
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
         log.debug("CreateRelation via write {}", parameters);
-        System.out.println("CreateRelation via write - " + parameters);
+        System.out.println("Skriver datasett til: " + getNamespace(parameters));
 
-        List<URI> dataURIs = getUriFromPath(parameters);
-        URI newDataUri = dataURIs.get(0);
+        String userId = sqlContext.getConf("spark.ssb.user");
+        String dataId = BUCKET + "/datastore/" + UUID.randomUUID() + ".parquet";
 
+        SparkServiceRouter.DataLocation location = SparkServiceRouter.getInstance(BUCKET).write(mode, userId, getNamespace(parameters), dataId);
+        URI newDataUri = location.getPaths().get(0);
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
         try {
             log.debug("writing file(s) to: {}", newDataUri);
-            setUserContext(sqlContext.sparkSession(), "write", parameters);
-            sqlContext.sparkSession().conf().set("fs.gs.impl.disable.cache", "false");
+            setUserContext(sqlContext.sparkSession(), "write", location);
+            data.sparkSession().conf().set("fs.gs.impl.disable.cache", "false");
+            // TODO: Must write directly to the bucket
             data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-            return new GsimRelation(isolatedContext(sqlContext, parameters), dataURIs);
+            return new GsimRelation(isolatedContext(sqlContext, location), location.getPaths());
         } finally {
             datasetLock.unlock();
             sqlContext.sparkSession().conf().set("fs.gs.impl.disable.cache", "true");
@@ -94,56 +69,39 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
      * Creates a new SQLContext with an isolated spark session.
      *
      * @param sqlContext the original SQLContext (which will be the parent context)
-     * @param parameters parameter map with additional spark options
+     * @param location location info that will be added to the context
      * @return the new SQLContext
      */
-    private SQLContext isolatedContext(SQLContext sqlContext, Map<String, String> parameters) {
+    private SQLContext isolatedContext(SQLContext sqlContext, SparkServiceRouter.DataLocation location) {
         // Temporary enable file system cache during execution. This aviods re-creating the GoogleHadoopFileSystem
         // during multiple job executions within the spark session.
         // For this to work, we must create an isolated configuration inside a new spark session
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
         sparkSession.conf().set("fs.gs.impl.disable.cache", "false");
-        setUserContext(sparkSession, "read", parameters);
+        setUserContext(sparkSession, "read", location);
         return sparkSession.sqlContext();
     }
 
     // TODO: This should only be set when the user has access to the current operation and namespace
-    private void setUserContext(SparkSession sparkSession, String operation, Map<String, String> parameters) {
-        String namespace = getNamespace(parameters);
-        Text service = getService(parameters);
-        sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
+    private void setUserContext(SparkSession sparkSession, String operation, SparkServiceRouter.DataLocation location) {
+        Text service = new Text(location.getLocation());
+        sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, location.getNamespace());
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
         try {
             UserGroupInformation.getCurrentUser().addToken(service,
-                    BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(namespace)));
+                    BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(location.getNamespace())));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    // TODO: Replace by calling catalog service
     private String getNamespace(Map<String, String> parameters) {
-        return getUriFromPath(parameters).get(0).toString();
-    }
-
-    // TODO: Replace by calling catalog service
-    private Text getService(Map<String, String> parameters) {
-        URI path = getUriFromPath(parameters).get(0);
-        return new Text(path.getScheme() + "://" + path.getAuthority());
-    }
-
-    private List<URI> getUriFromPath(Map<String, String> parameters) {
         Option<String> path = parameters.get("PATH");
         if (path.isEmpty()) {
             throw new IllegalStateException("PATH missing from parameters" + parameters);
         }
-        try {
-            URI uri = new URI(path.get());
-            return Collections.singletonList(uri);
-        } catch (URISyntaxException e) {
-            throw new IllegalStateException(e);
-        }
+        return path.get();
     }
 
     @Override
