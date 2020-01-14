@@ -92,6 +92,13 @@
         </dependency>
 
         <dependency>
+            <groupId>no.ssb.dapla.catalog</groupId>
+            <artifactId>dapla-catalog-protobuf</artifactId>
+            <version>0.1</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
             <version>1.19.0</version>
@@ -206,6 +213,12 @@
             <version>3.11.1</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java-util</artifactId>
+            <version>3.11.1</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -319,6 +332,8 @@
                                     <include>com.google.http-client:*</include>
                                     <include>io.opencensus:*</include>
                                     <include>no.ssb.dapla.spark:*</include>
+                                    <include>dapla-catalog-protobuf:*</include>
+                                    <include>com.squareup.okhttp:*</include>
                                     <!-- Remove if google CredentialFactory is not used
                                     <include>com.google.cloud.bigdataoss:util</include>
                                     -->
