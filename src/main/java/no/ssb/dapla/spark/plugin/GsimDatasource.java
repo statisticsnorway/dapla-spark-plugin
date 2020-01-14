@@ -6,6 +6,7 @@ import no.ssb.dapla.spark.router.DataLocation;
 import no.ssb.dapla.spark.router.SparkServiceRouter;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
@@ -25,6 +26,8 @@ import java.net.URI;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
     private static final String SHORT_NAME = "gsim";
@@ -38,7 +41,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.debug("CreateRelation via read {}", parameters);
         System.out.println("Leser datasett fra: " + getNamespace(parameters));
-        String userId = sqlContext.getConf("spark.ssb.user");
+        String userId = getUserId(sqlContext.sparkContext());
 
         DataLocation location = sparkServiceRouter.read(userId, getNamespace(parameters));
         return new GsimRelation(isolatedContext(sqlContext, location), location.getPaths());
@@ -49,7 +52,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         log.debug("CreateRelation via write {}", parameters);
         System.out.println("Skriver datasett til: " + getNamespace(parameters));
 
-        String userId = sqlContext.getConf("spark.ssb.user");
+        String userId = getUserId(sqlContext.sparkContext());
         String dataId = BUCKET + "/datastore/" + UUID.randomUUID() + ".parquet";
 
         DataLocation location = sparkServiceRouter.write(mode, userId, getNamespace(parameters), dataId);
@@ -65,6 +68,20 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } finally {
             datasetLock.unlock();
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "true");
+        }
+    }
+
+    /**
+     * Until we have a proper way to intercept the spark interpreter in Zeppelin and add userId explicitly,
+     * we need to extract the userId from job group id (see org.apache.zeppelin.spark.NewSparkInterpreter#interpret)
+     */
+    String getUserId(SparkContext sparkContext) {
+        String jobDescr = sparkContext.getLocalProperty("spark.jobGroup.id");
+        Matcher matcher = Pattern.compile("zeppelin\\-((.*))\\-.{9}\\-.*").matcher(jobDescr);
+        if (matcher.matches()) {
+            return matcher.group(1);
+        } else {
+            return null;
         }
     }
 
