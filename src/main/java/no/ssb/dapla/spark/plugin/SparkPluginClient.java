@@ -2,8 +2,8 @@ package no.ssb.dapla.spark.plugin;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import no.ssb.dapla.spark.protobuf.HelloRequest;
-import no.ssb.dapla.spark.protobuf.HelloResponse;
+//import no.ssb.dapla.spark.protobuf.HelloRequest;
+//import no.ssb.dapla.spark.protobuf.HelloResponse;
 import no.ssb.dapla.spark.protobuf.SparkPluginServiceGrpc;
 
 public class SparkPluginClient {
@@ -19,9 +19,9 @@ public class SparkPluginClient {
     }
 
     void sayHelloToServer(String message) {
-        HelloResponse helloFromClient = pluginClient.sayHello(HelloRequest.newBuilder().setGreeting(message).build());
+//        HelloResponse helloFromClient = pluginClient.sayHello(HelloRequest.newBuilder().setGreeting(message).build());
 
-        System.out.println(helloFromClient.getReply());
+//        System.out.println(helloFromClient.getReply());
     }
 
 }
