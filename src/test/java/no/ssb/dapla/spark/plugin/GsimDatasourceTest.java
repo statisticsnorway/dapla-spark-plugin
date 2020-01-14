@@ -105,7 +105,6 @@ public class GsimDatasourceTest {
         SparkSession session = SparkSession.builder()
                 .appName(GsimDatasourceTest.class.getSimpleName())
                 .master("local")
-                .config("spark.ssb.user", "dapla-test")
                 .config("spark.ui.enabled", false)
                 .config("fs.gs.impl.disable.cache", true)
                 .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
@@ -113,6 +112,8 @@ public class GsimDatasourceTest {
                 .getOrCreate();
 
         this.sparkContext = session.sparkContext();
+        this.sparkContext.setLocalProperty("spark.jobGroup.id",
+                "zeppelin-dapla-test-2EYA9GVV2-20200114-173727_1534086404");
         this.sqlContext = session.sqlContext();
     }
 
@@ -133,6 +134,17 @@ public class GsimDatasourceTest {
         final GoogleCredentials credentials = GoogleCredentialsFactory.createCredentialsDetails(true,
                 "https://www.googleapis.com/auth/devstorage.full_control").getCredentials();
         return StorageOptions.newBuilder().setCredentials(credentials).build().getService();
+    }
+
+    @Test
+    public void testUserId() {
+        GsimDatasource gsimDatasource = new GsimDatasource();
+        this.sparkContext.setLocalProperty("spark.jobGroup.id",
+                "zeppelin-bjorn-andre.skaar@ssbmod.net-2EYA9GVV2-20200114-173727_1534086404");
+        assertThat(gsimDatasource.getUserId(this.sparkContext)).isEqualTo("bjorn-andre.skaar@ssbmod.net");
+        this.sparkContext.setLocalProperty("spark.jobGroup.id",
+                "zeppelin-rune.lind@ssbmod.net-2EWU778YE-20200113-130142_730486519");
+        assertThat(gsimDatasource.getUserId(this.sparkContext)).isEqualTo("rune.lind@ssbmod.net");
     }
 
     @Test

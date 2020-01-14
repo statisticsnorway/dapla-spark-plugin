@@ -1339,10 +1339,6 @@
           "value": "true",
           "type": "string"
         },
-        "spark.ssb.user": {
-          "value": "#{user}",
-          "type": "string"
-        },
         "spark.hadoop.fs.gs.delegation.token.binding": {
           "value": "no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding",
           "type": "string"
@@ -1433,7 +1429,7 @@
         "remote": true,
         "port": -1,
         "perNote": "shared",
-        "perUser": "isolated",
+        "perUser": "shared",
         "isExistingProcess": false,
         "setPermission": false,
         "owners": [],
