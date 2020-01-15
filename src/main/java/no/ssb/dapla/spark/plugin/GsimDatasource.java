@@ -2,6 +2,7 @@ package no.ssb.dapla.spark.plugin;
 
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
+import no.ssb.dapla.spark.plugin.pseudo.PseudoContext;
 import no.ssb.dapla.spark.router.DataLocation;
 import no.ssb.dapla.spark.router.SparkServiceRouter;
 import org.apache.hadoop.io.Text;
@@ -40,9 +41,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         System.out.println("Leser datasett fra: " + getNamespace(parameters));
         String bucket = getBucket(sqlContext.sparkContext());
         String userId = getUserId(sqlContext.sparkContext());
+        PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
         DataLocation location = SparkServiceRouter.getInstance(bucket).read(userId, getNamespace(parameters));
-        return new GsimRelation(isolatedContext(sqlContext, location), location.getPaths());
+        return new GsimRelation(isolatedContext(sqlContext, location), location.getPaths(), pseudoContext);
     }
 
     @Override
@@ -53,6 +55,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String userId = getUserId(sqlContext.sparkContext());
         String bucket = getBucket(sqlContext.sparkContext());
         String dataId = bucket + "/" + UUID.randomUUID() + ".parquet";
+        PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
         DataLocation location = SparkServiceRouter.getInstance(bucket).write(mode, userId, getNamespace(parameters), dataId);
         URI newDataUri = location.getPaths().get(0);
@@ -62,8 +65,9 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             log.debug("writing file(s) to: {}", newDataUri);
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "false");
             setUserContext(sqlContext.sparkSession(), "write", location);
+            data = pseudoContext.apply(data);
             data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-            return new GsimRelation(isolatedContext(sqlContext, location), location.getPaths());
+            return new GsimRelation(isolatedContext(sqlContext, location), location.getPaths(), pseudoContext);
         } finally {
             datasetLock.unlock();
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "true");
