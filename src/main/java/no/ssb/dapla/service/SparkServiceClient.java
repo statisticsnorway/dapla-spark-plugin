@@ -1,6 +1,5 @@
 package no.ssb.dapla.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import no.ssb.dapla.catalog.protobuf.Dataset;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
@@ -15,7 +14,6 @@ import java.util.Optional;
 
 public class SparkServiceClient {
 
-    static final ObjectMapper MAPPER = new ObjectMapper();
     static final String CONFIG = "spark.ssb.dapla.";
     static final String CONFIG_ROUTER_URL = CONFIG + "router.url";
     static final String CONFIG_ROUTER_OAUTH_TOKEN_URL = CONFIG + "oauth.tokenUrl";
@@ -58,15 +56,17 @@ public class SparkServiceClient {
                 .build();
         try {
             Response response = client.newCall(request).execute();
-            if (response.code() == HttpURLConnection.HTTP_NOT_FOUND) {
-
+            if (response.code() == HttpURLConnection.HTTP_UNAUTHORIZED || response.code() == HttpURLConnection.HTTP_FORBIDDEN) {
+                throw new RuntimeException(String.format("Din bruker %s har ikke tilgang til %s", userId, namespace));
+            } else if (response.code() == HttpURLConnection.HTTP_NOT_FOUND) {
+                throw new RuntimeException(String.format("Fant ingen datasett for %s", namespace));
+            } else if (response.code() >= 200 && response.code() < 400) {
+                String json = response.body().string();
+                return ProtobufJsonUtils.toPojo(json, Dataset.class);
+            } else {
+                throw new RuntimeException("En feil har oppstått: " + response.toString());
             }
-            System.out.println(response);
-            String json = response.body().string();
-            System.out.println(json);
-            return ProtobufJsonUtils.toPojo(json, Dataset.class);
         } catch (IOException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }

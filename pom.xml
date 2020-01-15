@@ -327,6 +327,10 @@
                             <shadedArtifactAttached>true</shadedArtifactAttached>
                             <artifactSet>
                                 <includes>
+                                    <include>com.squareup.okhttp3:*</include>
+                                    <include>com.squareup.okio:*</include>
+                                    <include>org.jetbrains.kotlin:kotlin-stdlib:*</include>
+                                    <include>org.jetbrains.kotlin:kotlin-stdlib-common:*</include>
                                     <include>org.apache.parquet:parquet-avro</include>
                                     <include>io.grpc:*</include>
                                     <include>com.google.guava:*</include>
@@ -337,7 +341,7 @@
                                     <include>com.google.http-client:*</include>
                                     <include>io.opencensus:*</include>
                                     <include>no.ssb.dapla.spark:*</include>
-                                    <include>dapla-catalog-protobuf:*</include>
+                                    <include>no.ssb.dapla.catalog:*</include>
                                     <include>com.squareup.okhttp:*</include>
                                     <!-- Remove if google CredentialFactory is not used
                                     <include>com.google.cloud.bigdataoss:util</include>

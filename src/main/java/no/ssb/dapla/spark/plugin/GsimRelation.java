@@ -6,25 +6,36 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.execution.FileRelation;
-import org.apache.spark.sql.sources.*;
-import org.apache.spark.sql.types.*;
+import org.apache.spark.sql.sources.BaseRelation;
+import org.apache.spark.sql.sources.EqualNullSafe;
+import org.apache.spark.sql.sources.EqualTo;
+import org.apache.spark.sql.sources.Filter;
+import org.apache.spark.sql.sources.GreaterThan;
+import org.apache.spark.sql.sources.GreaterThanOrEqual;
+import org.apache.spark.sql.sources.In;
+import org.apache.spark.sql.sources.IsNotNull;
+import org.apache.spark.sql.sources.IsNull;
+import org.apache.spark.sql.sources.LessThan;
+import org.apache.spark.sql.sources.LessThanOrEqual;
+import org.apache.spark.sql.sources.PrunedFilteredScan;
+import org.apache.spark.sql.sources.StringContains;
+import org.apache.spark.sql.sources.StringEndsWith;
+import org.apache.spark.sql.sources.StringStartsWith;
+import org.apache.spark.sql.sources.TableScan;
+import org.apache.spark.sql.types.StructType;
 
-import java.net.URI;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 public class GsimRelation extends BaseRelation implements PrunedFilteredScan, FileRelation, TableScan {
 
     private final SQLContext context;
-    private final Set<String> files;
+    private final String path;
     private StructType schema;
 
-    public GsimRelation(SQLContext context, List<URI> uris) {
+    public GsimRelation(SQLContext context, String path) {
         this.context = context;
-        this.files = uris.stream()
-                .map(URI::toASCIIString)
-                .collect(Collectors.toSet());
+        this.path = path;
     }
 
     /**
@@ -36,12 +47,12 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         GsimRelation that = (GsimRelation) o;
-        return files.equals(that.files);
+        return path.equals(that.path);
     }
 
     @Override
     public int hashCode() {
-        return files.hashCode();
+        return path.hashCode();
     }
 
     @Override
@@ -125,6 +136,6 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     @Override
     public String[] inputFiles() {
-        return files.toArray(new String[]{});
+        return new String[]{path};
     }
 }
