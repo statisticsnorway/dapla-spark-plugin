@@ -322,6 +322,18 @@
                                     <pattern>io.opencensus</pattern>
                                     <shadedPattern>no.ssb.dapla.spark.io.opencensus</shadedPattern>
                                 </relocation>
+                                <relocation>
+                                    <pattern>io.opencensus</pattern>
+                                    <shadedPattern>no.ssb.dapla.spark.io.opencensus</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>okhttp3</pattern>
+                                    <shadedPattern>no.ssb.dapla.spark.okhttp3</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>okio</pattern>
+                                    <shadedPattern>no.ssb.dapla.spark.okio</shadedPattern>
+                                </relocation>
                             </relocations>
                             <shadedClassifierName>shaded</shadedClassifierName>
                             <shadedArtifactAttached>true</shadedArtifactAttached>
@@ -342,7 +354,7 @@
                                     <include>io.opencensus:*</include>
                                     <include>no.ssb.dapla.spark:*</include>
                                     <include>no.ssb.dapla.catalog:*</include>
-                                    <include>com.squareup.okhttp:*</include>
+                                    <include>okhttp3:*</include>
                                     <!-- Remove if google CredentialFactory is not used
                                     <include>com.google.cloud.bigdataoss:util</include>
                                     -->
