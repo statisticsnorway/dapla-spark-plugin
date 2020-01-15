@@ -3,8 +3,7 @@ package no.ssb.dapla.spark.plugin;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.SparkServiceClient;
-import no.ssb.dapla.spark.router.DataLocation;
-import no.ssb.dapla.spark.router.SparkServiceRouter;
+import no.ssb.dapla.spark.plugin.pseudo.PseudoContext;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.SparkContext;
@@ -23,7 +22,6 @@ import scala.Option;
 import scala.collection.immutable.Map;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -47,7 +45,9 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         final String location = dataset.getLocations(0);
         System.out.println("Fant datasett: " + location);
-        return new GsimRelation(isolatedContext(sqlContext, namespace), location);
+        SQLContext isolatedSqlContext = isolatedContext(sqlContext, namespace);
+        PseudoContext pseudoContext = new PseudoContext(isolatedSqlContext, parameters);
+        return new GsimRelation(isolatedSqlContext, location, pseudoContext);
     }
 
     @Override
@@ -60,16 +60,23 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String bucket = getBucket(sqlContext.sparkContext());
         String dataId = bucket + "/" + UUID.randomUUID() + ".parquet";
 
-        DataLocation location = SparkServiceRouter.getInstance(bucket).write(mode, userId, namespace, dataId);
-        URI newDataUri = location.getPaths().get(0);
+        SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
+        no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.createDataset(userId, mode, namespace);
+        final String location = dataset.getLocations(0);
+        PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
+
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
         try {
-            log.debug("writing file(s) to: {}", newDataUri);
+            log.debug("writing file(s) to: {}", dataId);
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "false");
             setUserContext(sqlContext.sparkSession(), "write", namespace);
-            data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-            return new GsimRelation(isolatedContext(sqlContext, namespace), "todo");
+            data = pseudoContext.apply(data);
+            data.coalesce(1).write().parquet(dataId);
+
+            dataset.getLocationsList().add(dataId);
+            sparkServiceClient.writeDataset(dataset);
+            return new GsimRelation(isolatedContext(sqlContext, namespace), location, pseudoContext);
         } finally {
             datasetLock.unlock();
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "true");

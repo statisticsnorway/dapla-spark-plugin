@@ -3,6 +3,7 @@ package no.ssb.dapla.service;
 
 import no.ssb.dapla.catalog.protobuf.Dataset;
 import org.apache.spark.SparkConf;
+import org.apache.spark.sql.SaveMode;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -23,12 +24,13 @@ public class SparkServiceClientTest {
     }
 
     @Test
-    @Ignore
     public void test() {
         SparkServiceClient sparkServiceClient = new SparkServiceClient(this.sparkConf);
 
-        Dataset dataset = sparkServiceClient.getDataset("test-user", "ns");
+        Dataset dataset = sparkServiceClient.getDataset("rune.lind@ssbmod.net", "skatt.person.2019.rawdata");
+        System.out.println(dataset);
 
-        System.out.println(dataset.getId());
+        //Dataset dataset = sparkServiceClient.createDataset("rune.lind@ssbmod.net", SaveMode.ErrorIfExists, "skatt.person.2018.rawdata");
+        //System.out.println(dataset);
     }
 }

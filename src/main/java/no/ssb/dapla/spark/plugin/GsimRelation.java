@@ -1,40 +1,28 @@
 package no.ssb.dapla.spark.plugin;
 
+import no.ssb.dapla.spark.plugin.pseudo.PseudoContext;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.execution.FileRelation;
-import org.apache.spark.sql.sources.BaseRelation;
-import org.apache.spark.sql.sources.EqualNullSafe;
-import org.apache.spark.sql.sources.EqualTo;
-import org.apache.spark.sql.sources.Filter;
-import org.apache.spark.sql.sources.GreaterThan;
-import org.apache.spark.sql.sources.GreaterThanOrEqual;
-import org.apache.spark.sql.sources.In;
-import org.apache.spark.sql.sources.IsNotNull;
-import org.apache.spark.sql.sources.IsNull;
-import org.apache.spark.sql.sources.LessThan;
-import org.apache.spark.sql.sources.LessThanOrEqual;
-import org.apache.spark.sql.sources.PrunedFilteredScan;
-import org.apache.spark.sql.sources.StringContains;
-import org.apache.spark.sql.sources.StringEndsWith;
-import org.apache.spark.sql.sources.StringStartsWith;
-import org.apache.spark.sql.sources.TableScan;
-import org.apache.spark.sql.types.StructType;
+import org.apache.spark.sql.sources.*;
+import org.apache.spark.sql.types.*;
 
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Stream;
 
 public class GsimRelation extends BaseRelation implements PrunedFilteredScan, FileRelation, TableScan {
 
     private final SQLContext context;
     private final String path;
+    private final PseudoContext pseudoContext;
     private StructType schema;
 
-    public GsimRelation(SQLContext context, String path) {
+    public GsimRelation(SQLContext context, String path, PseudoContext pseudoContext) {
         this.context = context;
+        this.pseudoContext = pseudoContext;
         this.path = path;
     }
 
@@ -78,6 +66,10 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         if (filter.isPresent()) {
             dataset = dataset.filter(filter.get());
         }
+        if (pseudoContext != null) {
+            dataset = pseudoContext.restore(dataset);
+        }
+
         return dataset.rdd();
     }
 
