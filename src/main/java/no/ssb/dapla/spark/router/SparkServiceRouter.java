@@ -1,13 +1,7 @@
 package no.ssb.dapla.spark.router;
 
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
-import no.ssb.lds.gsim.okhttp.api.Client;
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.spark.SparkConf;
 import org.apache.spark.sql.SaveMode;
 
 import java.net.URI;
@@ -16,7 +10,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -27,15 +20,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SparkServiceRouter {
 
     private final String bucket;
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final String CONFIG = "spark.ssb.dapla.";
-    private static final String CONFIG_ROUTER_URL = CONFIG + "router.url";
-    private static final String CONFIG_ROUTER_OAUTH_TOKEN_URL = CONFIG + "oauth.tokenUrl";
-    private static final String CONFIG_ROUTER_OAUTH_GRANT_TYPE = CONFIG + "oauth.grantType";
-    private static final String CONFIG_ROUTER_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
-    private static final String CONFIG_ROUTER_OAUTH_CLIENT_SECRET = CONFIG + "oauth.clientSecret";
-    private static final String CONFIG_ROUTER_OAUTH_USER_NAME = CONFIG + "oauth.userName";
-    private static final String CONFIG_ROUTER_OAUTH_PASSWORD = CONFIG + "oauth.password";
 
     // Mock access rules from userId and namespace
     private Map<String, Set<String>> authMock = new ConcurrentHashMap<>();
@@ -99,32 +83,6 @@ public class SparkServiceRouter {
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private Client createSparkServiceClient(final SparkConf conf) {
-        OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
-        return new Client()
-                .withClient(builder.build())
-                .withMapper(MAPPER)
-                .withPrefix(HttpUrl.parse(conf.get(CONFIG_ROUTER_URL)));
-    }
-
-    private Optional<OAuth2Interceptor> createOAuth2Interceptor(final SparkConf conf) {
-        if (conf.contains(CONFIG_ROUTER_OAUTH_TOKEN_URL)) {
-            OAuth2Interceptor interceptor = new OAuth2Interceptor(
-                    conf.get(CONFIG_ROUTER_OAUTH_TOKEN_URL, null),
-                    OAuth2Interceptor.GrantType.valueOf(
-                            conf.get(CONFIG_ROUTER_OAUTH_GRANT_TYPE).toUpperCase()
-                    ),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_ID, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_USER_NAME, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_PASSWORD, null)
-            );
-            return Optional.of(interceptor);
-        }
-        return Optional.empty();
     }
 
 }
