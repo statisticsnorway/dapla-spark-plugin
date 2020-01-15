@@ -81,7 +81,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         if (matcher.matches()) {
             return matcher.group(1);
         } else {
-            return null;
+            // Fallback when running locally
+            return sparkContext.getConf().get("spark.ssb.user");
         }
     }
 

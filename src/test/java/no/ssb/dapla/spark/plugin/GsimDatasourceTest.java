@@ -9,14 +9,8 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import io.grpc.Status;
-import io.grpc.StatusException;
-import io.grpc.stub.StreamObserver;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
-import no.ssb.dapla.spark.protobuf.HelloRequest;
-import no.ssb.dapla.spark.protobuf.HelloResponse;
-import no.ssb.dapla.spark.protobuf.SparkPluginServiceGrpc;
 import no.ssb.dapla.spark.router.SparkServiceRouter;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
@@ -228,7 +222,8 @@ public class GsimDatasourceTest {
         private ArrayList<String> responses = new ArrayList<>();
 
         public SparkPluginTestServer(int port) {
-            server = ServerBuilder.forPort(port).addService(new SparkPluginService())
+            server = ServerBuilder.forPort(port)
+                    //.addService(new SparkPluginService())
                     .build();
         }
 
@@ -276,21 +271,5 @@ public class GsimDatasourceTest {
             }
         }
 
-        private class SparkPluginService extends SparkPluginServiceGrpc.SparkPluginServiceImplBase {
-
-            @Override
-            public void sayHello(HelloRequest request, StreamObserver<HelloResponse> responseObserver) {
-                String greeting = request.getGreeting();
-                System.out.println(greeting);
-                responses.add(greeting);
-                try {
-                    responseObserver.onNext(HelloResponse.newBuilder().setReply("hello from server").build());
-                    responseObserver.onCompleted();
-
-                } catch (Exception ex) {
-                    responseObserver.onError(new StatusException(Status.fromThrowable(ex)));
-                }
-            }
-        }
     }
 }
