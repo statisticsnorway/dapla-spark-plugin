@@ -41,10 +41,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         System.out.println("Leser datasett fra: " + getNamespace(parameters));
         String bucket = getBucket(sqlContext.sparkContext());
         String userId = getUserId(sqlContext.sparkContext());
-        PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
-
         DataLocation location = SparkServiceRouter.getInstance(bucket).read(userId, getNamespace(parameters));
-        return new GsimRelation(isolatedContext(sqlContext, location), location.getPaths(), pseudoContext);
+        SQLContext isolatedSqlContext = isolatedContext(sqlContext, location);
+        PseudoContext pseudoContext = new PseudoContext(isolatedSqlContext, parameters);
+
+        return new GsimRelation(isolatedSqlContext, location.getPaths(), pseudoContext);
     }
 
     @Override
@@ -55,9 +56,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String userId = getUserId(sqlContext.sparkContext());
         String bucket = getBucket(sqlContext.sparkContext());
         String dataId = bucket + "/" + UUID.randomUUID() + ".parquet";
-        PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
         DataLocation location = SparkServiceRouter.getInstance(bucket).write(mode, userId, getNamespace(parameters), dataId);
+        PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
+
         URI newDataUri = location.getPaths().get(0);
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
