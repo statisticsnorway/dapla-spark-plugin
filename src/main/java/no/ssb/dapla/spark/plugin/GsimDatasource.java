@@ -32,7 +32,6 @@ import java.util.regex.Pattern;
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
     private static final String SHORT_NAME = "gsim";
     // TODO: Configure via spark config
-    //private static final String BUCKET = "gs://ssb-data-staging";
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Override
@@ -53,7 +52,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         String userId = getUserId(sqlContext.sparkContext());
         String bucket = getBucket(sqlContext.sparkContext());
-        String dataId = bucket + UUID.randomUUID() + ".parquet";
+        String dataId = bucket + "/" + UUID.randomUUID() + ".parquet";
 
         DataLocation location = SparkServiceRouter.getInstance(bucket).write(mode, userId, getNamespace(parameters), dataId);
         URI newDataUri = location.getPaths().get(0);
