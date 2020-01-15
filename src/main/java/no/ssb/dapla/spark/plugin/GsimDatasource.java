@@ -32,18 +32,17 @@ import java.util.regex.Pattern;
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
     private static final String SHORT_NAME = "gsim";
     // TODO: Configure via spark config
-    private static final String BUCKET = "gs://ssb-data-staging";
-    // TODO: Replace with service
-    private static final SparkServiceRouter sparkServiceRouter = SparkServiceRouter.getInstance(BUCKET);
+    //private static final String BUCKET = "gs://ssb-data-staging";
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.debug("CreateRelation via read {}", parameters);
         System.out.println("Leser datasett fra: " + getNamespace(parameters));
+        String bucket = getBucket(sqlContext.sparkContext());
         String userId = getUserId(sqlContext.sparkContext());
 
-        DataLocation location = sparkServiceRouter.read(userId, getNamespace(parameters));
+        DataLocation location = SparkServiceRouter.getInstance(bucket).read(userId, getNamespace(parameters));
         return new GsimRelation(isolatedContext(sqlContext, location), location.getPaths());
     }
 
@@ -53,9 +52,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         System.out.println("Skriver datasett til: " + getNamespace(parameters));
 
         String userId = getUserId(sqlContext.sparkContext());
-        String dataId = BUCKET + "/datastore/" + UUID.randomUUID() + ".parquet";
+        String bucket = getBucket(sqlContext.sparkContext());
+        String dataId = bucket + UUID.randomUUID() + ".parquet";
 
-        DataLocation location = sparkServiceRouter.write(mode, userId, getNamespace(parameters), dataId);
+        DataLocation location = SparkServiceRouter.getInstance(bucket).write(mode, userId, getNamespace(parameters), dataId);
         URI newDataUri = location.getPaths().get(0);
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
@@ -115,6 +115,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private String getBucket(SparkContext sparkContext) {
+        return sparkContext.getConf().get("spark.ssb.dapla.gcs.storage");
     }
 
     private String getNamespace(Map<String, String> parameters) {

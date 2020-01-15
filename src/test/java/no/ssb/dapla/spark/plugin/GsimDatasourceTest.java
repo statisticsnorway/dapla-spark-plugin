@@ -101,6 +101,7 @@ public class GsimDatasourceTest {
                 .master("local")
                 .config("spark.ui.enabled", false)
                 .config("fs.gs.impl.disable.cache", true)
+                .config("spark.ssb.dapla.gcs.storage", "gs://" + bucket)
                 .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
                 //.config("spark.hadoop.fs.gs.auth.access.token.provider.impl", BrokerAccessTokenProvider.class.getCanonicalName())
                 .getOrCreate();
