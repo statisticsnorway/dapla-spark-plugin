@@ -47,8 +47,13 @@ public class SparkServiceRouter {
         this.bucket = bucket;
     }
 
+    private static SparkServiceRouter instance;
+
     public static SparkServiceRouter getInstance(String bucket) {
-        return new SparkServiceRouter(bucket);
+        if (instance == null) {
+            instance = new SparkServiceRouter(bucket);
+        }
+        return instance;
     }
 
     public DataLocation read(String userId, String namespace) {
