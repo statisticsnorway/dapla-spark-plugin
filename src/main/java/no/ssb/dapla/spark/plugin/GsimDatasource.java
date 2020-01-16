@@ -66,7 +66,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.createDataset(userId, mode, namespace,
                 valuation, state);
         final String dataId = bucket + "/" + namespace + "/" + dataset.getId().getId();
-        final String location = dataset.getLocations(0);
         PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
         Lock datasetLock = new ReentrantLock();
@@ -89,7 +88,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             }
             datasetBuilder.addLocations(dataId).build();
             sparkServiceClient.writeDataset(datasetBuilder.build());
-            return new GsimRelation(isolatedContext(sqlContext, namespace), location, pseudoContext);
+            return new GsimRelation(isolatedContext(sqlContext, namespace), dataId, pseudoContext);
         } finally {
             datasetLock.unlock();
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "true");
