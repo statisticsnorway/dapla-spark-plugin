@@ -2,11 +2,13 @@ package no.ssb.dapla.service;
 
 
 import no.ssb.dapla.catalog.protobuf.Dataset;
+import no.ssb.dapla.catalog.protobuf.DatasetId;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.SaveMode;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import scala.Tuple2;
 
 import static no.ssb.dapla.service.SparkServiceClient.*;
 
@@ -24,13 +26,41 @@ public class SparkServiceClientTest {
     }
 
     @Test
-    public void test() {
+    @Ignore
+    public void testRead() {
         SparkServiceClient sparkServiceClient = new SparkServiceClient(this.sparkConf);
 
-        Dataset dataset = sparkServiceClient.getDataset("rune.lind@ssbmod.net", "skatt.person.2019.rawdata");
+        Dataset dataset = sparkServiceClient.getDataset("rune.lind@ssbmod.net", "skatt.person.2019.inndata.mytestdataset");
         System.out.println(dataset);
+    }
 
-        //Dataset dataset = sparkServiceClient.createDataset("rune.lind@ssbmod.net", SaveMode.ErrorIfExists, "skatt.person.2018.rawdata");
-        //System.out.println(dataset);
+    @Test
+    @Ignore
+    public void testWrite() {
+        SparkServiceClient sparkServiceClient = new SparkServiceClient(this.sparkConf);
+
+        for (Tuple2<String, String> tuple : this.sparkConf.getAll()) {
+            //System.out.println(tuple._1);
+            //System.out.println(tuple._2);
+        }
+        final Dataset.Valuation valuation = Dataset.Valuation.SHIELDED;
+        String state = "INPUT";
+
+        final String namespace = "skatt.person.2019.inndata.mytestdataset";
+
+        Dataset dataset = sparkServiceClient.createDataset("rune.lind@ssbmod.net",
+                SaveMode.Overwrite, namespace, valuation.name(), state);
+        final String dataId = "gs://dev-datalager-store/" + namespace + "/" + dataset.getId().getId();
+
+        dataset = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
+                .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
+                .setValuation(valuation)
+                .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state))
+                .clearLocations()
+                .addLocations(dataId).build();
+
+        sparkServiceClient.writeDataset(dataset);
+
+        System.out.println(dataset);
     }
 }

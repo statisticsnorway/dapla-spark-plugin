@@ -1,5 +1,6 @@
 package no.ssb.dapla.spark.plugin;
 
+import no.ssb.dapla.catalog.protobuf.DatasetId;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.SparkServiceClient;
@@ -78,12 +79,16 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // Write to GCS before updating catalog
             data.coalesce(1).write().parquet(dataId);
 
-            if (mode == SaveMode.Append) {
-                dataset = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset).addLocations(dataId).build();
-            } else {
-                dataset = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset).clearLocations().addLocations(dataId).build();
+            no.ssb.dapla.catalog.protobuf.Dataset.Builder datasetBuilder = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
+                    .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
+                    .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf(valuation))
+                    .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state))
+                    .addLocations(dataId);
+            if (mode == SaveMode.Overwrite) {
+                datasetBuilder.clearLocations();
             }
-            sparkServiceClient.writeDataset(dataset);
+            datasetBuilder.addLocations(dataId).build();
+            sparkServiceClient.writeDataset(datasetBuilder.build());
             return new GsimRelation(isolatedContext(sqlContext, namespace), location, pseudoContext);
         } finally {
             datasetLock.unlock();

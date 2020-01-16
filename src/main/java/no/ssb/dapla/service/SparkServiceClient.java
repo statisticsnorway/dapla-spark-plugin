@@ -91,9 +91,11 @@ public class SparkServiceClient {
             default:
                 operation = "CREATE"; // TODO: Check if this is correct for Overwrite
         }
+        final String url = String.format(this.baseURL + "dataset-meta?name=%s&operation=%s&valuation=%s&state=%s&userId=%s",
+                namespace, operation, valuation, state, userId);
+        System.out.println("URL: " + url);
         Request request = new Request.Builder()
-                .url(String.format(this.baseURL + "dataset-meta?name=%s&operation=%s&valuation=%s&state=%s&userId=%s",
-                        namespace, operation, valuation, state, userId))
+                .url(url)
                 .build();
         try {
             Response response = client.newCall(request).execute();
