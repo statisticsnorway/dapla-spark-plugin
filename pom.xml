@@ -354,7 +354,6 @@
                                     <include>io.opencensus:*</include>
                                     <include>no.ssb.dapla.spark:*</include>
                                     <include>no.ssb.dapla.catalog:*</include>
-                                    <include>no.ssb.dapla.dlp.pseudo.func:*</include>
                                     <include>okhttp3:*</include>
                                     <!-- Remove if google CredentialFactory is not used
                                     <include>com.google.cloud.bigdataoss:util</include>

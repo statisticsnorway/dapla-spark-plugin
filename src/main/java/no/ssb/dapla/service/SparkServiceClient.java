@@ -82,18 +82,18 @@ public class SparkServiceClient {
         }
     }
 
-    public Dataset createDataset(String userId, SaveMode mode, String namespace) {
+    public Dataset createDataset(String userId, SaveMode mode, String namespace, String valuation, String state) {
         String operation;
         switch (mode) {
-            case Overwrite:
             case Append:
                 operation = "UPDATE";
                 break;
             default:
-                operation = "CREATE";
+                operation = "CREATE"; // TODO: Check if this is correct for Overwrite
         }
         Request request = new Request.Builder()
-                .url(String.format(this.baseURL + "dataset-meta?name=%s&operation=%s&userId=%s", namespace, operation, userId))
+                .url(String.format(this.baseURL + "dataset-meta?name=%s&operation=%s&valuation=%s&state=%s&userId=%s",
+                        namespace, operation, valuation, state, userId))
                 .build();
         try {
             Response response = client.newCall(request).execute();
@@ -105,15 +105,14 @@ public class SparkServiceClient {
         }
     }
 
-    public Dataset writeDataset(Dataset dataset) {
+    public void writeDataset(Dataset dataset) {
         Request request = new Request.Builder()
                 .url(this.baseURL + "dataset-meta")
-                .post(RequestBody.create(ProtobufJsonUtils.toString(dataset), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .put(RequestBody.create(ProtobufJsonUtils.toString(dataset), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
                 .build();
         try {
             Response response = client.newCall(request).execute();
-            String json = response.body().string();
-            return ProtobufJsonUtils.toPojo(json, Dataset.class);
+            handleErrorCodes("userId", "namespace", response);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

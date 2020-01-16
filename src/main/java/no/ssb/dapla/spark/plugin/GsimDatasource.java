@@ -58,10 +58,13 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         String userId = getUserId(sqlContext.sparkContext());
         String bucket = getBucket(sqlContext.sparkContext());
-        String dataId = bucket + "/" + UUID.randomUUID() + ".parquet";
+        String valuation = parameters.get("valuation").get();
+        String state = parameters.get("state").get();
 
         SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
-        no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.createDataset(userId, mode, namespace);
+        no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.createDataset(userId, mode, namespace,
+                valuation, state);
+        final String dataId = bucket + "/" + namespace + "/" + dataset.getId().getId();
         final String location = dataset.getLocations(0);
         PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
@@ -72,9 +75,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "false");
             setUserContext(sqlContext.sparkSession(), "write", namespace);
             data = pseudoContext.apply(data);
+            // Write to GCS before updating catalog
             data.coalesce(1).write().parquet(dataId);
 
-            dataset.getLocationsList().add(dataId);
+            if (mode == SaveMode.Append) {
+                dataset = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset).addLocations(dataId).build();
+            } else {
+                dataset = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset).clearLocations().addLocations(dataId).build();
+            }
             sparkServiceClient.writeDataset(dataset);
             return new GsimRelation(isolatedContext(sqlContext, namespace), location, pseudoContext);
         } finally {
