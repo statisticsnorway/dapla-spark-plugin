@@ -11,7 +11,6 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
-import no.ssb.dapla.spark.router.SparkServiceRouter;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -120,9 +119,9 @@ public class GsimDatasourceTest {
     }
 
     private static void setUserPermissionForTest(String userId, String namespace) {
-        final String location = "gs://" + blobId.getBucket() + "/" + blobId.getName();
+        //final String location = "gs://" + blobId.getBucket() + "/" + blobId.getName();
         // Write a mock mapping from namespace to location, and set user permission
-        SparkServiceRouter.getInstance("gs://" + blobId.getBucket()).write(SaveMode.Overwrite, userId, namespace, location);
+        //SparkServiceRouter.getInstance("gs://" + blobId.getBucket()).write(SaveMode.Overwrite, userId, namespace, location);
     }
 
     private static Storage getStorage() {

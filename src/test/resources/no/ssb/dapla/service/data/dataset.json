@@ -1,0 +1,9 @@
+{
+  "id": {
+    "id": "c4ff97a0-7ff9-47cd-b949-831b7ea1c210",
+    "name": ["skatt.person.mytestdataset"]
+  },
+  "valuation": "SHIELDED",
+  "state": "INPUT",
+  "locations": ["gs://bucket/skatt.person.mytestdataset/c4ff97a0-7ff9-47cd-b949-831b7ea1c210"]
+}

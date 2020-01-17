@@ -2,65 +2,43 @@ package no.ssb.dapla.service;
 
 
 import no.ssb.dapla.catalog.protobuf.Dataset;
-import no.ssb.dapla.catalog.protobuf.DatasetId;
+import okhttp3.HttpUrl;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okio.Buffer;
 import org.apache.spark.SparkConf;
-import org.apache.spark.sql.SaveMode;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
-import scala.Tuple2;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 import static no.ssb.dapla.service.SparkServiceClient.*;
+import static org.assertj.core.api.Assertions.*;
 
 public class SparkServiceClientTest {
 
     private SparkConf sparkConf = new SparkConf();
+    private MockWebServer server;
 
     @Before
-    public void setUp() {
-        this.sparkConf.set(CONFIG_ROUTER_URL, "https://dapla-spark.staging-bip-app.ssb.no/");
-        this.sparkConf.set(CONFIG_ROUTER_OAUTH_TOKEN_URL, "https://keycloak.staging-bip-app.ssb.no/auth/realms/ssb/protocol/openid-connect/token");
-        this.sparkConf.set(CONFIG_ROUTER_OAUTH_GRANT_TYPE, "client_credential");
-        this.sparkConf.set(CONFIG_ROUTER_OAUTH_CLIENT_ID, System.getenv(CONFIG_ROUTER_OAUTH_CLIENT_ID));
-        this.sparkConf.set(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, System.getenv(CONFIG_ROUTER_OAUTH_CLIENT_SECRET));
+    public void setUp() throws IOException {
+        this.server = new MockWebServer();
+        this.server.start();
+        HttpUrl baseUrl = server.url("/spark-service/");
+        this.sparkConf.set(CONFIG_ROUTER_URL, baseUrl.toString());
     }
 
     @Test
-    @Ignore
-    public void testRead() {
+    public void testRead() throws IOException {
+        InputStream in = this.getClass().getResourceAsStream("data/dataset.json");
+        System.out.println(in);
+        String mockResult = new Buffer().readFrom(in).readByteString().utf8();
+        server.enqueue(new MockResponse().setBody(mockResult).setResponseCode(200));
         SparkServiceClient sparkServiceClient = new SparkServiceClient(this.sparkConf);
 
-        Dataset dataset = sparkServiceClient.getDataset("rune.lind@ssbmod.net", "skatt.person.2019.inndata.mytestdataset");
-        System.out.println(dataset);
+        Dataset dataset = sparkServiceClient.getDataset("rune.lind@ssbmod.net", "skatt.person.mytestdataset");
+        assertThat(dataset.getId().getName(0)).isEqualTo("skatt.person.mytestdataset");
     }
 
-    @Test
-    @Ignore
-    public void testWrite() {
-        SparkServiceClient sparkServiceClient = new SparkServiceClient(this.sparkConf);
-
-        for (Tuple2<String, String> tuple : this.sparkConf.getAll()) {
-            //System.out.println(tuple._1);
-            //System.out.println(tuple._2);
-        }
-        final Dataset.Valuation valuation = Dataset.Valuation.SHIELDED;
-        String state = "INPUT";
-
-        final String namespace = "skatt.person.2019.inndata.mytestdataset";
-
-        Dataset dataset = sparkServiceClient.createDataset("rune.lind@ssbmod.net",
-                SaveMode.Overwrite, namespace, valuation.name(), state);
-        final String dataId = "gs://dev-datalager-store/" + namespace + "/" + dataset.getId().getId();
-
-        dataset = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
-                .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
-                .setValuation(valuation)
-                .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state))
-                .clearLocations()
-                .addLocations(dataId).build();
-
-        sparkServiceClient.writeDataset(dataset);
-
-        System.out.println(dataset);
-    }
 }
