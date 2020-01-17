@@ -33,7 +33,6 @@ public class SparkServiceClientTest {
     @Test
     public void testRead() throws IOException, InterruptedException {
         InputStream in = this.getClass().getResourceAsStream("data/dataset.json");
-        System.out.println(in);
         String mockResult = new Buffer().readFrom(in).readByteString().utf8();
         server.enqueue(new MockResponse().setBody(mockResult).setResponseCode(200));
         SparkServiceClient sparkServiceClient = new SparkServiceClient(this.sparkConf);

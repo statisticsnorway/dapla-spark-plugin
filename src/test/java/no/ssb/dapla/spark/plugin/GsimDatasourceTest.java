@@ -9,8 +9,13 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import no.ssb.dapla.catalog.protobuf.DatasetId;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
+import no.ssb.dapla.utils.ProtobufJsonUtils;
+import okhttp3.HttpUrl;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -48,6 +53,7 @@ public class GsimDatasourceTest {
     private static String bucket;
     private static String testFolder;
     private static BlobId blobId;
+    private MockWebServer server;
 
     @BeforeClass
     public static void setupBucketFolder() throws Exception {
@@ -66,7 +72,6 @@ public class GsimDatasourceTest {
         Files.copy(parquetContent, parquetFile);
         System.out.println("File created: " + parquetFile.toString());
         blobId = createBucketTestFile(Files.readAllBytes(parquetFile));
-        setUserPermissionForTest("dapla-test", "dapla.namespace");
     }
 
     @AfterClass
@@ -90,9 +95,13 @@ public class GsimDatasourceTest {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws IOException {
         // Mock user read by org.apache.hadoop.security.UserGroupInformation
         System.setProperty("HADOOP_USER_NAME", "dapla-test");
+
+        this.server = new MockWebServer();
+        this.server.start();
+        HttpUrl baseUrl = server.url("/spark-service/");
 
         // Read the unit dataset json example.
         SparkSession session = SparkSession.builder()
@@ -101,6 +110,7 @@ public class GsimDatasourceTest {
                 .config("spark.ui.enabled", false)
                 .config("fs.gs.impl.disable.cache", true)
                 .config("spark.ssb.dapla.gcs.storage", "gs://" + bucket)
+                .config("spark.ssb.dapla.router.url", baseUrl.toString())
                 .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
                 //.config("spark.hadoop.fs.gs.auth.access.token.provider.impl", BrokerAccessTokenProvider.class.getCanonicalName())
                 .getOrCreate();
@@ -116,12 +126,6 @@ public class GsimDatasourceTest {
         getStorage().create(BlobInfo.newBuilder(blobId).build(), bytes, Storage.BlobTargetOption.doesNotExist());
         System.out.println("Blob created: " + blobId.toString());
         return blobId;
-    }
-
-    private static void setUserPermissionForTest(String userId, String namespace) {
-        //final String location = "gs://" + blobId.getBucket() + "/" + blobId.getName();
-        // Write a mock mapping from namespace to location, and set user permission
-        //SparkServiceRouter.getInstance("gs://" + blobId.getBucket()).write(SaveMode.Overwrite, userId, namespace, location);
     }
 
     private static Storage getStorage() {
@@ -164,6 +168,15 @@ public class GsimDatasourceTest {
 
     @Test
     public void testReadFromBucket() {
+        final String location = "gs://" + blobId.getBucket() + "/" + blobId.getName();
+
+        no.ssb.dapla.catalog.protobuf.Dataset.Builder datasetBuilder = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder()
+                .setId(DatasetId.newBuilder().setId("mockId").addName("dapla.namespace").build())
+                .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf("SENSITIVE"))
+                .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf("INPUT"))
+                .addLocations(location);
+
+        server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetBuilder.build())).setResponseCode(200));
         Dataset<Row> dataset = sqlContext.read()
                 .format("gsim")
                 .load("dapla.namespace");
