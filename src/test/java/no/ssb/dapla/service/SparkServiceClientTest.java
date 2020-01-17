@@ -5,6 +5,7 @@ import no.ssb.dapla.catalog.protobuf.Dataset;
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import okio.Buffer;
 import org.apache.spark.SparkConf;
 import org.junit.Before;
@@ -30,7 +31,7 @@ public class SparkServiceClientTest {
     }
 
     @Test
-    public void testRead() throws IOException {
+    public void testRead() throws IOException, InterruptedException {
         InputStream in = this.getClass().getResourceAsStream("data/dataset.json");
         System.out.println(in);
         String mockResult = new Buffer().readFrom(in).readByteString().utf8();
@@ -39,6 +40,9 @@ public class SparkServiceClientTest {
 
         Dataset dataset = sparkServiceClient.getDataset("rune.lind@ssbmod.net", "skatt.person.mytestdataset");
         assertThat(dataset.getId().getName(0)).isEqualTo("skatt.person.mytestdataset");
-    }
 
+        RecordedRequest recordedRequest = server.takeRequest();
+        HttpUrl requestUrl = recordedRequest.getRequestUrl();
+        assertThat(requestUrl.query()).isEqualTo("name=skatt.person.mytestdataset&operation=READ&userId=rune.lind@ssbmod.net");
+    }
 }
