@@ -99,30 +99,23 @@
         </dependency>
 
         <dependency>
+            <groupId>no.ssb.dapla.catalog</groupId>
+            <artifactId>dapla-catalog-protobuf</artifactId>
+            <version>0.1</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
             <version>1.19.0</version>
         </dependency>
 
         <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-stub</artifactId>
-            <version>1.19.0</version>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>4.2.0</version>
         </dependency>
-
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-okhttp</artifactId>
-            <version>1.19.0</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>no.ssb.lds</groupId>
-            <artifactId>lds-gsim-okhttp</artifactId>
-            <version>0.1.0-SNAPSHOT</version>
-        </dependency>
-
 
         <dependency>
             <groupId>org.apache.parquet</groupId>
@@ -206,6 +199,12 @@
             <version>1.19.0</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <version>4.2.0</version>
+            <scope>test</scope>
+        </dependency>
 
         <dependency>
             <groupId>junit</groupId>
@@ -219,6 +218,17 @@
             <artifactId>assertj-core</artifactId>
             <version>3.11.1</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.11.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java-util</artifactId>
+            <version>3.11.1</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 
@@ -318,11 +328,27 @@
                                     <pattern>io.opencensus</pattern>
                                     <shadedPattern>no.ssb.dapla.spark.io.opencensus</shadedPattern>
                                 </relocation>
+                                <relocation>
+                                    <pattern>io.opencensus</pattern>
+                                    <shadedPattern>no.ssb.dapla.spark.io.opencensus</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>okhttp3</pattern>
+                                    <shadedPattern>no.ssb.dapla.spark.okhttp3</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>okio</pattern>
+                                    <shadedPattern>no.ssb.dapla.spark.okio</shadedPattern>
+                                </relocation>
                             </relocations>
                             <shadedClassifierName>shaded</shadedClassifierName>
                             <shadedArtifactAttached>true</shadedArtifactAttached>
                             <artifactSet>
                                 <includes>
+                                    <include>com.squareup.okhttp3:*</include>
+                                    <include>com.squareup.okio:*</include>
+                                    <include>org.jetbrains.kotlin:kotlin-stdlib:*</include>
+                                    <include>org.jetbrains.kotlin:kotlin-stdlib-common:*</include>
                                     <include>org.apache.parquet:parquet-avro</include>
                                     <include>io.grpc:*</include>
                                     <include>com.google.guava:*</include>
@@ -333,6 +359,8 @@
                                     <include>com.google.http-client:*</include>
                                     <include>io.opencensus:*</include>
                                     <include>no.ssb.dapla.spark:*</include>
+                                    <include>no.ssb.dapla.catalog:*</include>
+                                    <include>okhttp3:*</include>
                                     <!-- Remove if google CredentialFactory is not used
                                     <include>com.google.cloud.bigdataoss:util</include>
                                     -->

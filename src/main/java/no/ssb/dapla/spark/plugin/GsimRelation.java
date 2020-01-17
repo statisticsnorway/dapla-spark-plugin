@@ -10,24 +10,20 @@ import org.apache.spark.sql.execution.FileRelation;
 import org.apache.spark.sql.sources.*;
 import org.apache.spark.sql.types.*;
 
-import java.net.URI;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class GsimRelation extends BaseRelation implements PrunedFilteredScan, FileRelation, TableScan {
 
     private final SQLContext context;
-    private final Set<String> files;
+    private final String path;
     private final PseudoContext pseudoContext;
     private StructType schema;
 
-    public GsimRelation(SQLContext context, List<URI> uris, PseudoContext pseudoContext) {
+    public GsimRelation(SQLContext context, String path, PseudoContext pseudoContext) {
         this.context = context;
         this.pseudoContext = pseudoContext;
-        this.files = uris.stream()
-                .map(URI::toASCIIString)
-                .collect(Collectors.toSet());
+        this.path = path;
     }
 
     /**
@@ -39,12 +35,12 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         GsimRelation that = (GsimRelation) o;
-        return files.equals(that.files);
+        return path.equals(that.path);
     }
 
     @Override
     public int hashCode() {
-        return files.hashCode();
+        return path.hashCode();
     }
 
     @Override
@@ -132,6 +128,6 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     @Override
     public String[] inputFiles() {
-        return files.toArray(new String[]{});
+        return new String[]{path};
     }
 }

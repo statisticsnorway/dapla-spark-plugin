@@ -1,10 +1,10 @@
 package no.ssb.dapla.spark.plugin;
 
+import no.ssb.dapla.catalog.protobuf.DatasetId;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
+import no.ssb.dapla.service.SparkServiceClient;
 import no.ssb.dapla.spark.plugin.pseudo.PseudoContext;
-import no.ssb.dapla.spark.router.DataLocation;
-import no.ssb.dapla.spark.router.SparkServiceRouter;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.SparkContext;
@@ -23,7 +23,6 @@ import scala.Option;
 import scala.collection.immutable.Map;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -38,38 +37,58 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.debug("CreateRelation via read {}", parameters);
-        System.out.println("Leser datasett fra: " + getNamespace(parameters));
-        String bucket = getBucket(sqlContext.sparkContext());
+        final String namespace = getNamespace(parameters);
+        System.out.println("Leser datasett fra: " + namespace);
         String userId = getUserId(sqlContext.sparkContext());
-        DataLocation location = SparkServiceRouter.getInstance(bucket).read(userId, getNamespace(parameters));
-        SQLContext isolatedSqlContext = isolatedContext(sqlContext, location);
-        PseudoContext pseudoContext = new PseudoContext(isolatedSqlContext, parameters);
 
-        return new GsimRelation(isolatedSqlContext, location.getPaths(), pseudoContext);
+        SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
+        no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.getDataset(userId, namespace);
+
+        final String location = dataset.getLocations(0);
+        System.out.println("Fant datasett: " + location);
+        SQLContext isolatedSqlContext = isolatedContext(sqlContext, namespace);
+        PseudoContext pseudoContext = new PseudoContext(isolatedSqlContext, parameters);
+        return new GsimRelation(isolatedSqlContext, location, pseudoContext);
     }
 
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
         log.debug("CreateRelation via write {}", parameters);
-        System.out.println("Skriver datasett til: " + getNamespace(parameters));
+        final String namespace = getNamespace(parameters);
+        System.out.println("Skriver datasett til: " + namespace);
 
         String userId = getUserId(sqlContext.sparkContext());
         String bucket = getBucket(sqlContext.sparkContext());
-        String dataId = bucket + "/" + UUID.randomUUID() + ".parquet";
+        String valuation = parameters.get("valuation").get();
+        String state = parameters.get("state").get();
 
-        DataLocation location = SparkServiceRouter.getInstance(bucket).write(mode, userId, getNamespace(parameters), dataId);
+        SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
+        no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.createDataset(userId, mode, namespace,
+                valuation, state);
+        final String dataId = bucket + "/" + namespace + "/" + dataset.getId().getId();
         PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
-        URI newDataUri = location.getPaths().get(0);
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
         try {
-            log.debug("writing file(s) to: {}", newDataUri);
+            log.debug("writing file(s) to: {}", dataId);
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "false");
-            setUserContext(sqlContext.sparkSession(), "write", location);
+            setUserContext(sqlContext.sparkSession(), "write", namespace);
             data = pseudoContext.apply(data);
-            data.coalesce(1).write().parquet(newDataUri.toASCIIString());
-            return new GsimRelation(isolatedContext(sqlContext, location), location.getPaths(), pseudoContext);
+            // Write to GCS before updating catalog
+            data.coalesce(1).write().parquet(dataId);
+
+            no.ssb.dapla.catalog.protobuf.Dataset.Builder datasetBuilder = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
+                    .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
+                    .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf(valuation))
+                    .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state))
+                    .addLocations(dataId);
+            if (mode == SaveMode.Overwrite) {
+                datasetBuilder.clearLocations();
+            }
+            datasetBuilder.addLocations(dataId).build();
+            sparkServiceClient.writeDataset(datasetBuilder.build());
+            return new GsimRelation(isolatedContext(sqlContext, namespace), dataId, pseudoContext);
         } finally {
             datasetLock.unlock();
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "true");
@@ -95,28 +114,28 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
      * Creates a new SQLContext with an isolated spark session.
      *
      * @param sqlContext the original SQLContext (which will be the parent context)
-     * @param location   location info that will be added to the context
+     * @param namespace  namespace info that will be added to the isolated context
      * @return the new SQLContext
      */
-    private SQLContext isolatedContext(SQLContext sqlContext, DataLocation location) {
+    private SQLContext isolatedContext(SQLContext sqlContext, String namespace) {
         // Temporary enable file system cache during execution. This aviods re-creating the GoogleHadoopFileSystem
         // during multiple job executions within the spark session.
         // For this to work, we must create an isolated configuration inside a new spark session
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
         sparkSession.conf().set("fs.gs.impl.disable.cache", "false");
-        setUserContext(sparkSession, "read", location);
+        setUserContext(sparkSession, "read", namespace);
         return sparkSession.sqlContext();
     }
 
     // TODO: This should only be set when the user has access to the current operation and namespace
-    private void setUserContext(SparkSession sparkSession, String operation, DataLocation location) {
-        Text service = new Text(location.getLocation());
-        sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, location.getNamespace());
+    private void setUserContext(SparkSession sparkSession, String operation, String namespace) {
+        Text service = new Text(getBucket(sparkSession.sparkContext()));
+        sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
         try {
             UserGroupInformation.getCurrentUser().addToken(service,
-                    BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(location.getNamespace())));
+                    BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(namespace)));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
