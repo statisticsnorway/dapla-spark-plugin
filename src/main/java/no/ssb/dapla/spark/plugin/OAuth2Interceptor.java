@@ -12,8 +12,6 @@ import java.util.Objects;
  */
 public class OAuth2Interceptor implements Interceptor {
 
-    private static final String USERNAME = "username";
-    private static final String PASSWORD = "password";
     private static final String CLIENT_ID = "client_id";
     private static final String CLIENT_SECRET = "client_secret";
     private static final String GRANT_TYPE = "grant_type";
@@ -22,38 +20,27 @@ public class OAuth2Interceptor implements Interceptor {
     private final String grantType;
     private final String clientId;
     private final String clientSecret;
-    private final String userName;
-    private final String password;
     private String token = null;
 
     // Used in tests. This constructor skips token url validation.
-    OAuth2Interceptor(HttpUrl tokenUrl, GrantType type, String clientId, String clientSecret, String userName,
-                      String password) {
+    OAuth2Interceptor(HttpUrl tokenUrl, GrantType type, String clientId, String clientSecret) {
         this.tokenUrl = tokenUrl;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
-        this.userName = userName;
-        this.password = password;
 
         switch (Objects.requireNonNull(type)) {
-            case PASSWORD:
-                grantType = "password";
-                Objects.requireNonNull(userName, "username is required");
-                Objects.requireNonNull(password, "password is required");
-                break;
             case CLIENT_CREDENTIAL:
                 grantType = "client_credentials";
                 Objects.requireNonNull(clientId, "client id is required");
                 Objects.requireNonNull(clientSecret, "client secret is required");
                 break;
             default:
-                throw new IllegalArgumentException("Unknown grant type " + type);
+                throw new IllegalArgumentException("Unsupported grant type " + type);
         }
     }
 
-    public OAuth2Interceptor(String tokenUrl, GrantType type, String clientId, String clientSecret, String userName,
-                             String password) {
-        this(validateTokenUrl(tokenUrl), type, clientId, clientSecret, userName, password);
+    public OAuth2Interceptor(String tokenUrl, GrantType type, String clientId, String clientSecret) {
+        this(validateTokenUrl(tokenUrl), type, clientId, clientSecret);
     }
 
     private static HttpUrl validateTokenUrl(String tokenUrl) {
@@ -79,8 +66,6 @@ public class OAuth2Interceptor implements Interceptor {
 
         if (clientId != null) formBodyBuilder.add(CLIENT_ID, clientId);
         if (clientSecret != null) formBodyBuilder.add(CLIENT_SECRET, clientSecret);
-        if (userName != null) formBodyBuilder.add(USERNAME, userName);
-        if (password != null) formBodyBuilder.add(PASSWORD, password);
 
         FormBody formBody = formBodyBuilder.add(GRANT_TYPE, grantType)
                 .add("scope", "openid profile email")
@@ -107,7 +92,6 @@ public class OAuth2Interceptor implements Interceptor {
     }
 
     public enum GrantType {
-        PASSWORD,
         CLIENT_CREDENTIAL
     }
 }

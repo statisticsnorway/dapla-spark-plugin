@@ -23,8 +23,6 @@ public class SparkServiceClient {
     static final String CONFIG_ROUTER_OAUTH_GRANT_TYPE = CONFIG + "oauth.grantType";
     static final String CONFIG_ROUTER_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
     static final String CONFIG_ROUTER_OAUTH_CLIENT_SECRET = CONFIG + "oauth.clientSecret";
-    static final String CONFIG_ROUTER_OAUTH_USER_NAME = CONFIG + "oauth.userName";
-    static final String CONFIG_ROUTER_OAUTH_PASSWORD = CONFIG + "oauth.password";
 
     private OkHttpClient client;
     private String baseURL;
@@ -44,9 +42,7 @@ public class SparkServiceClient {
                             conf.get(CONFIG_ROUTER_OAUTH_GRANT_TYPE).toUpperCase()
                     ),
                     conf.get(CONFIG_ROUTER_OAUTH_CLIENT_ID, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_USER_NAME, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_PASSWORD, null)
+                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, null)
             );
             return Optional.of(interceptor);
         }
