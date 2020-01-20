@@ -52,13 +52,14 @@ public class PseudoContext {
     // TODO: Error handling. E.g. what if columns does not exist
     private Dataset<Row> transform(Dataset<Row> ds, PseudoUDFs.Transformation transformation) {
         if (pseudoOptions.isPresent()) {
-            for (String colName : pseudoOptions.get().columns()) {
+            final PseudoOptions pseudoOptions = this.pseudoOptions.get();
+            for (String colName : pseudoOptions.columns()) {
                 DataType dataType = columnDataType(colName, ds);
 
                 if (PseudoUDFs.isSupportedDataType(dataType)) {
                     String udfName = udfNameOf(transformation, dataType);
                     Column data = functions.col(colName);
-                    Column func = functions.lit(pseudoOptions.get().columnFunc(colName).get());
+                    Column func = functions.lit(pseudoOptions.columnFunc(colName).get());
                     ds = ds.withColumn(colName, functions.callUDF(udfName, func, data));
                 }
                 else {
