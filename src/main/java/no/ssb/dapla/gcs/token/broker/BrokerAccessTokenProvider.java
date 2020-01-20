@@ -75,13 +75,13 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
             throw new IllegalStateException("Invalid session. Cannot get current namespace or operation.");
         }
 
-        if (tokenIdentifier.getOperation().equals(config.get(BrokerTokenIdentifier.CURRENT_OPERATION))) {
+        if (!tokenIdentifier.getOperation().toString().equals(config.get(BrokerTokenIdentifier.CURRENT_OPERATION))) {
             throw new IllegalStateException(String.format(
                     "Invalid session. Current operation %s does not match the token identifier operation %s",
                     config.get(BrokerTokenIdentifier.CURRENT_OPERATION), tokenIdentifier.getOperation()));
         }
 
-        if (tokenIdentifier.getNamespace().equals(config.get(BrokerTokenIdentifier.CURRENT_NAMESPACE))) {
+        if (!tokenIdentifier.getNamespace().toString().equals(config.get(BrokerTokenIdentifier.CURRENT_NAMESPACE))) {
             throw new IllegalStateException(String.format(
                     "Invalid session. Current namespace %s does not match the token identifier namespace %s",
                     config.get(BrokerTokenIdentifier.CURRENT_NAMESPACE), tokenIdentifier.getNamespace()));
