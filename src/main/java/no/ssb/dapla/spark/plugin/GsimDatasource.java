@@ -5,6 +5,7 @@ import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.SparkServiceClient;
 import no.ssb.dapla.spark.plugin.pseudo.PseudoContext;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.SparkContext;
@@ -23,7 +24,6 @@ import scala.Option;
 import scala.collection.immutable.Map;
 
 import java.io.IOException;
-import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
@@ -63,36 +63,46 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String state = parameters.get("state").get();
 
         SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
-        no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.createDataset(userId, mode, namespace,
+        no.ssb.dapla.catalog.protobuf.Dataset intendToCreateDataset = sparkServiceClient.createDataset(userId, mode, namespace,
                 valuation, state);
-        final String dataId = bucket + "/" + namespace + "/" + dataset.getId().getId();
+        String datasetId = intendToCreateDataset.getId().getId();
+        final String pathToNewDataSet = getPathToNewDataSet(bucket, datasetId);
         PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
         try {
-            log.debug("writing file(s) to: {}", dataId);
+            log.debug("writing file(s) to: {}", pathToNewDataSet);
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "false");
             setUserContext(sqlContext.sparkSession(), "write", namespace);
             data = pseudoContext.apply(data);
             // Write to GCS before updating catalog
-            data.coalesce(1).write().parquet(dataId);
+            data.coalesce(1).write().parquet(pathToNewDataSet);
 
-            no.ssb.dapla.catalog.protobuf.Dataset.Builder datasetBuilder = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
-                    .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
-                    .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf(valuation))
-                    .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state))
-                    .addLocations(dataId);
-            if (mode == SaveMode.Overwrite) {
-                datasetBuilder.clearLocations();
-            }
-            datasetBuilder.addLocations(dataId).build();
-            sparkServiceClient.writeDataset(datasetBuilder.build());
-            return new GsimRelation(isolatedContext(sqlContext, namespace), dataId, pseudoContext);
+            no.ssb.dapla.catalog.protobuf.Dataset writeDataset = createWriteDataset(intendToCreateDataset, mode, namespace, valuation, state, pathToNewDataSet);
+            sparkServiceClient.writeDataset(writeDataset);
+            return new GsimRelation(isolatedContext(sqlContext, namespace), pathToNewDataSet, pseudoContext);
         } finally {
             datasetLock.unlock();
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "true");
         }
+    }
+
+    private String getPathToNewDataSet(String bucket, String datasetId) {
+        return bucket + Path.SEPARATOR + datasetId + Path.SEPARATOR + System.currentTimeMillis();
+    }
+
+    private no.ssb.dapla.catalog.protobuf.Dataset createWriteDataset(no.ssb.dapla.catalog.protobuf.Dataset dataset, SaveMode mode, String namespace, String valuation, String state, String addLocation) {
+        no.ssb.dapla.catalog.protobuf.Dataset.Builder datasetBuilder = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
+                .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
+                .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf(valuation))
+                .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state))
+                .addLocations(addLocation);
+        if (mode == SaveMode.Overwrite) {
+            datasetBuilder.clearLocations();
+        }
+        datasetBuilder.addLocations(addLocation).build();
+        return datasetBuilder.build();
     }
 
     /**
