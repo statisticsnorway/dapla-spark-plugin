@@ -167,12 +167,7 @@ public class GsimDatasourceTest {
     @Test
     public void testReadFromBucket() {
         final String location = "gs://" + blobId.getBucket() + "/" + blobId.getName();
-
-        no.ssb.dapla.catalog.protobuf.Dataset datasetMock = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder()
-                .setId(DatasetId.newBuilder().setId("mockId").addName("dapla.namespace").build())
-                .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf("SENSITIVE"))
-                .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf("INPUT"))
-                .addLocations(location).build();
+        no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset(location);
 
         server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock)).setResponseCode(200));
         Dataset<Row> dataset = sqlContext.read()
@@ -197,20 +192,34 @@ public class GsimDatasourceTest {
 
     @Test
     @Ignore("Figure out why this fails")
-    public void testWriteBucket() {
-        try {
-            Dataset<Row> dataset = sqlContext.read()
-                    .load(parquetFile.toString());
-            dataset.write()
-                    .format("gsim")
-                    .mode(SaveMode.Overwrite)
-                    .save("dapla.namespace");
-            assertThat(dataset).isNotNull();
-            assertThat(dataset.isEmpty()).isFalse();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public void testWriteBucket() throws InterruptedException {
+        no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset("");
+
+        server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock)).setResponseCode(200));
+        server.enqueue(new MockResponse().setResponseCode(201));
+        Dataset<Row> dataset = sqlContext.read()
+                .load(parquetFile.toString());
+        dataset.write()
+                .format("gsim")
+                .mode(SaveMode.Overwrite)
+                .option("valuation", "INTERNAL")
+                .option("state", "INPUT")
+                .save("dapla.namespace");
+        assertThat(dataset).isNotNull();
+        assertThat(dataset.isEmpty()).isFalse();
+
+        assertThat(server.takeRequest().getRequestUrl().query()).isEqualTo(
+                "name=dapla.namespace&operation=CREATE&valuation=INTERNAL&state=INPUT&userId=dapla-test");
 
     }
+
+    private no.ssb.dapla.catalog.protobuf.Dataset createMockDataset(String location) {
+        return no.ssb.dapla.catalog.protobuf.Dataset.newBuilder()
+                .setId(DatasetId.newBuilder().setId("mockId").addName("dapla.namespace").build())
+                .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf("SENSITIVE"))
+                .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf("INPUT"))
+                .addLocations(location).build();
+    }
+
 
 }
