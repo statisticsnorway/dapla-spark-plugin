@@ -66,6 +66,7 @@ public class GsimDatasourceLocalFSTest {
                 .config("spark.ui.enabled", false)
                 .config("fs.gs.impl.disable.cache", true)
                 .config("spark.ssb.dapla.gcs.storage", daplaGcsStoragePath)
+                .config("spark.ssb.dapla.output.prefix", "test-output")
                 .config("spark.ssb.dapla.router.url", baseUrl.toString())
                 .getOrCreate();
 
@@ -102,7 +103,7 @@ public class GsimDatasourceLocalFSTest {
         no.ssb.dapla.catalog.protobuf.Dataset dataSet = ProtobufJsonUtils.toPojo(json, no.ssb.dapla.catalog.protobuf.Dataset.class);
         String location = dataSet.getLocations(0);
 
-        assertThat(location).containsPattern(daplaGcsStoragePath + "/mockId/\\d+");
+        assertThat(location).containsPattern(daplaGcsStoragePath + "/test-output/mockId/\\d+");
     }
 
     private no.ssb.dapla.catalog.protobuf.Dataset createMockDataset(String location) {

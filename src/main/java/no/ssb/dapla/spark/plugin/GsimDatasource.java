@@ -8,6 +8,7 @@ import no.ssb.dapla.spark.plugin.pseudo.PseudoContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -57,16 +58,20 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         final String namespace = getNamespace(parameters);
         System.out.println("Skriver datasett til: " + namespace);
 
-        String userId = getUserId(sqlContext.sparkContext());
-        String bucket = getBucket(sqlContext.sparkContext());
+        SparkContext sparkContext = sqlContext.sparkContext();
+        SparkConf conf = sparkContext.getConf();
+
+        String userId = getUserId(sparkContext);
+        String bucket = getBucket(conf);
+        String outputPrefix = getOutputPrefix(conf);
         String valuation = parameters.get("valuation").get();
         String state = parameters.get("state").get();
 
-        SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
+        SparkServiceClient sparkServiceClient = new SparkServiceClient(conf);
         no.ssb.dapla.catalog.protobuf.Dataset intendToCreateDataset = sparkServiceClient.createDataset(userId, mode, namespace,
                 valuation, state);
         String datasetId = intendToCreateDataset.getId().getId();
-        final String pathToNewDataSet = getPathToNewDataSet(bucket, datasetId);
+        final String pathToNewDataSet = getPathToNewDataSet(bucket, outputPrefix, datasetId);
         PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
         Lock datasetLock = new ReentrantLock();
@@ -88,8 +93,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         }
     }
 
-    private String getPathToNewDataSet(String bucket, String datasetId) {
-        return bucket + Path.SEPARATOR + datasetId + Path.SEPARATOR + System.currentTimeMillis();
+    private String getPathToNewDataSet(String bucket, String outputPrefix, String datasetId) {
+        return bucket + Path.SEPARATOR
+                + outputPrefix + Path.SEPARATOR
+                + datasetId + Path.SEPARATOR
+                + System.currentTimeMillis();
     }
 
     private no.ssb.dapla.catalog.protobuf.Dataset createWriteDataset(no.ssb.dapla.catalog.protobuf.Dataset dataset, SaveMode mode, String namespace, String valuation, String state, String addLocation) {
@@ -140,7 +148,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     // TODO: This should only be set when the user has access to the current operation and namespace
     private void setUserContext(SparkSession sparkSession, String operation, String namespace) {
-        Text service = new Text(getBucket(sparkSession.sparkContext()));
+        Text service = new Text(getBucket(sparkSession.sparkContext().getConf()));
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
         try {
@@ -151,8 +159,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         }
     }
 
-    private String getBucket(SparkContext sparkContext) {
-        return sparkContext.getConf().get("spark.ssb.dapla.gcs.storage");
+    private String getBucket(SparkConf conf) {
+        return conf.get("spark.ssb.dapla.gcs.storage");
+    }
+
+    private String getOutputPrefix(SparkConf conf) {
+        return conf.get("spark.ssb.dapla.output.prefix", "datastore/output");
     }
 
     private String getNamespace(Map<String, String> parameters) {
