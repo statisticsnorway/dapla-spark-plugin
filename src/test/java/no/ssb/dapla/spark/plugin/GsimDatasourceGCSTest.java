@@ -42,7 +42,7 @@ import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.*;
 
-public class GsimDatasourceTest {
+public class GsimDatasourceGCSTest {
 
     private SQLContext sqlContext;
     private SparkContext sparkContext;
@@ -65,7 +65,7 @@ public class GsimDatasourceTest {
         testFolder = "dapla-spark-plugin-" + UUID.randomUUID().toString();
         // Create temporary folder and copy test data into it.
         tempDirectory = Files.createTempDirectory("lds-gsim-spark").toFile();
-        InputStream parquetContent = GsimDatasourceTest.class.getResourceAsStream("data/dataset.parquet");
+        InputStream parquetContent = GsimDatasourceGCSTest.class.getResourceAsStream("data/dataset.parquet");
         parquetFile = tempDirectory.toPath().resolve("dataset.parquet");
         Files.copy(parquetContent, parquetFile);
         System.out.println("File created: " + parquetFile.toString());
@@ -103,7 +103,7 @@ public class GsimDatasourceTest {
 
         // Read the unit dataset json example.
         SparkSession session = SparkSession.builder()
-                .appName(GsimDatasourceTest.class.getSimpleName())
+                .appName(GsimDatasourceGCSTest.class.getSimpleName())
                 .master("local")
                 .config("spark.ui.enabled", false)
                 .config("fs.gs.impl.disable.cache", true)

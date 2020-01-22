@@ -5,8 +5,10 @@ import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.SparkServiceClient;
 import no.ssb.dapla.spark.plugin.pseudo.PseudoContext;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -23,7 +25,6 @@ import scala.Option;
 import scala.collection.immutable.Map;
 
 import java.io.IOException;
-import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
@@ -36,7 +37,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
-        log.debug("CreateRelation via read {}", parameters);
+        log.info("CreateRelation via read {}", parameters);
         final String namespace = getNamespace(parameters);
         System.out.println("Leser datasett fra: " + namespace);
         String userId = getUserId(sqlContext.sparkContext());
@@ -53,46 +54,67 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
-        log.debug("CreateRelation via write {}", parameters);
+        log.info("CreateRelation via write {}", parameters);
         final String namespace = getNamespace(parameters);
         System.out.println("Skriver datasett til: " + namespace);
 
-        String userId = getUserId(sqlContext.sparkContext());
-        String bucket = getBucket(sqlContext.sparkContext());
+        SparkContext sparkContext = sqlContext.sparkContext();
+        SparkConf conf = sparkContext.getConf();
+
+        String userId = getUserId(sparkContext);
+        String host = getHost(conf);
+        String outputPathPrefix = getOutputOathPrefix(conf);
         String valuation = parameters.get("valuation").get();
         String state = parameters.get("state").get();
 
-        SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
-        no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.createDataset(userId, mode, namespace,
+        SparkServiceClient sparkServiceClient = new SparkServiceClient(conf);
+        no.ssb.dapla.catalog.protobuf.Dataset intendToCreateDataset = sparkServiceClient.createDataset(userId, mode, namespace,
                 valuation, state);
-        final String dataId = bucket + "/" + namespace + "/" + dataset.getId().getId();
+        String datasetId = intendToCreateDataset.getId().getId();
+        final String pathToNewDataSet = getPathToNewDataset(host, outputPathPrefix, datasetId);
         PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
         try {
-            log.debug("writing file(s) to: {}", dataId);
+            log.info("writing file(s) to: {}", pathToNewDataSet);
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "false");
             setUserContext(sqlContext.sparkSession(), "write", namespace);
             data = pseudoContext.apply(data);
             // Write to GCS before updating catalog
-            data.coalesce(1).write().parquet(dataId);
+            data.coalesce(1).write().parquet(pathToNewDataSet);
 
-            no.ssb.dapla.catalog.protobuf.Dataset.Builder datasetBuilder = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
-                    .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
-                    .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf(valuation))
-                    .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state))
-                    .addLocations(dataId);
-            if (mode == SaveMode.Overwrite) {
-                datasetBuilder.clearLocations();
-            }
-            datasetBuilder.addLocations(dataId).build();
-            sparkServiceClient.writeDataset(datasetBuilder.build());
-            return new GsimRelation(isolatedContext(sqlContext, namespace), dataId, pseudoContext);
+            no.ssb.dapla.catalog.protobuf.Dataset writeDataset = createWriteDataset(intendToCreateDataset, mode, namespace, valuation, state, pathToNewDataSet);
+            sparkServiceClient.writeDataset(writeDataset);
+
+            // For now give more info in Zepplin
+            String resultOutputPath = writeDataset.getLocations(0);
+            System.out.println(resultOutputPath);
+            return new GsimRelation(isolatedContext(sqlContext, namespace), pathToNewDataSet, pseudoContext);
         } finally {
             datasetLock.unlock();
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "true");
         }
+    }
+
+    private String getPathToNewDataset(String host, String outputPrefix, String datasetId) {
+        return host + Path.SEPARATOR
+                + outputPrefix + Path.SEPARATOR
+                + datasetId + Path.SEPARATOR
+                + System.currentTimeMillis();
+    }
+
+    private no.ssb.dapla.catalog.protobuf.Dataset createWriteDataset(no.ssb.dapla.catalog.protobuf.Dataset dataset, SaveMode mode, String namespace, String valuation, String state, String addLocation) {
+        no.ssb.dapla.catalog.protobuf.Dataset.Builder datasetBuilder = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
+                .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
+                .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf(valuation))
+                .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state))
+                .addLocations(addLocation);
+        if (mode == SaveMode.Overwrite) {
+            datasetBuilder.clearLocations();
+        }
+        datasetBuilder.addLocations(addLocation).build();
+        return datasetBuilder.build();
     }
 
     /**
@@ -130,7 +152,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     // TODO: This should only be set when the user has access to the current operation and namespace
     private void setUserContext(SparkSession sparkSession, String operation, String namespace) {
-        Text service = new Text(getBucket(sparkSession.sparkContext()));
+        Text service = new Text(getHost(sparkSession.sparkContext().getConf()));
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
         try {
@@ -141,8 +163,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         }
     }
 
-    private String getBucket(SparkContext sparkContext) {
-        return sparkContext.getConf().get("spark.ssb.dapla.gcs.storage");
+    private String getHost(SparkConf conf) {
+        return conf.get("spark.ssb.dapla.gcs.storage");
+    }
+
+    private String getOutputOathPrefix(SparkConf conf) {
+        return conf.get("spark.ssb.dapla.output.prefix", "datastore/output");
     }
 
     private String getNamespace(Map<String, String> parameters) {
