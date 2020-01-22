@@ -21,7 +21,6 @@ import org.apache.spark.sql.sources.DataSourceRegister;
 import org.apache.spark.sql.sources.RelationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Option;
 import scala.collection.immutable.Map;
 
 import java.io.IOException;
@@ -38,7 +37,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.info("CreateRelation via read {}", parameters);
-        final String namespace = getNamespace(parameters);
+        SparkOptions options = new SparkOptions(parameters);
+        final String namespace = options.getPath();
         System.out.println("Leser datasett fra: " + namespace);
         String userId = getUserId(sqlContext.sparkContext());
 
@@ -55,7 +55,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
         log.info("CreateRelation via write {}", parameters);
-        final String namespace = getNamespace(parameters);
+        SparkOptions options = new SparkOptions(parameters);
+        final String namespace = options.getPath();
         System.out.println("Skriver datasett til: " + namespace);
 
         SparkContext sparkContext = sqlContext.sparkContext();
@@ -64,8 +65,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String userId = getUserId(sparkContext);
         String host = getHost(conf);
         String outputPathPrefix = getOutputOathPrefix(conf);
-        String valuation = parameters.get("valuation").get();
-        String state = parameters.get("state").get();
+        String valuation = options.getValuation();
+        String state = options.getState();
 
         SparkServiceClient sparkServiceClient = new SparkServiceClient(conf);
         no.ssb.dapla.catalog.protobuf.Dataset intendToCreateDataset = sparkServiceClient.createDataset(userId, mode, namespace,
@@ -169,14 +170,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     private String getOutputOathPrefix(SparkConf conf) {
         return conf.get("spark.ssb.dapla.output.prefix", "datastore/output");
-    }
-
-    private String getNamespace(Map<String, String> parameters) {
-        Option<String> path = parameters.get("PATH");
-        if (path.isEmpty()) {
-            throw new IllegalStateException("PATH missing from parameters" + parameters);
-        }
-        return path.get();
     }
 
     @Override
