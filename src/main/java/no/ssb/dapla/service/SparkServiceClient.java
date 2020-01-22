@@ -161,11 +161,11 @@ public class SparkServiceClient {
         }
 
         @Override
-        public String toString() {
+        public String getMessage() {
             if (body == null) {
-                return super.toString();
+                return super.getMessage();
             }
-            return super.toString() + body;
+            return super.getMessage() + body;
         }
     }
 }
