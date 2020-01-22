@@ -37,7 +37,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
-        log.debug("CreateRelation via read {}", parameters);
+        log.info("CreateRelation via read {}", parameters);
         final String namespace = getNamespace(parameters);
         System.out.println("Leser datasett fra: " + namespace);
         String userId = getUserId(sqlContext.sparkContext());
@@ -54,7 +54,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
-        log.debug("CreateRelation via write {}", parameters);
+        log.info("CreateRelation via write {}", parameters);
         final String namespace = getNamespace(parameters);
         System.out.println("Skriver datasett til: " + namespace);
 
@@ -62,8 +62,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         SparkConf conf = sparkContext.getConf();
 
         String userId = getUserId(sparkContext);
-        String bucket = getBucket(conf);
-        String outputPrefix = getOutputPrefix(conf);
+        String host = getHost(conf);
+        String outputPathPrefix = getOutputOathPrefix(conf);
         String valuation = parameters.get("valuation").get();
         String state = parameters.get("state").get();
 
@@ -71,13 +71,13 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         no.ssb.dapla.catalog.protobuf.Dataset intendToCreateDataset = sparkServiceClient.createDataset(userId, mode, namespace,
                 valuation, state);
         String datasetId = intendToCreateDataset.getId().getId();
-        final String pathToNewDataSet = getPathToNewDataSet(bucket, outputPrefix, datasetId);
+        final String pathToNewDataSet = getPathToNewDataset(host, outputPathPrefix, datasetId);
         PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
         try {
-            log.debug("writing file(s) to: {}", pathToNewDataSet);
+            log.info("writing file(s) to: {}", pathToNewDataSet);
             data.sparkSession().conf().set("fs.gs.impl.disable.cache", "false");
             setUserContext(sqlContext.sparkSession(), "write", namespace);
             data = pseudoContext.apply(data);
@@ -86,6 +86,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
             no.ssb.dapla.catalog.protobuf.Dataset writeDataset = createWriteDataset(intendToCreateDataset, mode, namespace, valuation, state, pathToNewDataSet);
             sparkServiceClient.writeDataset(writeDataset);
+
+            // For now give more info in Zepplin
+            String resultOutputPath = writeDataset.getLocations(0);
+            System.out.println(resultOutputPath);
             return new GsimRelation(isolatedContext(sqlContext, namespace), pathToNewDataSet, pseudoContext);
         } finally {
             datasetLock.unlock();
@@ -93,8 +97,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         }
     }
 
-    private String getPathToNewDataSet(String bucket, String outputPrefix, String datasetId) {
-        return bucket + Path.SEPARATOR
+    private String getPathToNewDataset(String host, String outputPrefix, String datasetId) {
+        return host + Path.SEPARATOR
                 + outputPrefix + Path.SEPARATOR
                 + datasetId + Path.SEPARATOR
                 + System.currentTimeMillis();
@@ -148,7 +152,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     // TODO: This should only be set when the user has access to the current operation and namespace
     private void setUserContext(SparkSession sparkSession, String operation, String namespace) {
-        Text service = new Text(getBucket(sparkSession.sparkContext().getConf()));
+        Text service = new Text(getHost(sparkSession.sparkContext().getConf()));
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
         try {
@@ -159,11 +163,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         }
     }
 
-    private String getBucket(SparkConf conf) {
+    private String getHost(SparkConf conf) {
         return conf.get("spark.ssb.dapla.gcs.storage");
     }
 
-    private String getOutputPrefix(SparkConf conf) {
+    private String getOutputOathPrefix(SparkConf conf) {
         return conf.get("spark.ssb.dapla.output.prefix", "datastore/output");
     }
 

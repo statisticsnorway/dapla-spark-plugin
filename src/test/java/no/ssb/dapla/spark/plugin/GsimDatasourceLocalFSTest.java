@@ -26,10 +26,10 @@ public class GsimDatasourceLocalFSTest {
     private static Path parquetFile;
     private MockWebServer server;
     private File tempOutPutDirectory;
-    private String daplaGcsStoragePath;
+    private String sparkStoragePath;
 
     @BeforeClass
-    public static void setupBucketFolder() throws Exception {
+    public static void setupTestData() throws Exception {
         // Create temporary folder and copy test data into it.
         tempDirectory = Files.createTempDirectory("dapla-gsim-spark").toFile();
         InputStream parquetContent = GsimDatasourceLocalFSTest.class.getResourceAsStream("data/dataset.parquet");
@@ -39,7 +39,7 @@ public class GsimDatasourceLocalFSTest {
     }
 
     @AfterClass
-    public static void clearBucketFolder() {
+    public static void removeTestData() {
         tempDirectory.delete();
     }
 
@@ -59,13 +59,13 @@ public class GsimDatasourceLocalFSTest {
         HttpUrl baseUrl = server.url("/spark-service/");
 
         // Read the unit dataset json example.
-        daplaGcsStoragePath = "file://" + tempOutPutDirectory.toString();
+        sparkStoragePath = "file://" + tempOutPutDirectory.toString();
         SparkSession session = SparkSession.builder()
                 .appName(GsimDatasourceLocalFSTest.class.getSimpleName())
                 .master("local")
                 .config("spark.ui.enabled", false)
                 .config("fs.gs.impl.disable.cache", true)
-                .config("spark.ssb.dapla.gcs.storage", daplaGcsStoragePath)
+                .config("spark.ssb.dapla.gcs.storage", sparkStoragePath)
                 .config("spark.ssb.dapla.output.prefix", "test-output")
                 .config("spark.ssb.dapla.router.url", baseUrl.toString())
                 .getOrCreate();
@@ -80,7 +80,7 @@ public class GsimDatasourceLocalFSTest {
     public ExpectedException thrown = ExpectedException.none();
 
     @Test
-    public void testWriteBucket() throws InterruptedException {
+    public void testWrite() throws InterruptedException {
         no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset("");
         server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock)).setResponseCode(200));
         server.enqueue(new MockResponse().setResponseCode(201));
@@ -103,7 +103,7 @@ public class GsimDatasourceLocalFSTest {
         no.ssb.dapla.catalog.protobuf.Dataset dataSet = ProtobufJsonUtils.toPojo(json, no.ssb.dapla.catalog.protobuf.Dataset.class);
         String location = dataSet.getLocations(0);
 
-        assertThat(location).containsPattern(daplaGcsStoragePath + "/test-output/mockId/\\d+");
+        assertThat(location).containsPattern(sparkStoragePath + "/test-output/mockId/\\d+");
     }
 
     private no.ssb.dapla.catalog.protobuf.Dataset createMockDataset(String location) {
