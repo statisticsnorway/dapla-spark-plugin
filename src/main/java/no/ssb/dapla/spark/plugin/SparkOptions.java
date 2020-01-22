@@ -4,9 +4,9 @@ import scala.Option;
 import scala.collection.immutable.Map;
 
 public class SparkOptions {
-    static String PATH = "PATH";
-    static String VALUATION = "valuation";
-    static String STATE = "state";
+    static final String PATH = "PATH";
+    static final String VALUATION = "valuation";
+    static final String STATE = "state";
 
     final Map<String, String> parameters;
 

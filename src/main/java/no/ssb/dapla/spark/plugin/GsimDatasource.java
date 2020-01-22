@@ -10,11 +10,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SQLContext;
-import org.apache.spark.sql.SaveMode;
-import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.*;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.DataSourceRegister;
@@ -31,6 +27,7 @@ import java.util.regex.Pattern;
 
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
     private static final String SHORT_NAME = "gsim";
+
     // TODO: Configure via spark config
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
@@ -61,10 +58,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         SparkContext sparkContext = sqlContext.sparkContext();
         SparkConf conf = sparkContext.getConf();
+        DaplaSparkConfig daplaSparkConfig = new DaplaSparkConfig(conf);
 
         String userId = getUserId(sparkContext);
-        String host = getHost(conf);
-        String outputPathPrefix = getOutputOathPrefix(conf);
+        String host = daplaSparkConfig.getHost();
+        String outputPathPrefix = daplaSparkConfig.getOutputOathPrefix();
         String valuation = options.getValuation();
         String state = options.getState();
 
@@ -77,10 +75,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
+        RuntimeConfig runtimeConfig = data.sparkSession().conf();
         try {
             log.info("writing file(s) to: {}", pathToNewDataSet);
-            data.sparkSession().conf().set("fs.gs.impl.disable.cache", "false");
-            setUserContext(sqlContext.sparkSession(), "write", namespace);
+            runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
+            SparkSession sparkSession = sqlContext.sparkSession();
+            setUserContext(sparkSession, "write", namespace);
             data = pseudoContext.apply(data);
             // Write to GCS before updating catalog
             data.coalesce(1).write().parquet(pathToNewDataSet);
@@ -94,7 +94,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             return new GsimRelation(isolatedContext(sqlContext, namespace), pathToNewDataSet, pseudoContext);
         } finally {
             datasetLock.unlock();
-            data.sparkSession().conf().set("fs.gs.impl.disable.cache", "true");
+            runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
         }
     }
 
@@ -146,14 +146,15 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         // For this to work, we must create an isolated configuration inside a new spark session
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
-        sparkSession.conf().set("fs.gs.impl.disable.cache", "false");
+        sparkSession.conf().set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
         setUserContext(sparkSession, "read", namespace);
         return sparkSession.sqlContext();
     }
 
     // TODO: This should only be set when the user has access to the current operation and namespace
     private void setUserContext(SparkSession sparkSession, String operation, String namespace) {
-        Text service = new Text(getHost(sparkSession.sparkContext().getConf()));
+        SparkConf conf = sparkSession.sparkContext().getConf();
+        Text service = new Text(DaplaSparkConfig.getHost(conf));
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
         try {
@@ -162,14 +163,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private String getHost(SparkConf conf) {
-        return conf.get("spark.ssb.dapla.gcs.storage");
-    }
-
-    private String getOutputOathPrefix(SparkConf conf) {
-        return conf.get("spark.ssb.dapla.output.prefix", "datastore/output");
     }
 
     @Override

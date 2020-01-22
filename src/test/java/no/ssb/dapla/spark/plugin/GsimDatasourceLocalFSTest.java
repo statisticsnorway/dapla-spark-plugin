@@ -65,7 +65,7 @@ public class GsimDatasourceLocalFSTest {
                 .master("local")
                 .config("spark.ui.enabled", false)
                 .config("fs.gs.impl.disable.cache", true)
-                .config("spark.ssb.dapla.gcs.storage", sparkStoragePath)
+                .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE, sparkStoragePath)
                 .config("spark.ssb.dapla.output.prefix", "test-output")
                 .config("spark.ssb.dapla.router.url", baseUrl.toString())
                 .getOrCreate();
