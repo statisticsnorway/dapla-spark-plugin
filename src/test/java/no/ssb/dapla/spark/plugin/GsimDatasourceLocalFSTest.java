@@ -65,7 +65,7 @@ public class GsimDatasourceLocalFSTest {
                 .master("local")
                 .config("spark.ui.enabled", false)
                 .config("fs.gs.impl.disable.cache", true)
-                .config("spark.ssb.dapla.gcs.storage", sparkStoragePath)
+                .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE, sparkStoragePath)
                 .config("spark.ssb.dapla.output.prefix", "test-output")
                 .config("spark.ssb.dapla.router.url", baseUrl.toString())
                 .getOrCreate();
@@ -105,6 +105,41 @@ public class GsimDatasourceLocalFSTest {
 
         assertThat(location).containsPattern(sparkStoragePath + "/test-output/mockId/\\d+");
     }
+
+    @Test
+    public void testWrite_SparkServiceFail()  {
+        no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset("");
+        server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock)).setResponseCode(200));
+        server.enqueue(new MockResponse().setResponseCode(400));
+
+        thrown.expectMessage("En feil har oppstått: Response{protocol=http/1.1, code=400");
+
+        Dataset<Row> dataset = sqlContext.read()
+                .load(parquetFile.toString());
+        dataset.write()
+                .format("gsim")
+                .mode(SaveMode.Overwrite)
+                .option("valuation", "INTERNAL")
+                .option("state", "INPUT")
+                .save("dapla.namespace");
+    }
+
+    @Test
+    public void write_Missing_Valuation() throws InterruptedException {
+        no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset("");
+        server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock)).setResponseCode(200));
+        server.enqueue(new MockResponse().setResponseCode(200));
+
+        thrown.expectMessage("valuation missing from parametersMap(path -> dapla.namespace)");
+
+        Dataset<Row> dataset = sqlContext.read()
+                .load(parquetFile.toString());
+        dataset.write()
+                .format("gsim")
+                .mode(SaveMode.Overwrite)
+                .save("dapla.namespace");
+    }
+
 
     private no.ssb.dapla.catalog.protobuf.Dataset createMockDataset(String location) {
         return no.ssb.dapla.catalog.protobuf.Dataset.newBuilder()
