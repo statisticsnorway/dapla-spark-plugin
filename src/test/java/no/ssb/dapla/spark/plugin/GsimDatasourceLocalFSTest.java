@@ -110,9 +110,9 @@ public class GsimDatasourceLocalFSTest {
     public void testWrite_SparkServiceFail()  {
         no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset("");
         server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock)).setResponseCode(200));
-        server.enqueue(new MockResponse().setResponseCode(500));
+        server.enqueue(new MockResponse().setResponseCode(400));
 
-        thrown.expectMessage("En feil har oppstått: Response{protocol=http/1.1, code=500");
+        thrown.expectMessage("En feil har oppstått: Response{protocol=http/1.1, code=400");
 
         Dataset<Row> dataset = sqlContext.read()
                 .load(parquetFile.toString());

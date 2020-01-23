@@ -59,7 +59,7 @@ public class SparkServiceClientStagingTest {
                 .clearLocations()
                 .addLocations(dataId).build();
 
-        sparkServiceClient.writeDataset(dataset);
+        sparkServiceClient.writeDataset(dataset, "user1");
 
         System.out.println(dataset);
     }
