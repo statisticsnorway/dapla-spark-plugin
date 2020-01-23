@@ -85,7 +85,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             data.coalesce(1).write().parquet(pathToNewDataSet);
 
             no.ssb.dapla.catalog.protobuf.Dataset writeDataset = createWriteDataset(intendToCreateDataset, mode, namespace, valuation, state, pathToNewDataSet);
-            sparkServiceClient.writeDataset(writeDataset);
+            sparkServiceClient.writeDataset(writeDataset, userId);
 
             // For now give more info in Zepplin
             String resultOutputPath = writeDataset.getLocations(0);

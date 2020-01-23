@@ -103,9 +103,10 @@ public class SparkServiceClient {
         }
     }
 
-    public void writeDataset(Dataset dataset) {
+    public void writeDataset(Dataset dataset, String userId) {
+        System.out.println(ProtobufJsonUtils.toString(dataset));
         Request request = new Request.Builder()
-                .url(this.baseURL + "dataset-meta")
+                .url(this.baseURL + "dataset-meta?userId=")
                 .put(RequestBody.create(ProtobufJsonUtils.toString(dataset), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
                 .build();
         try {
