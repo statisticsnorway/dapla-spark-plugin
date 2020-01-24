@@ -12,7 +12,7 @@ public class CredentialProvider implements ServiceCredentialProvider, HadoopDele
 
     @Override
     public String serviceName() {
-        throw new RuntimeException("test serviceName");
+        return "daplaCredentials";
     }
 
     @Override
@@ -22,16 +22,18 @@ public class CredentialProvider implements ServiceCredentialProvider, HadoopDele
 
     @Override
     public Option<Object> obtainCredentials(Configuration configuration, SparkConf sparkConf, Credentials credentials) {
-        throw new RuntimeException("test obtainCredentials");
+        System.out.println("obtainCredentials is called");
+        return Option.empty();
     }
 
     @Override
     public boolean delegationTokensRequired(SparkConf sparkConf, Configuration configuration) {
-        throw new RuntimeException("test serviceName");
+        return true;
     }
 
     @Override
     public Option<Object> obtainDelegationTokens(Configuration configuration, SparkConf sparkConf, Credentials credentials) {
-        throw new RuntimeException("test obtainDelegationTokens");
+        System.out.println("obtainDelegationTokens is called");
+        return Option.empty();
     }
 }
