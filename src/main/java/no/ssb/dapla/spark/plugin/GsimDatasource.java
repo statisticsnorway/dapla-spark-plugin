@@ -157,12 +157,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         Text service = new Text(DaplaSparkConfig.getHost(conf));
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
+        /*
         try {
             UserGroupInformation.getCurrentUser().addToken(service,
                     BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(namespace)));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+         */
     }
 
     @Override

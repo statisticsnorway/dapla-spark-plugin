@@ -1,6 +1,10 @@
 package no.ssb.dapla.spark.deploy.yarn.security;
 
+import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
+import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
+import no.ssb.dapla.spark.plugin.DaplaSparkConfig;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.SparkConf;
@@ -23,7 +27,12 @@ public class CredentialProvider implements ServiceCredentialProvider, HadoopDele
 
     @Override
     public Option<Object> obtainCredentials(Configuration configuration, SparkConf sparkConf, Credentials credentials) {
-        throw new RuntimeException("test obtainCredentials");
+        Text service = new Text(DaplaSparkConfig.getHost(sparkConf));
+        String namespace = sparkConf.get(BrokerTokenIdentifier.CURRENT_NAMESPACE);
+        String operation = sparkConf.get(BrokerTokenIdentifier.CURRENT_OPERATION);
+        credentials.addToken(service,
+                BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(namespace)));
+        return Option.empty();
     }
 
     @Override

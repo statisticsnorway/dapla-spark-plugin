@@ -18,7 +18,7 @@ public class DaplaSparkConfig {
         return conf.get(SPARK_SSB_DAPLA_GCS_STORAGE);
     }
 
-    static String getHost(SparkConf conf) {
+    public static String getHost(SparkConf conf) {
         throwExceptionIfNotExist(conf, SPARK_SSB_DAPLA_GCS_STORAGE);
         return conf.get(SPARK_SSB_DAPLA_GCS_STORAGE);
     }
