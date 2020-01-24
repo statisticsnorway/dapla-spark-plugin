@@ -6,7 +6,7 @@
 
     <groupId>no.ssb.dapla.spark.plugin</groupId>
     <artifactId>dapla-spark-plugin</artifactId>
-    <version>0.3.0-SNAPSHOT-RUNE</version>
+    <version>0.3.0.RUNE-SNAPSHOT</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
