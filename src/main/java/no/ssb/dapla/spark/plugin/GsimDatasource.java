@@ -20,6 +20,8 @@ import org.slf4j.LoggerFactory;
 import scala.collection.immutable.Map;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
@@ -37,6 +39,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         SparkOptions options = new SparkOptions(parameters);
         final String namespace = options.getPath();
         System.out.println("Leser datasett fra: " + namespace);
+        printHostNameAndIP();
+
         String userId = getUserId(sqlContext.sparkContext());
 
         SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
@@ -47,6 +51,15 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         SQLContext isolatedSqlContext = isolatedContext(sqlContext, namespace);
         PseudoContext pseudoContext = new PseudoContext(isolatedSqlContext, parameters);
         return new GsimRelation(isolatedSqlContext, location, pseudoContext);
+    }
+
+    private void printHostNameAndIP() {
+        try {
+            InetAddress ip = InetAddress.getLocalHost();
+            System.out.println(ip.getHostName() + " - " + ip.getHostAddress());
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
