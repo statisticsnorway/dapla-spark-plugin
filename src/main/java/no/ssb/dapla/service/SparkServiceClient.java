@@ -20,7 +20,7 @@ public class SparkServiceClient {
     static final String CONFIG = "spark.ssb.dapla.";
     static final String CONFIG_ROUTER_URL = CONFIG + "router.url";
     static final String CONFIG_ROUTER_OAUTH_TOKEN_URL = CONFIG + "oauth.tokenUrl";
-    static final String CONFIG_ROUTER_OAUTH_GRANT_TYPE = CONFIG + "oauth.grantType";
+    static final String CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE = CONFIG + "oauth.credentials.file";
     static final String CONFIG_ROUTER_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
     static final String CONFIG_ROUTER_OAUTH_CLIENT_SECRET = CONFIG + "oauth.clientSecret";
 
@@ -38,9 +38,7 @@ public class SparkServiceClient {
         if (conf.contains(CONFIG_ROUTER_OAUTH_TOKEN_URL)) {
             OAuth2Interceptor interceptor = new OAuth2Interceptor(
                     conf.get(CONFIG_ROUTER_OAUTH_TOKEN_URL, null),
-                    OAuth2Interceptor.GrantType.valueOf(
-                            conf.get(CONFIG_ROUTER_OAUTH_GRANT_TYPE).toUpperCase()
-                    ),
+                    conf.get(CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE, null),
                     conf.get(CONFIG_ROUTER_OAUTH_CLIENT_ID, null),
                     conf.get(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, null)
             );

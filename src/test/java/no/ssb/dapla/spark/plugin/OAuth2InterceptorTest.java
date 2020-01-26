@@ -10,7 +10,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -19,6 +22,12 @@ public class OAuth2InterceptorTest {
 
     private MockWebServer tokenServer;
     private MockWebServer resourceServer;
+    private File tmpDir;
+    private Path credentialsFile;
+    private final String credentialsJson = "{\n" +
+            "  \"client_id\": \"myClient\",\n" +
+            "  \"client_secret\": \"mySecret\"\n" +
+            "}";
 
     @Before
     public void setUp() throws Exception {
@@ -26,35 +35,51 @@ public class OAuth2InterceptorTest {
         this.resourceServer = new MockWebServer();
         this.tokenServer.start();
         this.resourceServer.start();
+        tmpDir = Files.createTempDirectory("OAuth2InterceptorTest").toFile();
+        credentialsFile = tmpDir.toPath().resolve("creds.json");
+        Files.write(credentialsFile , credentialsJson.getBytes());
     }
 
     @After
     public void tearDown() throws Exception {
         tokenServer.shutdown();
         resourceServer.shutdown();
+        credentialsFile.toFile().delete();
+        tmpDir.delete();
     }
 
     @Test
     public void testInvalidCombinations() {
 
-
         HttpUrl url = HttpUrl.get("http://localhost/");
         new OAuth2Interceptor(
-                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                url, null,
                 "client", "secret"
+        );
+
+        new OAuth2Interceptor(
+                url, credentialsFile.toString(),
+                null, null
         );
 
         assertThatThrownBy(() -> {
             new OAuth2Interceptor(
-                    url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                    url, null,
                     "client", null
             );
         });
 
         assertThatThrownBy(() -> {
             new OAuth2Interceptor(
-                    url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                    url, null,
                     null, "secret"
+            );
+        });
+
+        assertThatThrownBy(() -> {
+            new OAuth2Interceptor(
+                    url, null,
+                    null, null
             );
         });
 
@@ -68,7 +93,7 @@ public class OAuth2InterceptorTest {
 
         HttpUrl url = tokenServer.url("/token");
         OAuth2Interceptor interceptor = new OAuth2Interceptor(
-                url, OAuth2Interceptor.GrantType.CLIENT_CREDENTIAL,
+                url, null,
                 "client", "secret"
         );
 
