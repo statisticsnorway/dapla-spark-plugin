@@ -36,6 +36,7 @@ public class GoogleCredentialsFactory {
             String email;
             AccessToken accessToken = null;
             if (keyFile != null) {
+                System.out.println("Using Service Account key file: " + keyFile);
                 LOG.info("Using Service Account key file: " + keyFile);
                 // Use the JSON private key if provided
                 credentials = ServiceAccountCredentials
