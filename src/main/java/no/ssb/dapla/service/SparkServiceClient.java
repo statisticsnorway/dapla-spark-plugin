@@ -51,8 +51,7 @@ public class SparkServiceClient {
         Request request = new Request.Builder()
                 .url(buildUrl("prefix/%s", namespace))
                 .build();
-        try {
-            Response response = client.newCall(request).execute();
+        try (Response response = client.newCall(request).execute()) {
             String json = response.body().string();
             System.out.println(json);
         } catch (IOException e) {
@@ -71,8 +70,7 @@ public class SparkServiceClient {
         Request request = new Request.Builder()
                 .url(buildUrl("dataset-meta?name=%s&operation=READ&userId=%s", namespace, userId))
                 .build();
-        try {
-            Response response = client.newCall(request).execute();
+        try (Response response = client.newCall(request).execute()) {
             handleErrorCodes(userId, namespace, response);
             String json = response.body().string();
             return ProtobufJsonUtils.toPojo(json, Dataset.class);
@@ -99,8 +97,8 @@ public class SparkServiceClient {
         Request request = new Request.Builder()
                 .url(url)
                 .build();
-        try {
-            Response response = client.newCall(request).execute();
+
+        try (Response response = client.newCall(request).execute()) {
             handleErrorCodes(userId, namespace, response);
             String json = response.body().string();
             return ProtobufJsonUtils.toPojo(json, Dataset.class);
@@ -119,8 +117,7 @@ public class SparkServiceClient {
                 .url(buildUrl("dataset-meta?userId=%s", userId))
                 .put(RequestBody.create(body, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
                 .build();
-        try {
-            Response response = client.newCall(request).execute();
+        try (Response response = client.newCall(request).execute()) {
             handleErrorCodes("userId", "namespace", response, body);
         } catch (IOException e) {
             log.error("writeDataset failed", e);
