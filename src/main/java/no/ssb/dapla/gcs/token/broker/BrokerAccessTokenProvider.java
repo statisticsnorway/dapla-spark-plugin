@@ -3,6 +3,7 @@ package no.ssb.dapla.gcs.token.broker;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
+import no.ssb.dapla.spark.plugin.DaplaSparkConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 
@@ -58,7 +59,8 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
         LOG.debug("Issuing access token for service: " + this.service);
         try {
             // TODO: Turn useComputeEngineFallback OFF when the following has been resolved: https://statistics-norway.atlassian.net/browse/BIP-379
-            GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(true, BrokerTokenIdentifier.BROKER_SCOPE);
+            String keyFile = config.get(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE_CREDENTIALS_FILE);
+            GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(keyFile, true, BrokerTokenIdentifier.BROKER_SCOPE);
             accessToken =  new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
         } catch (Exception e) {
             throw new RuntimeException("GoogleCredentialsFactory failed", e);

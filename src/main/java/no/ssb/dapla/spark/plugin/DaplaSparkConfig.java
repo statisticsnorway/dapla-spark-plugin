@@ -4,6 +4,7 @@ import org.apache.spark.SparkConf;
 
 public class DaplaSparkConfig {
     static final String SPARK_SSB_DAPLA_GCS_STORAGE = "spark.ssb.dapla.gcs.storage";
+    public static final String SPARK_SSB_DAPLA_GCS_STORAGE_CREDENTIALS_FILE = "spark.ssb.dapla.gcs.storage.credentials.file";
     static final String SPARK_SSB_DAPLA_OUTPUT_PREFIX = "spark.ssb.dapla.output.prefix";
     static final String FS_GS_IMPL_DISABLE_CACHE = "fs.gs.impl.disable.cache";
 

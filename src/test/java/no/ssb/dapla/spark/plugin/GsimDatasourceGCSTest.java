@@ -44,6 +44,7 @@ import static org.assertj.core.api.Assertions.*;
 
 public class GsimDatasourceGCSTest {
 
+    private static final String SERVICE_ACCOUNT_KEY_FILE = "DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE";
     private SQLContext sqlContext;
     private SparkContext sparkContext;
     private static File tempDirectory;
@@ -56,9 +57,9 @@ public class GsimDatasourceGCSTest {
     @BeforeClass
     public static void setupBucketFolder() throws Exception {
         // Verify the test environment
-        if (System.getenv().get(GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE) == null) {
+        if (System.getenv().get(SERVICE_ACCOUNT_KEY_FILE) == null) {
             throw new IllegalStateException(String.format("Missing environment variable: " +
-                    GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE));
+                    SERVICE_ACCOUNT_KEY_FILE));
         }
         // Setup GCS test bucket
         bucket = Optional.ofNullable(System.getenv().get("DAPLA_SPARK_TEST_BUCKET")).orElse("dev-datalager-store");
@@ -108,6 +109,7 @@ public class GsimDatasourceGCSTest {
                 .config("spark.ui.enabled", false)
                 .config(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true)
                 .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE, "gs://" + bucket)
+                .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE_CREDENTIALS_FILE, System.getenv(SERVICE_ACCOUNT_KEY_FILE))
                 .config("spark.ssb.dapla.router.url", baseUrl.toString())
                 .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
                 //.config("spark.hadoop.fs.gs.auth.access.token.provider.impl", BrokerAccessTokenProvider.class.getCanonicalName())
@@ -127,7 +129,8 @@ public class GsimDatasourceGCSTest {
     }
 
     private static Storage getStorage() {
-        final GoogleCredentials credentials = GoogleCredentialsFactory.createCredentialsDetails(true,
+        final GoogleCredentials credentials = GoogleCredentialsFactory.createCredentialsDetails(
+                System.getenv(SERVICE_ACCOUNT_KEY_FILE), true,
                 "https://www.googleapis.com/auth/devstorage.full_control").getCredentials();
         return StorageOptions.newBuilder().setCredentials(credentials).build().getService();
     }

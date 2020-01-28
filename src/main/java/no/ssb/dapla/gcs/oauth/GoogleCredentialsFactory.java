@@ -28,20 +28,18 @@ import java.io.IOException;
 
 public class GoogleCredentialsFactory {
 
-    public static final String SERVICE_ACCOUNT_KEY_FILE = "DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE";
     private static final Logger LOG = LoggerFactory.getLogger(GoogleCredentialsFactory.class);
 
-    public static GoogleCredentialsDetails createCredentialsDetails(boolean useComputeEngineFallback, String... scopes) {
+    public static GoogleCredentialsDetails createCredentialsDetails(String keyFile, boolean useComputeEngineFallback, String... scopes) {
         try {
-            String jsonPath = System.getenv().get(SERVICE_ACCOUNT_KEY_FILE);
             GoogleCredentials credentials;
             String email;
             AccessToken accessToken = null;
-            if (jsonPath != null) {
-                LOG.info("Using Service Account key file: " + jsonPath);
+            if (keyFile != null) {
+                LOG.info("Using Service Account key file: " + keyFile);
                 // Use the JSON private key if provided
                 credentials = ServiceAccountCredentials
-                        .fromStream(new FileInputStream(jsonPath))
+                        .fromStream(new FileInputStream(keyFile))
                         .createScoped(scopes);
                 email = ((ServiceAccountCredentials) credentials).getAccount();
             } else if (useComputeEngineFallback) {
