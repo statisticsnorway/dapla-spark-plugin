@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Objects;
 
 /**
@@ -15,32 +16,35 @@ public class OAuth2Interceptor implements Interceptor {
     private static final String CLIENT_ID = "client_id";
     private static final String CLIENT_SECRET = "client_secret";
     private static final String GRANT_TYPE = "grant_type";
+
+    private static final String DEFAULT_GRANT_TYPE = "client_credentials";
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final HttpUrl tokenUrl;
-    private final String grantType;
     private final String clientId;
     private final String clientSecret;
     private String token = null;
 
     // Used in tests. This constructor skips token url validation.
-    OAuth2Interceptor(HttpUrl tokenUrl, GrantType type, String clientId, String clientSecret) {
+    OAuth2Interceptor(HttpUrl tokenUrl, String credentialsFile, String clientId, String clientSecret) {
         this.tokenUrl = tokenUrl;
-        this.clientId = clientId;
-        this.clientSecret = clientSecret;
-
-        switch (Objects.requireNonNull(type)) {
-            case CLIENT_CREDENTIAL:
-                grantType = "client_credentials";
-                Objects.requireNonNull(clientId, "client id is required");
-                Objects.requireNonNull(clientSecret, "client secret is required");
-                break;
-            default:
-                throw new IllegalArgumentException("Unsupported grant type " + type);
+        try {
+            if (credentialsFile != null) {
+                JsonNode credentialsJson = MAPPER.readTree(Paths.get(credentialsFile).toFile());
+                this.clientId = Objects.requireNonNull(credentialsJson.get("client_id"),
+                        String.format("Cannot find 'client_id' in credentials file %s", credentialsFile)).asText();
+                this.clientSecret = Objects.requireNonNull(credentialsJson.get("client_secret"),
+                        String.format("Cannot find 'client_secret' in credentials file %s", credentialsFile)).asText();
+            } else {
+                this.clientId = Objects.requireNonNull(clientId, "client id is required");
+                this.clientSecret = Objects.requireNonNull(clientSecret, "client secret is required");
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Error accessing credentials file: " + credentialsFile, e);
         }
     }
 
-    public OAuth2Interceptor(String tokenUrl, GrantType type, String clientId, String clientSecret) {
-        this(validateTokenUrl(tokenUrl), type, clientId, clientSecret);
+    public OAuth2Interceptor(String tokenUrl, String credentialsFile, String clientId, String clientSecret) {
+        this(validateTokenUrl(tokenUrl), credentialsFile, clientId, clientSecret);
     }
 
     private static HttpUrl validateTokenUrl(String tokenUrl) {
@@ -67,7 +71,7 @@ public class OAuth2Interceptor implements Interceptor {
         if (clientId != null) formBodyBuilder.add(CLIENT_ID, clientId);
         if (clientSecret != null) formBodyBuilder.add(CLIENT_SECRET, clientSecret);
 
-        FormBody formBody = formBodyBuilder.add(GRANT_TYPE, grantType)
+        FormBody formBody = formBodyBuilder.add(GRANT_TYPE, DEFAULT_GRANT_TYPE)
                 .add("scope", "openid profile email")
                 .build();
 
@@ -89,9 +93,5 @@ public class OAuth2Interceptor implements Interceptor {
             return bodyContent.get("access_token").asText();
         }
 
-    }
-
-    public enum GrantType {
-        CLIENT_CREDENTIAL
     }
 }
