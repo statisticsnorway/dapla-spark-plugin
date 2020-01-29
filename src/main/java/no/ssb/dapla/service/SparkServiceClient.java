@@ -52,7 +52,7 @@ public class SparkServiceClient {
                 .url(buildUrl("prefix/%s", namespace))
                 .build();
         try (Response response = client.newCall(request).execute()) {
-            String json = response.body().string();
+            String json = getJson(response);
             System.out.println(json);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -71,8 +71,8 @@ public class SparkServiceClient {
                 .url(buildUrl("dataset-meta?name=%s&operation=READ&userId=%s", namespace, userId))
                 .build();
         try (Response response = client.newCall(request).execute()) {
-            handleErrorCodes(userId, namespace, response);
-            String json = response.body().string();
+            String json = getJson(response);
+            handleErrorCodes(userId, namespace, response, json);
             return ProtobufJsonUtils.toPojo(json, Dataset.class);
         } catch (IOException e) {
             log.error("getDataset failed", e);
@@ -99,8 +99,8 @@ public class SparkServiceClient {
                 .build();
 
         try (Response response = client.newCall(request).execute()) {
-            handleErrorCodes(userId, namespace, response);
-            String json = response.body().string();
+            String json = getJson(response);
+            handleErrorCodes(userId, namespace, response, json);
             return ProtobufJsonUtils.toPojo(json, Dataset.class);
         } catch (IOException e) {
             log.error("createDataset failed", e);
@@ -109,6 +109,12 @@ public class SparkServiceClient {
             log.error("createDataset failed", e);
             throw e;
         }
+    }
+
+    private String getJson(Response response) throws IOException {
+        ResponseBody body = response.body();
+        if (body == null) return null;
+        return body.string();
     }
 
     public void writeDataset(Dataset dataset, String userId) {
@@ -126,10 +132,6 @@ public class SparkServiceClient {
             log.error("writeDataset failed", e);
             throw e;
         }
-    }
-
-    private void handleErrorCodes(String userId, String namespace, Response response) {
-        handleErrorCodes(userId, namespace, response, null);
     }
 
     private void handleErrorCodes(String userId, String namespace, Response response, String body) {
@@ -160,7 +162,7 @@ public class SparkServiceClient {
             if (body == null) {
                 return super.getMessage();
             }
-            return super.getMessage() + body;
+            return super.getMessage() + "\n" + body;
         }
     }
 }
