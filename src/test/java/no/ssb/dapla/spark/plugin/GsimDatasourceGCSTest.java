@@ -1,6 +1,7 @@
 package no.ssb.dapla.spark.plugin;
 
 import com.google.api.gax.paging.Page;
+import com.google.api.services.storage.StorageScopes;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
@@ -24,7 +25,6 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -85,6 +85,8 @@ public class GsimDatasourceGCSTest {
                 }
             }
         }
+        parquetFile.toFile().delete();
+        tempDirectory.delete();
     }
 
     @After
@@ -128,7 +130,7 @@ public class GsimDatasourceGCSTest {
 
     private static Storage getStorage() {
         final GoogleCredentials credentials = GoogleCredentialsFactory.createCredentialsDetails(true,
-                "https://www.googleapis.com/auth/devstorage.full_control").getCredentials();
+                StorageScopes.DEVSTORAGE_FULL_CONTROL).getCredentials();
         return StorageOptions.newBuilder().setCredentials(credentials).build().getService();
     }
 
@@ -191,7 +193,6 @@ public class GsimDatasourceGCSTest {
     }
 
     @Test
-    @Ignore("Figure out why this fails")
     public void testWriteBucket() throws InterruptedException {
         no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset("");
 

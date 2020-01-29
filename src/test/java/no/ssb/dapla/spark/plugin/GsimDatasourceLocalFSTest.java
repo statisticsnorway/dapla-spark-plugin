@@ -40,6 +40,7 @@ public class GsimDatasourceLocalFSTest {
 
     @AfterClass
     public static void removeTestData() {
+        parquetFile.toFile().delete();
         tempDirectory.delete();
     }
 
