@@ -6,8 +6,17 @@ import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.apache.spark.SparkContext;
-import org.apache.spark.sql.*;
-import org.junit.*;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.SparkSession;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.io.File;
@@ -126,7 +135,7 @@ public class GsimDatasourceLocalFSTest {
     }
 
     @Test
-    public void write_Missing_Valuation() throws InterruptedException {
+    public void write_Missing_Valuation() {
         no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset("");
         server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock)).setResponseCode(200));
         server.enqueue(new MockResponse().setResponseCode(200));

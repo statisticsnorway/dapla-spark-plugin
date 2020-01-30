@@ -1,9 +1,15 @@
 package no.ssb.dapla.service;
 
 import no.ssb.dapla.catalog.protobuf.Dataset;
+import no.ssb.dapla.catalog.protobuf.Dataset.DatasetState;
+import no.ssb.dapla.catalog.protobuf.Dataset.Valuation;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
-import okhttp3.*;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.SaveMode;
 import org.slf4j.Logger;
@@ -83,7 +89,7 @@ public class SparkServiceClient {
         }
     }
 
-    public Dataset createDataset(String userId, SaveMode mode, String namespace, String valuation, String state) {
+    public Dataset createDataset(String userId, SaveMode mode, String namespace, Valuation valuation, DatasetState state) {
         String operation;
         if (mode == SaveMode.Append) {
             operation = "UPDATE";
@@ -91,7 +97,7 @@ public class SparkServiceClient {
             operation = "CREATE"; // TODO: Check if this is correct for Overwrite
         }
         final String url = buildUrl("dataset-meta?name=%s&operation=%s&valuation=%s&state=%s&userId=%s",
-                namespace, operation, valuation, state, userId);
+                namespace, operation, valuation.name(), state.name(), userId);
         log.info("createDataset URL: {}", url);
         System.out.println("URL: " + url);
         Request request = new Request.Builder()

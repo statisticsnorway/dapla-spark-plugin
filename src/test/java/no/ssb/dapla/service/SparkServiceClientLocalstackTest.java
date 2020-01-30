@@ -1,5 +1,7 @@
 package no.ssb.dapla.service;
 
+import no.ssb.dapla.catalog.protobuf.Dataset.DatasetState;
+import no.ssb.dapla.catalog.protobuf.Dataset.Valuation;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.SaveMode;
 import org.junit.Before;
@@ -33,7 +35,8 @@ public class SparkServiceClientLocalstackTest {
         thrown.expectMessage("En feil har oppstått:");
         thrown.expectMessage("No enum constant no.ssb.dapla.auth.dataset.protobuf.Role.DatasetState.RAWDATA");
 
+        // TODO find a to provoke an exception
         sparkServiceClient.createDataset("user1", SaveMode.Overwrite,
-                "skatt.person/testfolder/testdataset", "INTERNAL", "RAWDATA");
+                "skatt.person/testfolder/testdataset", Valuation.INTERNAL, DatasetState.RAW);
     }
 }

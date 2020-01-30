@@ -2,6 +2,8 @@ package no.ssb.dapla.service;
 
 
 import no.ssb.dapla.catalog.protobuf.Dataset;
+import no.ssb.dapla.catalog.protobuf.Dataset.DatasetState;
+import no.ssb.dapla.catalog.protobuf.Dataset.Valuation;
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -17,8 +19,8 @@ import org.junit.rules.ExpectedException;
 import java.io.IOException;
 import java.io.InputStream;
 
-import static no.ssb.dapla.service.SparkServiceClient.*;
-import static org.assertj.core.api.Assertions.*;
+import static no.ssb.dapla.service.SparkServiceClient.CONFIG_ROUTER_URL;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class SparkServiceClientTest {
 
@@ -52,14 +54,15 @@ public class SparkServiceClientTest {
     }
 
     @Test
-    public void testRead_OutputExceptionFromServer() throws IOException, InterruptedException {
+    public void testRead_OutputExceptionFromServer() {
         server.enqueue(new MockResponse().setBody("Message from server").setResponseCode(500));
         SparkServiceClient sparkServiceClient = new SparkServiceClient(this.sparkConf);
 
         thrown.expectMessage("En feil har oppstått:");
         thrown.expectMessage("Message from server");
 
+        // TODO find a way to provoke a 500 error
         sparkServiceClient.createDataset("user1", SaveMode.Overwrite,
-                "skatt.person/testfolder/testdataset", "INTERNAL", "RAWDATA");
+                "skatt.person/testfolder/testdataset", Valuation.INTERNAL, DatasetState.RAW);
     }
 }
