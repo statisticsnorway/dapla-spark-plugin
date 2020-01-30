@@ -8,8 +8,11 @@ import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import okio.Buffer;
 import org.apache.spark.SparkConf;
+import org.apache.spark.sql.SaveMode;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,6 +24,9 @@ public class SparkServiceClientTest {
 
     private SparkConf sparkConf = new SparkConf();
     private MockWebServer server;
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Before
     public void setUp() throws IOException {
@@ -43,5 +49,17 @@ public class SparkServiceClientTest {
         RecordedRequest recordedRequest = server.takeRequest();
         HttpUrl requestUrl = recordedRequest.getRequestUrl();
         assertThat(requestUrl.query()).isEqualTo("name=skatt.person.mytestdataset&operation=READ&userId=rune.lind@ssbmod.net");
+    }
+
+    @Test
+    public void testRead_OutputExceptionFromServer() throws IOException, InterruptedException {
+        server.enqueue(new MockResponse().setBody("Message from server").setResponseCode(500));
+        SparkServiceClient sparkServiceClient = new SparkServiceClient(this.sparkConf);
+
+        thrown.expectMessage("En feil har oppstått:");
+        thrown.expectMessage("Message from server");
+
+        sparkServiceClient.createDataset("user1", SaveMode.Overwrite,
+                "skatt.person/testfolder/testdataset", "INTERNAL", "RAWDATA");
     }
 }
