@@ -73,7 +73,7 @@ public class GsimDatasourceLocalFSTest {
 
         this.sparkContext = session.sparkContext();
         this.sparkContext.setLocalProperty("spark.jobGroup.id",
-                "zeppelin-dapla-test-2EYA9GVV2-20200114-173727_1534086404");
+                "zeppelin-dapla_test-2EYA9GVV2-20200114-173727_1534086404");
         this.sqlContext = session.sqlContext();
     }
 
@@ -98,7 +98,7 @@ public class GsimDatasourceLocalFSTest {
         assertThat(dataset.isEmpty()).isFalse();
 
         assertThat(server.takeRequest().getRequestUrl().query()).isEqualTo(
-                "name=dapla.namespace&operation=CREATE&valuation=INTERNAL&state=INPUT&userId=dapla-test");
+                "name=dapla.namespace&operation=CREATE&valuation=INTERNAL&state=INPUT&userId=dapla_test");
 
         String json = server.takeRequest().getBody().readByteString().utf8();
         no.ssb.dapla.catalog.protobuf.Dataset dataSet = ProtobufJsonUtils.toPojo(json, no.ssb.dapla.catalog.protobuf.Dataset.class);

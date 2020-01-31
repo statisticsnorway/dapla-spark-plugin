@@ -124,7 +124,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
      */
     String getUserId(SparkContext sparkContext) {
         String jobDescr = sparkContext.getLocalProperty("spark.jobGroup.id");
-        Matcher matcher = Pattern.compile("zeppelin\\-((.*))\\-.{9}\\-.*").matcher(jobDescr);
+        Matcher matcher = Pattern.compile("zeppelin-((?:[^-]+)|(?:[^@]+@[^-]+))-[^@]*-[^-]{8}-[^_]{6}_[0-9]+").matcher(jobDescr);
         if (matcher.matches()) {
             return matcher.group(1);
         } else {
