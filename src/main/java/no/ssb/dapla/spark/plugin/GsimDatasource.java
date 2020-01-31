@@ -1,5 +1,7 @@
 package no.ssb.dapla.spark.plugin;
 
+import no.ssb.dapla.catalog.protobuf.Dataset.DatasetState;
+import no.ssb.dapla.catalog.protobuf.Dataset.Valuation;
 import no.ssb.dapla.catalog.protobuf.DatasetId;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
@@ -10,7 +12,12 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
-import org.apache.spark.sql.*;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.RuntimeConfig;
+import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.DataSourceRegister;
@@ -63,8 +70,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String userId = getUserId(sparkContext);
         String host = daplaSparkConfig.getHost();
         String outputPathPrefix = daplaSparkConfig.getOutputOathPrefix();
-        String valuation = options.getValuation();
-        String state = options.getState();
+        Valuation valuation = Valuation.valueOf(options.getValuation());
+        DatasetState state = DatasetState.valueOf(options.getState());
 
         SparkServiceClient sparkServiceClient = new SparkServiceClient(conf);
         no.ssb.dapla.catalog.protobuf.Dataset intendToCreateDataset = sparkServiceClient.createDataset(userId, mode, namespace,
@@ -105,11 +112,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                 + System.currentTimeMillis();
     }
 
-    private no.ssb.dapla.catalog.protobuf.Dataset createWriteDataset(no.ssb.dapla.catalog.protobuf.Dataset dataset, SaveMode mode, String namespace, String valuation, String state, String addLocation) {
+    private no.ssb.dapla.catalog.protobuf.Dataset createWriteDataset(no.ssb.dapla.catalog.protobuf.Dataset dataset, SaveMode mode, String namespace, Valuation valuation, DatasetState state, String addLocation) {
         no.ssb.dapla.catalog.protobuf.Dataset.Builder datasetBuilder = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
                 .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
-                .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf(valuation))
-                .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state))
+                .setValuation(valuation)
+                .setState(state)
                 .addLocations(addLocation);
         if (mode == SaveMode.Overwrite) {
             datasetBuilder.clearLocations();
