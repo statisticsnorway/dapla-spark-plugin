@@ -97,7 +97,7 @@ public class GsimDatasourceGCSTest {
     @Before
     public void setUp() throws IOException {
         // Mock user read by org.apache.hadoop.security.UserGroupInformation
-        System.setProperty("HADOOP_USER_NAME", "dapla-test");
+        System.setProperty("HADOOP_USER_NAME", "dapla_test");
 
         this.server = new MockWebServer();
         this.server.start();
@@ -117,7 +117,7 @@ public class GsimDatasourceGCSTest {
 
         this.sparkContext = session.sparkContext();
         this.sparkContext.setLocalProperty("spark.jobGroup.id",
-                "zeppelin-dapla-test-2EYA9GVV2-20200114-173727_1534086404");
+                "zeppelin-dapla_test-2EYA9GVV2-20200114-173727_1534086404");
         this.sqlContext = session.sqlContext();
     }
 
@@ -143,6 +143,15 @@ public class GsimDatasourceGCSTest {
         this.sparkContext.setLocalProperty("spark.jobGroup.id",
                 "zeppelin-rune.lind@ssbmod.net-2EWU778YE-20200113-130142_730486519");
         assertThat(gsimDatasource.getUserId(this.sparkContext)).isEqualTo("rune.lind@ssbmod.net");
+        this.sparkContext.setLocalProperty("spark.jobGroup.id",
+                "zeppelin-user1-sample-pseudo-20200114-130807_128334940");
+        assertThat(gsimDatasource.getUserId(this.sparkContext)).isEqualTo("user1");
+        this.sparkContext.setLocalProperty("spark.jobGroup.id",
+                "zeppelin-dapla_test-2EYA9GVV2-20200114-173727_1534086404");
+        assertThat(gsimDatasource.getUserId(this.sparkContext)).isEqualTo("dapla_test");
+        this.sparkContext.setLocalProperty("spark.jobGroup.id",
+                "zeppelin-dapla-test-2EYA9GVV2-20200114-173727_1534086404");
+        assertThat(gsimDatasource.getUserId(this.sparkContext)).isEqualTo("dapla");
     }
 
     @Test
@@ -186,7 +195,7 @@ public class GsimDatasourceGCSTest {
     @Test
     public void testUnauthorizedReadShouldFail() {
         server.enqueue(new MockResponse().setResponseCode(403));
-        thrown.expectMessage("Din bruker dapla-test har ikke tilgang til dapla.namespace");
+        thrown.expectMessage("Din bruker dapla_test har ikke tilgang til dapla.namespace");
         sqlContext.read()
                 .format("gsim")
                 .load("dapla.namespace");
@@ -210,7 +219,7 @@ public class GsimDatasourceGCSTest {
         assertThat(dataset.isEmpty()).isFalse();
 
         assertThat(server.takeRequest().getRequestUrl().query()).isEqualTo(
-                "name=dapla.namespace&operation=CREATE&valuation=INTERNAL&state=INPUT&userId=dapla-test");
+                "name=dapla.namespace&operation=CREATE&valuation=INTERNAL&state=INPUT&userId=dapla_test");
 
     }
 
