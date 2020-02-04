@@ -159,6 +159,18 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+            <groupId>io.opentracing</groupId>
+            <artifactId>opentracing-api</artifactId>
+            <version>0.32.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jaegertracing</groupId>
+            <artifactId>jaeger-client</artifactId>
+            <version>0.35.5</version>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- For access token provider -->
         <dependency>
             <groupId>com.google.auth</groupId>
@@ -377,6 +389,8 @@
                                     -->
                                     <include>com.google.oauth-client:*</include>
                                     <include>com.google.flogger:*</include>
+                                    <include>io.opentracing:*</include>
+                                    <include>io.jaegertracing:*</include>
                                 </includes>
                             </artifactSet>
                             <minimizeJar>false</minimizeJar>
