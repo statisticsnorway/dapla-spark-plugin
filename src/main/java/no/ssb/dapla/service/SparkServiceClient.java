@@ -18,39 +18,23 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.util.Optional;
 
 public class SparkServiceClient {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    static final String CONFIG = "spark.ssb.dapla.";
-    static final String CONFIG_ROUTER_URL = CONFIG + "router.url";
-    static final String CONFIG_ROUTER_OAUTH_TOKEN_URL = CONFIG + "oauth.tokenUrl";
-    static final String CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE = CONFIG + "oauth.credentials.file";
-    static final String CONFIG_ROUTER_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
-    static final String CONFIG_ROUTER_OAUTH_CLIENT_SECRET = CONFIG + "oauth.clientSecret";
+    static final String CONFIG_ROUTER_URL = "spark.ssb.dapla.router.url";
 
     private OkHttpClient client;
     private String baseURL;
 
     public SparkServiceClient(final SparkConf conf) {
         okhttp3.OkHttpClient.Builder builder = new okhttp3.OkHttpClient.Builder();
-        createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
+        OAuth2Interceptor.createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
         this.client = builder.build();
         this.baseURL = conf.get(CONFIG_ROUTER_URL);
-    }
-
-    private Optional<OAuth2Interceptor> createOAuth2Interceptor(final SparkConf conf) {
-        if (conf.contains(CONFIG_ROUTER_OAUTH_TOKEN_URL)) {
-            OAuth2Interceptor interceptor = new OAuth2Interceptor(
-                    conf.get(CONFIG_ROUTER_OAUTH_TOKEN_URL, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_ID, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, null)
-            );
-            return Optional.of(interceptor);
+        if (!this.baseURL.endsWith("/")) {
+            this.baseURL = this.baseURL + "/";
         }
-        return Optional.empty();
     }
 
     public void listNamespace(String namespace) {

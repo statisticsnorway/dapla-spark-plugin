@@ -11,9 +11,9 @@ import org.junit.Ignore;
 import org.junit.Test;
 import scala.Tuple2;
 
-import static no.ssb.dapla.service.SparkServiceClient.CONFIG_ROUTER_OAUTH_CLIENT_ID;
-import static no.ssb.dapla.service.SparkServiceClient.CONFIG_ROUTER_OAUTH_CLIENT_SECRET;
-import static no.ssb.dapla.service.SparkServiceClient.CONFIG_ROUTER_OAUTH_TOKEN_URL;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_ID;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_SECRET;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_TOKEN_URL;
 import static no.ssb.dapla.service.SparkServiceClient.CONFIG_ROUTER_URL;
 
 public class SparkServiceClientStagingTest {

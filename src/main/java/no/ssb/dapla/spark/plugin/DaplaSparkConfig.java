@@ -3,8 +3,15 @@ package no.ssb.dapla.spark.plugin;
 import org.apache.spark.SparkConf;
 
 public class DaplaSparkConfig {
-    static final String SPARK_SSB_DAPLA_GCS_STORAGE = "spark.ssb.dapla.gcs.storage";
-    static final String SPARK_SSB_DAPLA_OUTPUT_PREFIX = "spark.ssb.dapla.output.prefix";
+
+    private static final String CONFIG = "spark.ssb.dapla.";
+    public static final String SPARK_SSB_DAPLA_GCS_STORAGE = "spark.ssb.dapla.gcs.storage";
+    public static final String SPARK_SSB_DAPLA_OUTPUT_PREFIX = "spark.ssb.dapla.output.prefix";
+    public static final String CONFIG_ROUTER_OAUTH_TOKEN_URL = CONFIG + "oauth.tokenUrl";
+    public static final String CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE = CONFIG + "oauth.credentials.file";
+    public static final String CONFIG_ROUTER_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
+    public static final String CONFIG_ROUTER_OAUTH_CLIENT_SECRET = CONFIG + "oauth.clientSecret";
+
     static final String FS_GS_IMPL_DISABLE_CACHE = "fs.gs.impl.disable.cache";
 
     SparkConf conf;

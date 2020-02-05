@@ -104,6 +104,12 @@
             <version>0.1</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>no.ssb.dapla.data</groupId>
+            <artifactId>data-access-protobuf</artifactId>
+            <version>0.1-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
 
         <dependency>
             <groupId>io.grpc</groupId>
