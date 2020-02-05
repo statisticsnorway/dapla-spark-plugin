@@ -81,7 +81,6 @@ public class OAuth2Interceptor implements Interceptor {
             token = fetchToken();
         }
         Request.Builder newRequest = chain.request().newBuilder();
-        System.out.println(String.format("Bearer %s", token));
         newRequest.header("Authorization", String.format("Bearer %s", token));
         return chain.proceed(newRequest.build());
     }
