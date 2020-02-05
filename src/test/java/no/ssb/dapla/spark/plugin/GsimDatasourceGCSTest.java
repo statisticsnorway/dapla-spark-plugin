@@ -141,9 +141,12 @@ public class GsimDatasourceGCSTest {
         final Dispatcher dispatcher = new Dispatcher() {
             @Override
             public MockResponse dispatch (RecordedRequest request) {
-                if (request.getPath().startsWith("/spark-service/dataset-meta")) {
+                if (request.getPath().startsWith("/spark-service/dataset-meta") && request.getMethod().equals("GET")) {
                     return new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock))
                             .setResponseCode(200);
+                } else if (request.getPath().startsWith("/spark-service/dataset-meta") &&
+                        request.getMethod().equals("PUT")) {
+                    return new MockResponse().setResponseCode(201);
                 } else if (request.getPath().startsWith("/data-access/")) {
                     return new MockResponse().setBody(ProtobufJsonUtils.toString(accessTokenResponse))
                             .setResponseCode(200);
