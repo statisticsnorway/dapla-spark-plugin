@@ -22,7 +22,7 @@ import java.net.HttpURLConnection;
 public class SparkServiceClient {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    static final String CONFIG_ROUTER_URL = "spark.ssb.dapla.router.url";
+    public static final String CONFIG_ROUTER_URL = "spark.ssb.dapla.router.url";
 
     private OkHttpClient client;
     private String baseURL;

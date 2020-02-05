@@ -3,6 +3,7 @@ package no.ssb.dapla.spark.plugin;
 import no.ssb.dapla.catalog.protobuf.Dataset.DatasetState;
 import no.ssb.dapla.catalog.protobuf.Dataset.Valuation;
 import no.ssb.dapla.catalog.protobuf.DatasetId;
+import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.SparkServiceClient;
@@ -87,7 +88,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             log.info("writing file(s) to: {}", pathToNewDataSet);
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
             SparkSession sparkSession = sqlContext.sparkSession();
-            setUserContext(sparkSession, "write", namespace);
+            setUserContext(sparkSession, AccessTokenRequest.Privilege.WRITE, namespace);
             data = pseudoContext.apply(data);
             // Write to GCS before updating catalog
             data.coalesce(1).write().parquet(pathToNewDataSet);
@@ -154,19 +155,19 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
         sparkSession.conf().set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
-        setUserContext(sparkSession, "read", namespace);
+        setUserContext(sparkSession, AccessTokenRequest.Privilege.READ, namespace);
         return sparkSession.sqlContext();
     }
 
     // TODO: This should only be set when the user has access to the current operation and namespace
-    private void setUserContext(SparkSession sparkSession, String operation, String namespace) {
+    private void setUserContext(SparkSession sparkSession, AccessTokenRequest.Privilege privilege, String namespace) {
         SparkConf conf = sparkSession.sparkContext().getConf();
         Text service = new Text(DaplaSparkConfig.getHost(conf));
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
-        sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
+        sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, privilege.name());
         try {
             UserGroupInformation.getCurrentUser().addToken(service,
-                    BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(namespace)));
+                    BrokerDelegationTokenBinding.createUserToken(service, new Text(privilege.name()), new Text(namespace)));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -1,8 +1,8 @@
 package no.ssb.dapla.gcs.token.broker;
 
-import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
-import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
+import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
+import no.ssb.dapla.service.DataAccessClient;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 
@@ -38,30 +38,15 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
     public void refresh() {
 
         validateTokenIdentifier();
-        /*
-        GetAccessTokenResponse response = loginUser.doAs((PrivilegedAction<GetAccessTokenResponse>) () -> {
-            BrokerGateway gateway = new BrokerGateway(config, sessionToken);
-            GetAccessTokenRequest request = GetAccessTokenRequest.newBuilder()
-                    .setScope(BrokerTokenIdentifier.BROKER_SCOPE)
-                    .setOwner(currentUser.getUserName())
-                    .setTarget(service.toString())
-                    .build();
-            GetAccessTokenResponse r = gateway.getStub().getAccessToken(request);
-            gateway.getManagedChannel().shutdown();
-            return r;'
-        });
-
-        String tokenString = response.getAccessToken();
-        long expiresAt = response.getExpiresAt();
-        accessToken = new AccessToken(tokenString, expiresAt);
-         */
         LOG.debug("Issuing access token for service: " + this.service);
         try {
-            // TODO: Turn useComputeEngineFallback OFF when the following has been resolved: https://statistics-norway.atlassian.net/browse/BIP-379
-            GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(true, BrokerTokenIdentifier.BROKER_SCOPE);
-            accessToken =  new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
+            DataAccessClient dataAccessClient = new DataAccessClient(this.config);
+            String userId = tokenIdentifier.getRealUser().toString();
+            AccessTokenRequest.Privilege privilege = AccessTokenRequest.Privilege.valueOf(
+                    tokenIdentifier.getOperation().toString());
+            accessToken = dataAccessClient.getAccessToken(userId, this.service.toString(), privilege);
         } catch (Exception e) {
-            throw new RuntimeException("GoogleCredentialsFactory failed", e);
+            throw new RuntimeException("Issuing access token failed for service: " + this.service, e);
         }
     }
 

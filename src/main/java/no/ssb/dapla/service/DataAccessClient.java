@@ -11,22 +11,32 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.spark.SparkConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.util.Map;
 
 public class DataAccessClient {
 
-    static final String CONFIG_DATA_ACCESS_URL = "spark.ssb.dapla.data.access.url";
+    public static final String CONFIG_DATA_ACCESS_URL = "spark.ssb.dapla.data.access.url";
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
     private OkHttpClient client;
     private String baseURL;
 
+    public DataAccessClient(final Configuration conf) {
+        init(getSparkConf(conf));
+    }
+
     public DataAccessClient(final SparkConf conf) {
+        init(conf);
+    }
+
+    public void init(final SparkConf conf) {
         okhttp3.OkHttpClient.Builder builder = new okhttp3.OkHttpClient.Builder();
         OAuth2Interceptor.createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
         this.client = builder.build();
@@ -34,6 +44,16 @@ public class DataAccessClient {
         if (!this.baseURL.endsWith("/")) {
             this.baseURL = this.baseURL + "/";
         }
+    }
+
+    private SparkConf getSparkConf(Configuration conf) {
+        SparkConf sparkConf = new SparkConf();
+        for (Map.Entry<String,String> entry: conf) {
+            if (entry.getKey().startsWith("spark.")) {
+                sparkConf.set(entry.getKey(), entry.getValue());
+            }
+        }
+        return sparkConf;
     }
 
     private String buildUrl(String format, Object... args) {

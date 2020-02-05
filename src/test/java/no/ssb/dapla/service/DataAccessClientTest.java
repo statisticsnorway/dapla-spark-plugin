@@ -38,9 +38,9 @@ public class DataAccessClientTest {
     public void testGetAccessToken() throws InterruptedException {
         String mockResult = "{\"accessToken\": \"myToken\", \"expirationTime\": \"1580828806046\"}";
         server.enqueue(new MockResponse().setBody(mockResult).setResponseCode(200));
-        DataAccessClient sparkServiceClient = new DataAccessClient(this.sparkConf);
+        DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
 
-        AccessTokenProvider.AccessToken accessToken = sparkServiceClient.getAccessToken("user1", "myBucket",
+        AccessTokenProvider.AccessToken accessToken = dataAccessClient.getAccessToken("user1", "myBucket",
                 AccessTokenRequest.Privilege.READ);
         assertThat(accessToken.getToken()).isEqualTo("myToken");
         assertThat(accessToken.getExpirationTimeMilliSeconds()).isEqualTo(1580828806046L);
@@ -53,27 +53,27 @@ public class DataAccessClientTest {
     @Test
     public void testHandleAccessDenied() {
         server.enqueue(new MockResponse().setResponseCode(403));
-        DataAccessClient sparkServiceClient = new DataAccessClient(this.sparkConf);
+        DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
         thrown.expectMessage("Din bruker user1 har ikke READ tilgang til myBucket");
-        sparkServiceClient.getAccessToken("user1", "myBucket", AccessTokenRequest.Privilege.READ);
+        dataAccessClient.getAccessToken("user1", "myBucket", AccessTokenRequest.Privilege.READ);
     }
 
     @Test
     public void testHandleNotFound() {
         server.enqueue(new MockResponse().setResponseCode(404));
-        DataAccessClient sparkServiceClient = new DataAccessClient(this.sparkConf);
+        DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
         thrown.expectMessage("Fant ingen location myBucket");
-        sparkServiceClient.getAccessToken("user1", "myBucket", AccessTokenRequest.Privilege.READ);
+        dataAccessClient.getAccessToken("user1", "myBucket", AccessTokenRequest.Privilege.READ);
     }
 
     @Test
     public void testHandleExceptionFromServer() {
         server.enqueue(new MockResponse().setBody("Message from server").setResponseCode(500));
-        DataAccessClient sparkServiceClient = new DataAccessClient(this.sparkConf);
+        DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
 
         thrown.expectMessage("En feil har oppstått:");
         thrown.expectMessage("Message from server");
 
-        sparkServiceClient.getAccessToken("user1", "myBucket", AccessTokenRequest.Privilege.READ);
+        dataAccessClient.getAccessToken("user1", "myBucket", AccessTokenRequest.Privilege.READ);
     }
 }
