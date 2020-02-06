@@ -110,7 +110,7 @@ public class BrokerTokenIdentifier extends DelegationTokenIdentifier {
             return this;
         }
 
-        public BrokerTokenIdentifier.Builder withNamespacewithNamespace(Text namespace) {
+        public BrokerTokenIdentifier.Builder withNamespace(Text namespace) {
             this.namespace = namespace;
             return this;
         }
