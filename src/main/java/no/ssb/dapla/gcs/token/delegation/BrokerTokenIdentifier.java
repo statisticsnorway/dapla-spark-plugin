@@ -16,11 +16,11 @@ import org.apache.hadoop.security.token.delegation.web.DelegationTokenIdentifier
 public class BrokerTokenIdentifier extends DelegationTokenIdentifier {
 
     public static final Text KIND = new Text("GCPBrokerSessionToken");
-    public static final String BROKER_SCOPE = "https://www.googleapis.com/auth/devstorage.read_write";
     public static final String CURRENT_OPERATION = "spark.ssb.session.operation";
     public static final String CURRENT_NAMESPACE = "spark.ssb.session.namespace";
     private Text operation;
     private Text namespace;
+    private Text userToken;
 
     public BrokerTokenIdentifier() {
         super(KIND);
@@ -98,6 +98,7 @@ public class BrokerTokenIdentifier extends DelegationTokenIdentifier {
         private Text service;
         private Text operation;
         private Text namespace;
+        private Text realUser;
 
         public BrokerTokenIdentifier.Builder withService(Text service) {
             this.service = service;
@@ -114,15 +115,16 @@ public class BrokerTokenIdentifier extends DelegationTokenIdentifier {
             return this;
         }
 
+        public BrokerTokenIdentifier.Builder withRealUser(Text realUser) {
+            this.realUser = realUser;
+            return this;
+        }
+
         public BrokerTokenIdentifier build() {
             try {
                 UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
                 String user = ugi.getUserName();
                 Text owner = new Text(user);
-                Text realUser = null;
-                if (ugi.getRealUser() != null) {
-                    realUser = new Text(ugi.getRealUser().getUserName());
-                }
                 return new BrokerTokenIdentifier(owner, service, realUser, operation, namespace);
             } catch (IOException e) {
                 throw new RuntimeException(e);

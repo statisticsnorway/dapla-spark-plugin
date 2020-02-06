@@ -29,14 +29,17 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
      * @param service name of the service (i.e. bucket name) for the FS.
      * @param operation the operation (read or write)
      * @param namespace the namespace
+     * @param realUser the real username of the token owner
      * @return the token
      */
-    public static Token<DelegationTokenIdentifier> createUserToken(Text service, Text operation, Text namespace) {
+    public static Token<DelegationTokenIdentifier> createHadoopToken(Text service, Text operation, Text namespace,
+                                                                     Text realUser) {
         BrokerDelegationTokenBinding binding = new BrokerDelegationTokenBinding();
         DelegationTokenIdentifier tokenIdentifier = new BrokerTokenIdentifier.Builder()
                 .withService(service)
                 .withOperation(operation)
                 .withNamespace(namespace)
+                .withRealUser(realUser)
                 .build();
 
         Token<DelegationTokenIdentifier> token = new Token<>(tokenIdentifier, binding.secretManager);

@@ -104,6 +104,12 @@
             <version>0.1</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>no.ssb.dapla.data</groupId>
+            <artifactId>data-access-protobuf</artifactId>
+            <version>0.1-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
 
         <dependency>
             <groupId>io.grpc</groupId>
@@ -163,6 +169,18 @@
                     <artifactId>guava</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>io.opentracing</groupId>
+            <artifactId>opentracing-api</artifactId>
+            <version>0.32.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jaegertracing</groupId>
+            <artifactId>jaeger-client</artifactId>
+            <version>0.35.5</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- For access token provider -->
@@ -377,12 +395,15 @@
                                     <include>io.opencensus:*</include>
                                     <include>no.ssb.dapla.spark:*</include>
                                     <include>no.ssb.dapla.catalog:*</include>
+                                    <include>no.ssb.dapla.data:*</include>
                                     <include>okhttp3:*</include>
                                     <!-- Remove if google CredentialFactory is not used
                                     <include>com.google.cloud.bigdataoss:util</include>
                                     -->
                                     <include>com.google.oauth-client:*</include>
                                     <include>com.google.flogger:*</include>
+                                    <include>io.opentracing:*</include>
+                                    <include>io.jaegertracing:*</include>
                                 </includes>
                             </artifactSet>
                             <minimizeJar>false</minimizeJar>

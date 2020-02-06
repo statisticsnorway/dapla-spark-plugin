@@ -2,6 +2,7 @@ package no.ssb.dapla.service;
 
 
 import no.ssb.dapla.catalog.protobuf.Dataset;
+import no.ssb.dapla.catalog.protobuf.Dataset.DatasetState;
 import no.ssb.dapla.catalog.protobuf.DatasetId;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.SaveMode;
@@ -10,7 +11,10 @@ import org.junit.Ignore;
 import org.junit.Test;
 import scala.Tuple2;
 
-import static no.ssb.dapla.service.SparkServiceClient.*;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_ID;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_SECRET;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_TOKEN_URL;
+import static no.ssb.dapla.service.SparkServiceClient.CONFIG_ROUTER_URL;
 
 public class SparkServiceClientStagingTest {
 
@@ -20,7 +24,6 @@ public class SparkServiceClientStagingTest {
     public void setUp() {
         this.sparkConf.set(CONFIG_ROUTER_URL, "https://dapla-spark.staging-bip-app.ssb.no/");
         this.sparkConf.set(CONFIG_ROUTER_OAUTH_TOKEN_URL, "https://keycloak.staging-bip-app.ssb.no/auth/realms/ssb/protocol/openid-connect/token");
-        this.sparkConf.set(CONFIG_ROUTER_OAUTH_GRANT_TYPE, "client_credential");
         this.sparkConf.set(CONFIG_ROUTER_OAUTH_CLIENT_ID, System.getenv(CONFIG_ROUTER_OAUTH_CLIENT_ID));
         this.sparkConf.set(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, System.getenv(CONFIG_ROUTER_OAUTH_CLIENT_SECRET));
     }
@@ -44,18 +47,18 @@ public class SparkServiceClientStagingTest {
         SparkServiceClient sparkServiceClient = new SparkServiceClient(this.sparkConf);
 
         final Dataset.Valuation valuation = Dataset.Valuation.SHIELDED;
-        String state = "INPUT";
+        final DatasetState state = DatasetState.INPUT;
 
         final String namespace = "skatt.person.2019.inndata.mytestdataset";
 
         Dataset dataset = sparkServiceClient.createDataset("rune.lind@ssbmod.net",
-                SaveMode.Overwrite, namespace, valuation.name(), state);
+                SaveMode.Overwrite, namespace, valuation, state);
         final String dataId = "gs://dev-datalager-store/" + namespace + "/" + dataset.getId().getId();
 
         dataset = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
                 .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
                 .setValuation(valuation)
-                .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state))
+                .setState(state)
                 .clearLocations()
                 .addLocations(dataId).build();
 

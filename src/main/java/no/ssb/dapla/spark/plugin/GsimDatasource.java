@@ -1,6 +1,9 @@
 package no.ssb.dapla.spark.plugin;
 
+import no.ssb.dapla.catalog.protobuf.Dataset.DatasetState;
+import no.ssb.dapla.catalog.protobuf.Dataset.Valuation;
 import no.ssb.dapla.catalog.protobuf.DatasetId;
+import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.SparkServiceClient;
@@ -10,7 +13,12 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
-import org.apache.spark.sql.*;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.RuntimeConfig;
+import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.DataSourceRegister;
@@ -44,7 +52,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         final String location = dataset.getLocations(0);
         System.out.println("Fant datasett: " + location);
-        SQLContext isolatedSqlContext = isolatedContext(sqlContext, namespace);
+        SQLContext isolatedSqlContext = isolatedContext(sqlContext, namespace, userId);
         PseudoContext pseudoContext = new PseudoContext(isolatedSqlContext, parameters);
         return new GsimRelation(isolatedSqlContext, location, pseudoContext);
     }
@@ -63,8 +71,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String userId = getUserId(sparkContext);
         String host = daplaSparkConfig.getHost();
         String outputPathPrefix = daplaSparkConfig.getOutputOathPrefix();
-        String valuation = options.getValuation();
-        String state = options.getState();
+        Valuation valuation = Valuation.valueOf(options.getValuation());
+        DatasetState state = DatasetState.valueOf(options.getState());
 
         SparkServiceClient sparkServiceClient = new SparkServiceClient(conf);
         no.ssb.dapla.catalog.protobuf.Dataset intendToCreateDataset = sparkServiceClient.createDataset(userId, mode, namespace,
@@ -80,7 +88,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             log.info("writing file(s) to: {}", pathToNewDataSet);
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
             SparkSession sparkSession = sqlContext.sparkSession();
-            setUserContext(sparkSession, "write", namespace);
+            setUserContext(sparkSession, AccessTokenRequest.Privilege.WRITE, namespace, userId);
             data = pseudoContext.apply(data);
             // Write to GCS before updating catalog
             data.coalesce(1).write().parquet(pathToNewDataSet);
@@ -91,7 +99,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // For now give more info in Zepplin
             String resultOutputPath = writeDataset.getLocations(0);
             System.out.println(resultOutputPath);
-            return new GsimRelation(isolatedContext(sqlContext, namespace), pathToNewDataSet, pseudoContext);
+            return new GsimRelation(isolatedContext(sqlContext, namespace, userId), pathToNewDataSet, pseudoContext);
         } finally {
             datasetLock.unlock();
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
@@ -105,11 +113,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                 + System.currentTimeMillis();
     }
 
-    private no.ssb.dapla.catalog.protobuf.Dataset createWriteDataset(no.ssb.dapla.catalog.protobuf.Dataset dataset, SaveMode mode, String namespace, String valuation, String state, String addLocation) {
+    private no.ssb.dapla.catalog.protobuf.Dataset createWriteDataset(no.ssb.dapla.catalog.protobuf.Dataset dataset, SaveMode mode, String namespace, Valuation valuation, DatasetState state, String addLocation) {
         no.ssb.dapla.catalog.protobuf.Dataset.Builder datasetBuilder = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
                 .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
-                .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf(valuation))
-                .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state))
+                .setValuation(valuation)
+                .setState(state)
                 .addLocations(addLocation);
         if (mode == SaveMode.Overwrite) {
             datasetBuilder.clearLocations();
@@ -124,7 +132,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
      */
     String getUserId(SparkContext sparkContext) {
         String jobDescr = sparkContext.getLocalProperty("spark.jobGroup.id");
-        Matcher matcher = Pattern.compile("zeppelin\\-((.*))\\-.{9}\\-.*").matcher(jobDescr);
+        Matcher matcher = Pattern.compile("zeppelin-((?:[^-]+)|(?:[^@]+@[^-]+))-[^@]*-[^-]{8}-[^_]{6}_[0-9]+").matcher(jobDescr);
         if (matcher.matches()) {
             return matcher.group(1);
         } else {
@@ -138,33 +146,34 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
      *
      * @param sqlContext the original SQLContext (which will be the parent context)
      * @param namespace  namespace info that will be added to the isolated context
+     * @param userId  the userId
      * @return the new SQLContext
      */
-    private SQLContext isolatedContext(SQLContext sqlContext, String namespace) {
+    private SQLContext isolatedContext(SQLContext sqlContext, String namespace, String userId) {
         // Temporary enable file system cache during execution. This aviods re-creating the GoogleHadoopFileSystem
         // during multiple job executions within the spark session.
         // For this to work, we must create an isolated configuration inside a new spark session
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
         sparkSession.conf().set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
-        setUserContext(sparkSession, "read", namespace);
+        setUserContext(sparkSession, AccessTokenRequest.Privilege.READ, namespace, userId);
         return sparkSession.sqlContext();
     }
 
     // TODO: This should only be set when the user has access to the current operation and namespace
-    private void setUserContext(SparkSession sparkSession, String operation, String namespace) {
+    private void setUserContext(SparkSession sparkSession, AccessTokenRequest.Privilege privilege, String namespace,
+                                String userId) {
         SparkConf conf = sparkSession.sparkContext().getConf();
         Text service = new Text(DaplaSparkConfig.getHost(conf));
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
-        sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
-        /*
+        sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, privilege.name());
         try {
             UserGroupInformation.getCurrentUser().addToken(service,
-                    BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(namespace)));
+                    BrokerDelegationTokenBinding.createHadoopToken(service, new Text(privilege.name()),
+                            new Text(namespace), new Text(userId)));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-         */
     }
 
     @Override

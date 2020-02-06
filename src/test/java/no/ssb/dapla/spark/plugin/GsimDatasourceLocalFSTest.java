@@ -6,8 +6,17 @@ import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.apache.spark.SparkContext;
-import org.apache.spark.sql.*;
-import org.junit.*;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.SparkSession;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.io.File;
@@ -40,6 +49,7 @@ public class GsimDatasourceLocalFSTest {
 
     @AfterClass
     public static void removeTestData() {
+        parquetFile.toFile().delete();
         tempDirectory.delete();
     }
 
@@ -72,7 +82,7 @@ public class GsimDatasourceLocalFSTest {
 
         this.sparkContext = session.sparkContext();
         this.sparkContext.setLocalProperty("spark.jobGroup.id",
-                "zeppelin-dapla-test-2EYA9GVV2-20200114-173727_1534086404");
+                "zeppelin-dapla_test-2EYA9GVV2-20200114-173727_1534086404");
         this.sqlContext = session.sqlContext();
     }
 
@@ -97,7 +107,7 @@ public class GsimDatasourceLocalFSTest {
         assertThat(dataset.isEmpty()).isFalse();
 
         assertThat(server.takeRequest().getRequestUrl().query()).isEqualTo(
-                "name=dapla.namespace&operation=CREATE&valuation=INTERNAL&state=INPUT&userId=dapla-test");
+                "name=dapla.namespace&operation=CREATE&valuation=INTERNAL&state=INPUT&userId=dapla_test");
 
         String json = server.takeRequest().getBody().readByteString().utf8();
         no.ssb.dapla.catalog.protobuf.Dataset dataSet = ProtobufJsonUtils.toPojo(json, no.ssb.dapla.catalog.protobuf.Dataset.class);
@@ -125,7 +135,7 @@ public class GsimDatasourceLocalFSTest {
     }
 
     @Test
-    public void write_Missing_Valuation() throws InterruptedException {
+    public void write_Missing_Valuation() {
         no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset("");
         server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock)).setResponseCode(200));
         server.enqueue(new MockResponse().setResponseCode(200));

@@ -27,11 +27,13 @@ public class CredentialProvider implements ServiceCredentialProvider, HadoopDele
 
     @Override
     public Option<Object> obtainCredentials(Configuration configuration, SparkConf sparkConf, Credentials credentials) {
+        /*
         Text service = new Text(DaplaSparkConfig.getHost(sparkConf));
         String namespace = sparkConf.get(BrokerTokenIdentifier.CURRENT_NAMESPACE);
         String operation = sparkConf.get(BrokerTokenIdentifier.CURRENT_OPERATION);
         credentials.addToken(service,
-                BrokerDelegationTokenBinding.createUserToken(service, new Text(operation), new Text(namespace)));
+                BrokerDelegationTokenBinding.createHadoopToken(service, new Text(operation), new Text(namespace), new Text("testuser")));
+         */
         return Option.empty();
     }
 

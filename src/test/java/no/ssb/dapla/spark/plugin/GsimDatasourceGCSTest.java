@@ -1,6 +1,7 @@
 package no.ssb.dapla.spark.plugin;
 
 import com.google.api.gax.paging.Page;
+import com.google.api.services.storage.StorageScopes;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
@@ -8,12 +9,18 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import no.ssb.dapla.catalog.protobuf.DatasetId;
+import no.ssb.dapla.data.access.protobuf.AccessTokenResponse;
+import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
+import no.ssb.dapla.service.DataAccessClient;
+import no.ssb.dapla.service.SparkServiceClient;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.HttpUrl;
+import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -24,7 +31,6 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -51,7 +57,7 @@ public class GsimDatasourceGCSTest {
     private static String bucket;
     private static String testFolder;
     private static BlobId blobId;
-    private MockWebServer server;
+    private MockWebServer webServer;
 
     @BeforeClass
     public static void setupBucketFolder() throws Exception {
@@ -85,6 +91,8 @@ public class GsimDatasourceGCSTest {
                 }
             }
         }
+        parquetFile.toFile().delete();
+        tempDirectory.delete();
     }
 
     @After
@@ -95,11 +103,12 @@ public class GsimDatasourceGCSTest {
     @Before
     public void setUp() throws IOException {
         // Mock user read by org.apache.hadoop.security.UserGroupInformation
-        System.setProperty("HADOOP_USER_NAME", "dapla-test");
+        System.setProperty("HADOOP_USER_NAME", "dapla_test");
 
-        this.server = new MockWebServer();
-        this.server.start();
-        HttpUrl baseUrl = server.url("/spark-service/");
+        this.webServer = new MockWebServer();
+        this.webServer.start();
+        HttpUrl routerUrl = webServer.url("/spark-service/");
+        HttpUrl accessServerUrl = webServer.url("/data-access/");
 
         // Read the unit dataset json example.
         SparkSession session = SparkSession.builder()
@@ -108,15 +117,45 @@ public class GsimDatasourceGCSTest {
                 .config("spark.ui.enabled", false)
                 .config(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true)
                 .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE, "gs://" + bucket)
-                .config("spark.ssb.dapla.router.url", baseUrl.toString())
+                .config(SparkServiceClient.CONFIG_ROUTER_URL, routerUrl.toString())
+                .config(DataAccessClient.CONFIG_DATA_ACCESS_URL, accessServerUrl.toString())
                 .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
                 //.config("spark.hadoop.fs.gs.auth.access.token.provider.impl", BrokerAccessTokenProvider.class.getCanonicalName())
                 .getOrCreate();
 
         this.sparkContext = session.sparkContext();
         this.sparkContext.setLocalProperty("spark.jobGroup.id",
-                "zeppelin-dapla-test-2EYA9GVV2-20200114-173727_1534086404");
+                "zeppelin-dapla_test-2EYA9GVV2-20200114-173727_1534086404");
         this.sqlContext = session.sqlContext();
+    }
+
+    // Use this dispatcher instead of enqueing responses over and over again for each test
+    private Dispatcher getStandardDispatcher() {
+        // Prepare mock responses
+        final String location = "gs://" + blobId.getBucket() + "/" + blobId.getName();
+        no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset(location);
+        GoogleCredentialsDetails credentialsDetails = GoogleCredentialsFactory.createCredentialsDetails(false,
+                StorageScopes.DEVSTORAGE_FULL_CONTROL);
+        AccessTokenResponse accessTokenResponse = AccessTokenResponse.newBuilder().setAccessToken(
+                credentialsDetails.getAccessToken()).setExpirationTime(credentialsDetails.getExpirationTime()).build();
+        final Dispatcher dispatcher = new Dispatcher() {
+            @Override
+            public MockResponse dispatch (RecordedRequest request) {
+                if (request.getPath().startsWith("/spark-service/dataset-meta") && request.getMethod().equals("GET")) {
+                    return new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock))
+                            .setResponseCode(200);
+                } else if (request.getPath().startsWith("/spark-service/dataset-meta") &&
+                        request.getMethod().equals("PUT")) {
+                    return new MockResponse().setResponseCode(201);
+                } else if (request.getPath().startsWith("/data-access/")) {
+                    return new MockResponse().setBody(ProtobufJsonUtils.toString(accessTokenResponse))
+                            .setResponseCode(200);
+                } else {
+                    return new MockResponse().setBody("No mock implementation.").setResponseCode(500);
+                }
+            }
+        };
+        return dispatcher;
     }
 
     private static BlobId createBucketTestFile(byte[] bytes) {
@@ -128,7 +167,7 @@ public class GsimDatasourceGCSTest {
 
     private static Storage getStorage() {
         final GoogleCredentials credentials = GoogleCredentialsFactory.createCredentialsDetails(true,
-                "https://www.googleapis.com/auth/devstorage.full_control").getCredentials();
+                StorageScopes.DEVSTORAGE_FULL_CONTROL).getCredentials();
         return StorageOptions.newBuilder().setCredentials(credentials).build().getService();
     }
 
@@ -141,6 +180,15 @@ public class GsimDatasourceGCSTest {
         this.sparkContext.setLocalProperty("spark.jobGroup.id",
                 "zeppelin-rune.lind@ssbmod.net-2EWU778YE-20200113-130142_730486519");
         assertThat(gsimDatasource.getUserId(this.sparkContext)).isEqualTo("rune.lind@ssbmod.net");
+        this.sparkContext.setLocalProperty("spark.jobGroup.id",
+                "zeppelin-user1-sample-pseudo-20200114-130807_128334940");
+        assertThat(gsimDatasource.getUserId(this.sparkContext)).isEqualTo("user1");
+        this.sparkContext.setLocalProperty("spark.jobGroup.id",
+                "zeppelin-dapla_test-2EYA9GVV2-20200114-173727_1534086404");
+        assertThat(gsimDatasource.getUserId(this.sparkContext)).isEqualTo("dapla_test");
+        this.sparkContext.setLocalProperty("spark.jobGroup.id",
+                "zeppelin-dapla-test-2EYA9GVV2-20200114-173727_1534086404");
+        assertThat(gsimDatasource.getUserId(this.sparkContext)).isEqualTo("dapla");
     }
 
     @Test
@@ -166,10 +214,7 @@ public class GsimDatasourceGCSTest {
 
     @Test
     public void testReadFromBucket() {
-        final String location = "gs://" + blobId.getBucket() + "/" + blobId.getName();
-        no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset(location);
-
-        server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock)).setResponseCode(200));
+        this.webServer.setDispatcher(getStandardDispatcher());
         Dataset<Row> dataset = sqlContext.read()
                 .format("gsim")
                 .load("dapla.namespace");
@@ -183,20 +228,16 @@ public class GsimDatasourceGCSTest {
 
     @Test
     public void testUnauthorizedReadShouldFail() {
-        server.enqueue(new MockResponse().setResponseCode(403));
-        thrown.expectMessage("Din bruker dapla-test har ikke tilgang til dapla.namespace");
+        webServer.enqueue(new MockResponse().setResponseCode(403));
+        thrown.expectMessage("Din bruker dapla_test har ikke tilgang til dapla.namespace");
         sqlContext.read()
                 .format("gsim")
                 .load("dapla.namespace");
     }
 
     @Test
-    @Ignore("Figure out why this fails")
     public void testWriteBucket() throws InterruptedException {
-        no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset("");
-
-        server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock)).setResponseCode(200));
-        server.enqueue(new MockResponse().setResponseCode(201));
+        this.webServer.setDispatcher(getStandardDispatcher());
         Dataset<Row> dataset = sqlContext.read()
                 .load(parquetFile.toString());
         dataset.write()
@@ -208,8 +249,8 @@ public class GsimDatasourceGCSTest {
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
 
-        assertThat(server.takeRequest().getRequestUrl().query()).isEqualTo(
-                "name=dapla.namespace&operation=CREATE&valuation=INTERNAL&state=INPUT&userId=dapla-test");
+        assertThat(webServer.takeRequest().getRequestUrl().query()).isEqualTo(
+                "name=dapla.namespace&operation=CREATE&valuation=INTERNAL&state=INPUT&userId=dapla_test");
 
     }
 

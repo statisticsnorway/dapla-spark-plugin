@@ -66,7 +66,7 @@ public class BrokerDelegationTokenBindingTest {
     }
 
     private void loadUserConfig(Text service) throws IOException {
-        UserGroupInformation.getCurrentUser().addToken(service, BrokerDelegationTokenBinding.createUserToken(service,
-                new Text("operation"), new Text("ssb.test.namespace")));
+        UserGroupInformation.getCurrentUser().addToken(service, BrokerDelegationTokenBinding.createHadoopToken(service,
+                new Text("operation"), new Text("ssb.test.namespace"), new Text("realUserName")));
     }
 }
