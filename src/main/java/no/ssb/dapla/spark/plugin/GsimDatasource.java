@@ -52,7 +52,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         final String location = dataset.getLocations(0);
         System.out.println("Fant datasett: " + location);
-        SQLContext isolatedSqlContext = isolatedContext(sqlContext, namespace);
+        SQLContext isolatedSqlContext = isolatedContext(sqlContext, namespace, userId);
         PseudoContext pseudoContext = new PseudoContext(isolatedSqlContext, parameters);
         return new GsimRelation(isolatedSqlContext, location, pseudoContext);
     }
@@ -88,7 +88,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             log.info("writing file(s) to: {}", pathToNewDataSet);
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
             SparkSession sparkSession = sqlContext.sparkSession();
-            setUserContext(sparkSession, AccessTokenRequest.Privilege.WRITE, namespace);
+            setUserContext(sparkSession, AccessTokenRequest.Privilege.WRITE, namespace, userId);
             data = pseudoContext.apply(data);
             // Write to GCS before updating catalog
             data.coalesce(1).write().parquet(pathToNewDataSet);
@@ -99,7 +99,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // For now give more info in Zepplin
             String resultOutputPath = writeDataset.getLocations(0);
             System.out.println(resultOutputPath);
-            return new GsimRelation(isolatedContext(sqlContext, namespace), pathToNewDataSet, pseudoContext);
+            return new GsimRelation(isolatedContext(sqlContext, namespace, userId), pathToNewDataSet, pseudoContext);
         } finally {
             datasetLock.unlock();
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
@@ -146,28 +146,31 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
      *
      * @param sqlContext the original SQLContext (which will be the parent context)
      * @param namespace  namespace info that will be added to the isolated context
+     * @param userId  the userId
      * @return the new SQLContext
      */
-    private SQLContext isolatedContext(SQLContext sqlContext, String namespace) {
+    private SQLContext isolatedContext(SQLContext sqlContext, String namespace, String userId) {
         // Temporary enable file system cache during execution. This aviods re-creating the GoogleHadoopFileSystem
         // during multiple job executions within the spark session.
         // For this to work, we must create an isolated configuration inside a new spark session
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
         sparkSession.conf().set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
-        setUserContext(sparkSession, AccessTokenRequest.Privilege.READ, namespace);
+        setUserContext(sparkSession, AccessTokenRequest.Privilege.READ, namespace, userId);
         return sparkSession.sqlContext();
     }
 
     // TODO: This should only be set when the user has access to the current operation and namespace
-    private void setUserContext(SparkSession sparkSession, AccessTokenRequest.Privilege privilege, String namespace) {
+    private void setUserContext(SparkSession sparkSession, AccessTokenRequest.Privilege privilege, String namespace,
+                                String userId) {
         SparkConf conf = sparkSession.sparkContext().getConf();
         Text service = new Text(DaplaSparkConfig.getHost(conf));
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, privilege.name());
         try {
             UserGroupInformation.getCurrentUser().addToken(service,
-                    BrokerDelegationTokenBinding.createUserToken(service, new Text(privilege.name()), new Text(namespace)));
+                    BrokerDelegationTokenBinding.createHadoopToken(service, new Text(privilege.name()),
+                            new Text(namespace), new Text(userId)));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
