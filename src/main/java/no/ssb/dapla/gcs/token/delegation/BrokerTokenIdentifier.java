@@ -7,6 +7,7 @@ import java.util.Objects;
 
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.delegation.web.DelegationTokenIdentifier;
 
 /**
@@ -20,6 +21,15 @@ public class BrokerTokenIdentifier extends DelegationTokenIdentifier {
     public static final String CURRENT_NAMESPACE = "spark.ssb.session.namespace";
     private Text operation;
     private Text namespace;
+
+    public static class Renewer extends Token.TrivialRenewer {
+        public Renewer() {
+        }
+
+        protected Text getKind() {
+            return BrokerTokenIdentifier.KIND;
+        }
+    }
 
     public BrokerTokenIdentifier() {
         super(KIND);
