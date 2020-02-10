@@ -55,6 +55,10 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
             throw new IllegalStateException("Invalid session. Cannot find required token identifier.");
         }
 
+        if (tokenIdentifier.getRealUser() == null) {
+            throw new IllegalStateException("Invalid session. Cannot find real user.");
+        }
+
         if (config == null || config.get(BrokerTokenIdentifier.CURRENT_NAMESPACE) == null ||
                 config.get(BrokerTokenIdentifier.CURRENT_OPERATION) == null) {
             throw new IllegalStateException("Invalid session. Cannot get current namespace or operation.");
