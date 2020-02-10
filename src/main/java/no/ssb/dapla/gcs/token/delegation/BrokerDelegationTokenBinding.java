@@ -61,8 +61,8 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
         String trace = " trace failed ";
         try {
             //LOG.debug("Real user: " + UserGroupInformation.getCurrentUser().getRealUser().getUserName());
-            trace = "Number of tokens from " + UserGroupInformation.getCurrentUser().getUserName()
-                    + ": " + UserGroupInformation.getCurrentUser().getTokens().size();
+            trace = "Token for " + UserGroupInformation.getCurrentUser().getUserName()
+                    + ": " + UserGroupInformation.getCurrentUser().getTokens().iterator().next();
             Iterator iter = UserGroupInformation.getCurrentUser().getTokens().iterator();
             while (iter.hasNext()) {
                 LOG.debug("User token: " + iter.next());
