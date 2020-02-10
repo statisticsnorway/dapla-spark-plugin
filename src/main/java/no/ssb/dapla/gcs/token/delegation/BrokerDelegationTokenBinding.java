@@ -60,22 +60,16 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
         // tries to use direct authentication.
         String trace = " trace failed ";
         try {
-            LOG.debug("Real user: " + UserGroupInformation.getCurrentUser().getRealUser().getUserName());
-            trace = "Number of tokens from " + UserGroupInformation.getCurrentUser().getRealUser().getUserName()
-                    + "(real user): "  + UserGroupInformation.getCurrentUser().getRealUser().getTokens().size()
-                    + ". Number of tokens from " + UserGroupInformation.getCurrentUser().getUserName()
+            //LOG.debug("Real user: " + UserGroupInformation.getCurrentUser().getRealUser().getUserName());
+            trace = "Number of tokens from " + UserGroupInformation.getCurrentUser().getUserName()
                     + ": " + UserGroupInformation.getCurrentUser().getTokens().size();
-            Iterator it = UserGroupInformation.getCurrentUser().getRealUser().getTokens().iterator();
-            while (it.hasNext()) {
-                LOG.debug("Real user token: " + it.next());
-            }
             Iterator iter = UserGroupInformation.getCurrentUser().getTokens().iterator();
             while (iter.hasNext()) {
                 LOG.debug("User token: " + iter.next());
             }
 
         } catch (Exception e) {
-
+            throw new RuntimeException(e);
         }
         throw new IllegalStateException("This operation is not allowed. Trace: " + trace);
     }
