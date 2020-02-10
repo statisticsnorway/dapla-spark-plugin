@@ -125,6 +125,9 @@ public class BrokerTokenIdentifier extends DelegationTokenIdentifier {
                 UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
                 String user = ugi.getUserName();
                 Text owner = new Text(user);
+                if (realUser == null && ugi.getRealUser() != null) {
+                    realUser = new Text(ugi.getRealUser().getUserName());
+                }
                 return new BrokerTokenIdentifier(owner, service, realUser, operation, namespace);
             } catch (IOException e) {
                 throw new RuntimeException(e);

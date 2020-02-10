@@ -5,10 +5,13 @@ import com.google.cloud.hadoop.fs.gcs.auth.AbstractDelegationTokenBinding;
 import com.google.cloud.hadoop.util.AccessTokenProvider;
 import no.ssb.dapla.gcs.token.broker.BrokerAccessTokenProvider;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.delegation.web.DelegationTokenIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Iterator;
 
 /**
  * A DelegationTokenBinding implementation that binds a file system to a BrokerAccessTokenProvider.
@@ -39,13 +42,14 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
                 .withService(service)
                 .withOperation(operation)
                 .withNamespace(namespace)
-                .withRealUser(realUser)
+                //.withRealUser(realUser)
                 .build();
 
         Token<DelegationTokenIdentifier> token = new Token<>(tokenIdentifier, binding.secretManager);
         token.setKind(binding.getKind());
         token.setService(service);
         LOG.debug("Created user token: " + token);
+        System.out.println("Created user token: " + token);
         return token;
     }
 
@@ -54,7 +58,20 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
         // This DelegationTokenBinding implementation requires a DelegationTokenIdentifier.
         // When this method is called, it means that the file system cannot find a delegation token, and instead
         // tries to use direct authentication.
-        throw new IllegalStateException("This operation is not allowed");
+        String trace = " trace failed ";
+        try {
+            //LOG.debug("Real user: " + UserGroupInformation.getCurrentUser().getRealUser().getUserName());
+            trace = "Token for " + UserGroupInformation.getCurrentUser().getUserName()
+                    + ": ";
+            Iterator iter = UserGroupInformation.getCurrentUser().getTokens().iterator();
+            while (iter.hasNext()) {
+                trace += iter.next() + " ";
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        throw new IllegalStateException("This operation is not allowed. Trace: " + trace);
     }
 
     @Override
