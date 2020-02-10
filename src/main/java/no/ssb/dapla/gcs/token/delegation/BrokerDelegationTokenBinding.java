@@ -46,6 +46,7 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
         token.setKind(binding.getKind());
         token.setService(service);
         LOG.debug("Created user token: " + token);
+        System.out.println("Created user token: " + token);
         return token;
     }
 
