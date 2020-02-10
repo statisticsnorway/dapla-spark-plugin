@@ -67,6 +67,7 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
             while (iter.hasNext()) {
                 trace += iter.next() + " ";
             }
+            System.out.println(trace);
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -77,6 +78,18 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
     @Override
     public AccessTokenProvider bindToTokenIdentifier(DelegationTokenIdentifier retrievedIdentifier) {
         LOG.debug("bindToTokenIdentifier");
+        try {
+            String trace = "bindToTokenIdentifier tokens " + UserGroupInformation.getCurrentUser().getUserName()
+                    + ": ";
+            Iterator iter = UserGroupInformation.getCurrentUser().getTokens().iterator();
+            while (iter.hasNext()) {
+                trace += iter.next() + " ";
+            }
+            System.out.println(trace);
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         return new BrokerAccessTokenProvider(getService(), (BrokerTokenIdentifier) retrievedIdentifier);
     }
 

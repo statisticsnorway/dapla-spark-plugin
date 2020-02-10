@@ -20,7 +20,6 @@ public class BrokerTokenIdentifier extends DelegationTokenIdentifier {
     public static final String CURRENT_NAMESPACE = "spark.ssb.session.namespace";
     private Text operation;
     private Text namespace;
-    private Text userToken;
 
     public BrokerTokenIdentifier() {
         super(KIND);
