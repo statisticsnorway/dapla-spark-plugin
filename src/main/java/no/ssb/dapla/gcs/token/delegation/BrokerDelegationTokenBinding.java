@@ -5,10 +5,13 @@ import com.google.cloud.hadoop.fs.gcs.auth.AbstractDelegationTokenBinding;
 import com.google.cloud.hadoop.util.AccessTokenProvider;
 import no.ssb.dapla.gcs.token.broker.BrokerAccessTokenProvider;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.delegation.web.DelegationTokenIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Iterator;
 
 /**
  * A DelegationTokenBinding implementation that binds a file system to a BrokerAccessTokenProvider.
@@ -55,6 +58,20 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
         // This DelegationTokenBinding implementation requires a DelegationTokenIdentifier.
         // When this method is called, it means that the file system cannot find a delegation token, and instead
         // tries to use direct authentication.
+        try {
+            LOG.debug("Real user: " + UserGroupInformation.getCurrentUser().getRealUser().getUserName());
+            Iterator it = UserGroupInformation.getCurrentUser().getRealUser().getTokens().iterator();
+            while (it.hasNext()) {
+                LOG.debug("Real user token: " + it.next());
+            }
+            Iterator iter = UserGroupInformation.getCurrentUser().getTokens().iterator();
+            while (iter.hasNext()) {
+                LOG.debug("User token: " + iter.next());
+            }
+
+        } catch (Exception e) {
+
+        }
         throw new IllegalStateException("This operation is not allowed");
     }
 
