@@ -58,8 +58,13 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
         // This DelegationTokenBinding implementation requires a DelegationTokenIdentifier.
         // When this method is called, it means that the file system cannot find a delegation token, and instead
         // tries to use direct authentication.
+        String trace = " trace failed ";
         try {
             LOG.debug("Real user: " + UserGroupInformation.getCurrentUser().getRealUser().getUserName());
+            trace = "Number of tokens from " + UserGroupInformation.getCurrentUser().getRealUser().getUserName()
+                    + "(real user): "  + UserGroupInformation.getCurrentUser().getRealUser().getTokens().size()
+                    + ". Number of tokens from " + UserGroupInformation.getCurrentUser().getUserName()
+                    + ": " + UserGroupInformation.getCurrentUser().getTokens().size();
             Iterator it = UserGroupInformation.getCurrentUser().getRealUser().getTokens().iterator();
             while (it.hasNext()) {
                 LOG.debug("Real user token: " + it.next());
@@ -72,7 +77,7 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
         } catch (Exception e) {
 
         }
-        throw new IllegalStateException("This operation is not allowed");
+        throw new IllegalStateException("This operation is not allowed. Trace: " + trace);
     }
 
     @Override
