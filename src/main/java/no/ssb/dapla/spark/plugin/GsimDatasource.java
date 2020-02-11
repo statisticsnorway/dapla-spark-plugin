@@ -189,13 +189,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             UserGroupInformation.getCurrentUser().addToken(service,
                     BrokerDelegationTokenBinding.createHadoopToken(service, new Text(privilege.name()),
                             new Text(namespace), new Text(userId)));
-            String trace = "Token for " + UserGroupInformation.getCurrentUser().getUserName()
-                    + ": ";
-            Iterator iter = UserGroupInformation.getCurrentUser().getTokens().iterator();
-            while (iter.hasNext()) {
-                trace += iter.next() + " ";
-            }
-            System.out.println(trace);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

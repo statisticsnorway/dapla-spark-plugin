@@ -49,7 +49,6 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
         token.setKind(binding.getKind());
         token.setService(service);
         LOG.debug("Created user token: " + token);
-        System.out.println("Created user token: " + token);
         return token;
     }
 
@@ -78,19 +77,6 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
     @Override
     public AccessTokenProvider bindToTokenIdentifier(DelegationTokenIdentifier retrievedIdentifier) {
         LOG.debug("bindToTokenIdentifier");
-        try {
-            System.out.println("retrieved " + retrievedIdentifier);
-            String trace = "bindToTokenIdentifier tokens " + UserGroupInformation.getCurrentUser().getUserName()
-                    + ": ";
-            Iterator iter = UserGroupInformation.getCurrentUser().getTokens().iterator();
-            while (iter.hasNext()) {
-                trace += iter.next() + " ";
-            }
-            System.out.println(trace);
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
         return new BrokerAccessTokenProvider(getService(), (BrokerTokenIdentifier) retrievedIdentifier);
     }
 
