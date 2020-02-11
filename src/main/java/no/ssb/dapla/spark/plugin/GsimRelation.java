@@ -75,7 +75,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     @Override
     public RDD<Row> buildScan() {
-        return this.sqlContext().read().load(path).rdd();
+        return this.sqlContext().read().parquet(path).rdd();
     }
 
     /**
