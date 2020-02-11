@@ -51,7 +51,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     @Override
     public synchronized StructType schema() {
         if (schema == null) { // Memoize.
-            schema = this.sqlContext().read().load(path).schema();
+            schema = this.sqlContext().read().load(inputFiles()).schema();
         }
         return schema;
     }

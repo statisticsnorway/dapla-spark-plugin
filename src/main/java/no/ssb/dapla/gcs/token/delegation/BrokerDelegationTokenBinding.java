@@ -42,7 +42,7 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
                 .withService(service)
                 .withOperation(operation)
                 .withNamespace(namespace)
-                //.withRealUser(realUser)
+                .withRealUser(realUser)
                 .build();
 
         Token<DelegationTokenIdentifier> token = new Token<>(tokenIdentifier, binding.secretManager);
