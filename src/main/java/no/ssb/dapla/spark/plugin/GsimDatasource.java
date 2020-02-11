@@ -169,7 +169,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         // during multiple job executions within the spark session.
         // For this to work, we must create an isolated configuration inside a new spark session
         // Note: There is still only one spark context that is shared among sessions
-        SparkSession sparkSession = sqlContext.sparkSession().cloneSession();
+        // TODO: Put back SparkSession sparkSession = sqlContext.sparkSession().newSession();
+        SparkSession sparkSession = sqlContext.sparkSession();
         sparkSession.conf().set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
         setUserContext(sparkSession, AccessTokenRequest.Privilege.READ, host, namespace, userId);
         return sparkSession.sqlContext();
