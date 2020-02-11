@@ -79,6 +79,7 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
     public AccessTokenProvider bindToTokenIdentifier(DelegationTokenIdentifier retrievedIdentifier) {
         LOG.debug("bindToTokenIdentifier");
         try {
+            System.out.println("retrieved " + retrievedIdentifier);
             String trace = "bindToTokenIdentifier tokens " + UserGroupInformation.getCurrentUser().getUserName()
                     + ": ";
             Iterator iter = UserGroupInformation.getCurrentUser().getTokens().iterator();
