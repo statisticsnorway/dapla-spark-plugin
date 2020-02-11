@@ -13,7 +13,6 @@ public class SecretServiceClient {
     private static final Map<String, Secret> secretRepo = new HashMap<>();
 
     public Secret createOrGetSecret(String secretId, String type) {
-        System.out.println("createOrGetSecret " + secretId);
         Secret secret = secretRepo.get(secretId);
         if (secret == null) {
             secretRepo.put(secretId, createSecret(secretId, type));
@@ -23,7 +22,6 @@ public class SecretServiceClient {
     }
 
     public Secret getSecret(String secretId) {
-        System.out.println("getSecret " + secretId);
         return Optional.ofNullable(secretRepo.get(secretId)).orElseThrow(
           () -> new SecretServiceClientException("Unable to find secret with id=" + secretId)
         );
