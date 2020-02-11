@@ -71,7 +71,8 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        throw new IllegalStateException("This operation is not allowed. Trace: " + trace);
+        //throw new IllegalStateException("This operation is not allowed. Trace: " + trace);
+        return new BrokerAccessTokenProvider(getService(), (BrokerTokenIdentifier) createEmptyIdentifier());
     }
 
     @Override
