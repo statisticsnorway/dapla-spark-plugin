@@ -51,7 +51,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     @Override
     public synchronized StructType schema() {
         if (schema == null) { // Memoize.
-            schema = this.sqlContext().read().load(inputFiles()).schema();
+            schema = this.sqlContext().read().load(path).schema();
         }
         return schema;
     }
@@ -61,7 +61,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         Column[] requiredColumns = Stream.of(columns).map(Column::new).toArray(Column[]::new);
         Optional<Column> filter = Stream.of(filters).map(this::convertFilter).reduce(Column::and);
 
-        Dataset<Row> dataset = this.sqlContext().read().load(inputFiles());
+        Dataset<Row> dataset = this.sqlContext().read().load(path);
         dataset = dataset.select(requiredColumns);
         if (filter.isPresent()) {
             dataset = dataset.filter(filter.get());
@@ -75,7 +75,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     @Override
     public RDD<Row> buildScan() {
-        return this.sqlContext().read().load(inputFiles()).rdd();
+        return this.sqlContext().read().load(path).rdd();
     }
 
     /**
