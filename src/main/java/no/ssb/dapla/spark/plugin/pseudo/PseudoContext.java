@@ -1,8 +1,10 @@
 package no.ssb.dapla.spark.plugin.pseudo;
 
+import no.ssb.dapla.catalog.protobuf.PseudoConfigItem;
 import no.ssb.dapla.dlp.pseudo.func.PseudoFuncConfig;
 import no.ssb.dapla.dlp.pseudo.func.fpe.FpeFunc;
 import no.ssb.dapla.dlp.pseudo.func.fpe.FpeFuncConfig;
+import no.ssb.dapla.dlp.pseudo.func.util.Json;
 import no.ssb.dapla.service.SecretServiceClient;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
@@ -13,6 +15,7 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.StructField;
 import scala.collection.immutable.Map;
 
+import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -56,6 +59,25 @@ public class PseudoContext {
         return "PseudoContext{" +
           "pseudoOptions=" + pseudoOptions +
           '}';
+    }
+
+    public Iterable<PseudoConfigItem> getPseudoConfigItems() {
+        if (pseudoOptions.isPresent()) {
+            PseudoOptions opts = pseudoOptions.get();
+            return opts.columns().stream()
+              .map(col -> PseudoConfigItem.newBuilder()
+                .setCol(col)
+                .setPseudoFunc(opts.columnFunc(col).orElse(""))
+                .build())
+              .collect(Collectors.toList());
+        }
+        else {
+            return Collections.emptyList();
+        }
+    }
+
+    public String getConfigJson() {
+        return pseudoOptions.isPresent() ? pseudoOptions.get().toJson() : "[]";
     }
 
     public Dataset<Row> apply(Dataset<Row> ds) {

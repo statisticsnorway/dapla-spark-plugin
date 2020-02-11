@@ -3,6 +3,7 @@ package no.ssb.dapla.spark.plugin;
 import no.ssb.dapla.catalog.protobuf.Dataset.DatasetState;
 import no.ssb.dapla.catalog.protobuf.Dataset.Valuation;
 import no.ssb.dapla.catalog.protobuf.DatasetId;
+import no.ssb.dapla.catalog.protobuf.PseudoConfigItem;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.SparkServiceClient;
@@ -92,7 +93,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // Write to GCS before updating catalog
             data.coalesce(1).write().parquet(pathToNewDataSet);
 
-            no.ssb.dapla.catalog.protobuf.Dataset writeDataset = createWriteDataset(intendToCreateDataset, mode, namespace, valuation, state, pathToNewDataSet);
+            no.ssb.dapla.catalog.protobuf.Dataset writeDataset = createWriteDataset(intendToCreateDataset, mode, namespace, valuation, state, pathToNewDataSet, pseudoContext);
             sparkServiceClient.writeDataset(writeDataset, userId);
 
             // For now give more info in Zepplin
@@ -112,12 +113,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                 + System.currentTimeMillis();
     }
 
-    private no.ssb.dapla.catalog.protobuf.Dataset createWriteDataset(no.ssb.dapla.catalog.protobuf.Dataset dataset, SaveMode mode, String namespace, Valuation valuation, DatasetState state, String addLocation) {
+    private no.ssb.dapla.catalog.protobuf.Dataset createWriteDataset(no.ssb.dapla.catalog.protobuf.Dataset dataset, SaveMode mode, String namespace, Valuation valuation, DatasetState state, String addLocation, PseudoContext pseudoContext) {
         no.ssb.dapla.catalog.protobuf.Dataset.Builder datasetBuilder = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
                 .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
                 .setValuation(valuation)
                 .setState(state)
+                .addAllPseudoConfig(pseudoContext.getPseudoConfigItems())
                 .addLocations(addLocation);
+
         if (mode == SaveMode.Overwrite) {
             datasetBuilder.clearLocations();
         }
