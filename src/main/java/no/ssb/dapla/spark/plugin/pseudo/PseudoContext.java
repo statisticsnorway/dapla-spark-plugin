@@ -1,6 +1,9 @@
 package no.ssb.dapla.spark.plugin.pseudo;
 
-import com.google.common.collect.ImmutableSet;
+import no.ssb.dapla.dlp.pseudo.func.PseudoFuncConfig;
+import no.ssb.dapla.dlp.pseudo.func.fpe.FpeFunc;
+import no.ssb.dapla.dlp.pseudo.func.fpe.FpeFuncConfig;
+import no.ssb.dapla.service.SecretServiceClient;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -10,24 +13,42 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.StructField;
 import scala.collection.immutable.Map;
 
-import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static no.ssb.dapla.spark.plugin.pseudo.PseudoUDFs.TransformationType.APPLY;
+import static no.ssb.dapla.spark.plugin.pseudo.PseudoUDFs.TransformationType.RESTORE;
+import static no.ssb.dapla.spark.plugin.pseudo.PseudoUDFs.udfNameOf;
 
 public class PseudoContext {
 
-    private final Set<String> registeredUDFs = new HashSet<>();
     private final Optional<PseudoOptions> pseudoOptions;
+    private final SecretServiceClient secretServiceClient = new SecretServiceClient();
 
     public PseudoContext(SQLContext sqlContext, Map<String, String> parameters) {
         this.pseudoOptions = PseudoOptions.parse(parameters);
-        PseudoUDFs.BY_TRANSFORMATION.forEach((transformation, udf) -> {
-            PseudoUDFs.supportedDatatypes().forEach(dataType -> {
-                String udfName = udfNameOf(transformation, dataType);
-                sqlContext.udf().register(udfName, udf, dataType);
-                registeredUDFs.add(udfName);
+
+        if (pseudoOptions.isPresent()) {
+            PseudoOptions opts = pseudoOptions.get();
+            Set<PseudoFuncConfig> funcConfigs = parsePseudoConfigs(opts);
+
+            funcConfigs.forEach(funcConfig -> {
+                Optional<String> keyId = funcConfig.get(FpeFuncConfig.Param.KEY_ID, String.class);
+                if (keyId.isPresent() && FpeFunc.class.getName().equals(funcConfig.getFuncImpl())) {
+                    SecretServiceClient.Secret secret = secretServiceClient.createOrGetSecret(keyId.get(), "AES256");
+                    funcConfig.add(FpeFuncConfig.Param.KEY, secret.getBase64EncodedBody());
+                }
             });
-        });
+
+            PseudoUDFs.registerUDFs(sqlContext, funcConfigs);
+        }
+    }
+
+    private static Set<PseudoFuncConfig> parsePseudoConfigs(PseudoOptions opts) {
+        return opts.functions().stream()
+          .map(PseudoFuncConfigFactory::get)
+          .collect(Collectors.toSet());
     }
 
     @Override
@@ -38,32 +59,27 @@ public class PseudoContext {
     }
 
     public Dataset<Row> apply(Dataset<Row> ds) {
-        return transform(ds, PseudoUDFs.Transformation.APPLY);
+        return transform(ds, APPLY);
     }
 
     public Dataset<Row> restore(Dataset<Row> ds) {
-        return transform(ds, PseudoUDFs.Transformation.RESTORE);
+        return transform(ds, RESTORE);
     }
 
-    public Set<String> registeredUDFs() {
-        return ImmutableSet.copyOf(registeredUDFs);
-    }
-
-    // TODO: Error handling. E.g. what if columns does not exist
-    private Dataset<Row> transform(Dataset<Row> ds, PseudoUDFs.Transformation transformation) {
+    private Dataset<Row> transform(Dataset<Row> ds, PseudoUDFs.TransformationType transformation) {
         if (pseudoOptions.isPresent()) {
-            final PseudoOptions pseudoOptions = this.pseudoOptions.get();
-            for (String colName : pseudoOptions.columns()) {
+            final PseudoOptions opts = this.pseudoOptions.get();
+            for (String colName : opts.columns()) {
+                String colFunc = opts.columnFunc(colName).orElseThrow( () -> new PseudoException("Missing pseudoFunc for col " + colName));
                 DataType dataType = columnDataType(colName, ds);
 
                 if (PseudoUDFs.isSupportedDataType(dataType)) {
-                    String udfName = udfNameOf(transformation, dataType);
+                    String udfName = udfNameOf(colFunc, transformation, dataType);
                     Column data = functions.col(colName);
-                    Column func = functions.lit(pseudoOptions.columnFunc(colName).get());
-                    ds = ds.withColumn(colName, functions.callUDF(udfName, func, data));
+                    ds = ds.withColumn(colName, functions.callUDF(udfName, data));
                 }
                 else {
-                    throw new PseudoException("Unsupported column dataType for pseudo apply UDF: " + dataType);
+                    throw new PseudoException("Unsupported column dataType for pseudo UDF: " + dataType);
                 }
             }
         }
@@ -81,14 +97,4 @@ public class PseudoContext {
         throw new PseudoException("Unable to determine dataType for column '" + colName + "'. Does the column exist?");
     }
 
-    /** DataType specific UDF name */
-    private static String udfNameOf(PseudoUDFs.Transformation trans, DataType dataType) {
-        return String.format("pseudo_%s_%s_udf", trans, dataType.typeName()).toLowerCase();
-    }
-
-    public static class PseudoException extends RuntimeException {
-        public PseudoException(String message) {
-            super(message);
-        }
-    }
 }
