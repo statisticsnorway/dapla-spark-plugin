@@ -1,6 +1,8 @@
 package no.ssb.dapla.gcs.token.broker;
 
 import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
+import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
+import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.DataAccessClient;
 import org.apache.hadoop.conf.Configuration;
@@ -40,14 +42,24 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
         validateTokenIdentifier();
         LOG.debug("Issuing access token for service: " + this.service);
         try {
-            DataAccessClient dataAccessClient = new DataAccessClient(this.config);
-            String userId = tokenIdentifier.getRealUser().toString();
-            AccessTokenRequest.Privilege privilege = AccessTokenRequest.Privilege.valueOf(
-                    tokenIdentifier.getOperation().toString());
-            accessToken = dataAccessClient.getAccessToken(userId, this.service.toString(), privilege);
+            if (useLocalCredentials()) {
+                System.out.println("Using local credentials file");
+                GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(true, "https://www.googleapis.com/auth/devstorage.read_write");
+                accessToken =  new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
+            } else {
+                DataAccessClient dataAccessClient = new DataAccessClient(this.config);
+                String userId = tokenIdentifier.getRealUser().toString();
+                AccessTokenRequest.Privilege privilege = AccessTokenRequest.Privilege.valueOf(
+                        tokenIdentifier.getOperation().toString());
+                accessToken = dataAccessClient.getAccessToken(userId, this.service.toString(), privilege);
+            }
         } catch (Exception e) {
             throw new RuntimeException("Issuing access token failed for service: " + this.service, e);
         }
+    }
+
+    private boolean useLocalCredentials() {
+        return config.getBoolean("spark.ssb.use.local.credentials", true);
     }
 
     private void validateTokenIdentifier() {

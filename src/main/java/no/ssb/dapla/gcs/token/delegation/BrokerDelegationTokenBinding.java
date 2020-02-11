@@ -77,6 +77,7 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
     @Override
     public AccessTokenProvider bindToTokenIdentifier(DelegationTokenIdentifier retrievedIdentifier) {
         LOG.debug("bindToTokenIdentifier");
+        System.out.println("bindToTokenIdentifier");
         return new BrokerAccessTokenProvider(getService(), (BrokerTokenIdentifier) retrievedIdentifier);
     }
 
