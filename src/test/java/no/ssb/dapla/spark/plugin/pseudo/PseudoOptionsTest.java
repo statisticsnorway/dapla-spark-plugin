@@ -11,10 +11,10 @@ public class PseudoOptionsTest {
         PseudoOptions opts = PseudoOptions.parse(new Map.Map1<>(
           "pseudo", "col1=func1(key111, key222);col2=func2 ();; ; col3=func1"
         )).orElse(null);
-        assertThat(opts.columns().size()).isEqualTo(3);
-        assertThat(opts.columnFunc("col1").orElse(null)).isEqualTo("func1(key111,key222)");
-        assertThat(opts.columnFunc("col2").orElse(null)).isEqualTo("func2()");
-        assertThat(opts.columnFunc("col3").orElse(null)).isEqualTo("func1()");
+        assertThat(opts.vars().size()).isEqualTo(3);
+        assertThat(opts.pseudoFunc("col1").orElse(null)).isEqualTo("func1(key111,key222)");
+        assertThat(opts.pseudoFunc("col2").orElse(null)).isEqualTo("func2()");
+        assertThat(opts.pseudoFunc("col3").orElse(null)).isEqualTo("func1()");
     }
 
     @Test
@@ -22,7 +22,7 @@ public class PseudoOptionsTest {
         PseudoOptions opts = PseudoOptions.parse(new Map.Map1<>(
           "pseudo", ""
         )).orElse(null);
-        assertThat(opts.columns().size()).isEqualTo(0);
+        assertThat(opts.vars().size()).isEqualTo(0);
 
         opts = PseudoOptions.parse(new Map.Map1<>(
           "nothing", ""
@@ -44,10 +44,10 @@ public class PseudoOptionsTest {
         PseudoOptions opts = PseudoOptions.parse(new Map.Map1<>(
           "pseudo", "col1;col2;; ; col3=func3"
         )).orElse(null);
-        assertThat(opts.columns().size()).isEqualTo(3);
-        assertThat(opts.columnFunc("col1").orElse(null)).isEqualTo("undefined");
-        assertThat(opts.columnFunc("col2").orElse(null)).isEqualTo("undefined");
-        assertThat(opts.columnFunc("col3").orElse(null)).isEqualTo("func3()");
+        assertThat(opts.vars().size()).isEqualTo(3);
+        assertThat(opts.pseudoFunc("col1").orElse(null)).isEqualTo("undefined");
+        assertThat(opts.pseudoFunc("col2").orElse(null)).isEqualTo("undefined");
+        assertThat(opts.pseudoFunc("col3").orElse(null)).isEqualTo("func3()");
     }
 
     @Test
@@ -68,14 +68,14 @@ public class PseudoOptionsTest {
 
     @Test
     public void fromJson_invalidJson_shouldReturnEmptyOptions() {
-        assertThat(PseudoOptions.fromJson(null).columns().size()).isEqualTo(0);
-        assertThat(PseudoOptions.fromJson("gibberish").columns().size()).isEqualTo(0);
+        assertThat(PseudoOptions.fromJson(null).vars().size()).isEqualTo(0);
+        assertThat(PseudoOptions.fromJson("gibberish").vars().size()).isEqualTo(0);
     }
 
     @Test
     public void fromJson_jsonWithPseudoFuncs_shouldParseSuccessfully() {
         String json = "[{\"col\":\"col1\",\"pseudoFunc\":\"func1()\"},{\"col\":\"col2\",\"pseudoFunc\":\"func2(someParam)\"},{\"col\":\"col3\",\"pseudoFunc\":\"undefined\"}]";
-        assertThat(PseudoOptions.fromJson(json).columns()).contains("col1", "col2", "col3");
+        assertThat(PseudoOptions.fromJson(json).vars()).contains("col1", "col2", "col3");
     }
 
 }

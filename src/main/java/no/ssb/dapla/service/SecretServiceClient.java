@@ -1,16 +1,48 @@
 package no.ssb.dapla.service;
 
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Maps;
+import no.ssb.dapla.catalog.protobuf.PseudoConfig;
 import org.apache.directory.api.util.Base64;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SecretServiceClient {
 
+    private static final String DEFAULT_SECRET_TYPE = "AES256";
     private static final Map<String, Secret> secretRepo = new HashMap<>();
+    private static Map<String, CatalogItem> catalog = Maps.uniqueIndex(ImmutableList.of(
+      new CatalogItem("/path/to/some/dataset")
+    ), item -> item.fqdsName);
+
+    /** Look up a set of secrets based */
+
+    public Set<Secret> getSecrets(String fqdsName) {
+        return getSecretIdsForDataset(fqdsName).stream()
+          .map(secretId -> getSecret(secretId))
+          .collect(Collectors.toSet());
+    }
+
+    public Set<Secret> createOrGetDefaultSecrets(String datasetPath, Set<String> secretIds) {
+        return createOrGetSecrets(datasetPath, secretIds.stream()
+          .map(secretId -> new SecretDesc(secretId, DEFAULT_SECRET_TYPE))
+          .collect(Collectors.toSet()));
+    }
+
+    public Set<Secret> createOrGetSecrets(String datasetPath, Set<SecretDesc> secretDescs) {
+        return secretDescs.stream()
+          .map(s -> createOrGetSecret(s.getId(), s.getType()))
+          .collect(Collectors.toSet());
+    }
 
     public Secret createOrGetSecret(String secretId, String type) {
         Secret secret = secretRepo.get(secretId);
@@ -45,6 +77,23 @@ public class SecretServiceClient {
         }
     }
 
+    Set<String> getSecretIdsForDataset(String fqdsName) {
+        CatalogItem catalogItem = Optional.ofNullable(catalog.get(fqdsName)).orElseThrow(() ->
+          new SecretServiceClientException("No catalog entry associated with dataset " + fqdsName)
+        );
+
+        PseudoConfig pseudoConfig = Optional.ofNullable(catalogItem.pseudoConfig).orElse(null);
+
+        if (pseudoConfig == null) {
+            return Collections.emptySet();
+        }
+        else {
+            return pseudoConfig.getSecretsList().stream()
+              .map(secretItem -> secretItem.getId())
+              .collect(Collectors.toSet());
+        }
+    }
+
     public static class SecretServiceClientException extends RuntimeException {
         public SecretServiceClientException(String message) {
             super(message);
@@ -52,6 +101,32 @@ public class SecretServiceClient {
 
         public SecretServiceClientException(String message, Throwable cause) {
             super(message, cause);
+        }
+    }
+
+    public static class SecretDesc {
+        private final String id;
+        private final String type;
+
+        public SecretDesc(String id, String type) {
+            this.id = id;
+            this.type = type;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        @Override
+        public String toString() {
+            return "SecretDesc{" +
+              "id='" + id + '\'' +
+              ", type='" + type + '\'' +
+              '}';
         }
     }
 
@@ -90,5 +165,16 @@ public class SecretServiceClient {
               ", type='" + type + '\'' +
               '}';
         }
+    }
+
+    private static class CatalogItem {
+        private final String fqdsName;
+        private PseudoConfig pseudoConfig;
+
+        public CatalogItem(String fqdsName) {
+            this.fqdsName = fqdsName;
+        }
+
+
     }
 }

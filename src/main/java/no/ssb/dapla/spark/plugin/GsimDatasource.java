@@ -3,7 +3,6 @@ package no.ssb.dapla.spark.plugin;
 import no.ssb.dapla.catalog.protobuf.Dataset.DatasetState;
 import no.ssb.dapla.catalog.protobuf.Dataset.Valuation;
 import no.ssb.dapla.catalog.protobuf.DatasetId;
-import no.ssb.dapla.catalog.protobuf.PseudoConfigItem;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.SparkServiceClient;
@@ -53,7 +52,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         final String location = dataset.getLocations(0);
         System.out.println("Fant datasett: " + location);
         SQLContext isolatedSqlContext = isolatedContext(sqlContext, namespace);
-        PseudoContext pseudoContext = new PseudoContext(isolatedSqlContext, parameters);
+        PseudoContext pseudoContext = new PseudoContext(isolatedSqlContext, namespace, parameters);
         return new GsimRelation(isolatedSqlContext, location, pseudoContext);
     }
 
@@ -79,7 +78,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                 valuation, state);
         String datasetId = intendToCreateDataset.getId().getId();
         final String pathToNewDataSet = getPathToNewDataset(host, outputPathPrefix, datasetId);
-        PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
+        PseudoContext pseudoContext = new PseudoContext(sqlContext, namespace, parameters);
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
@@ -118,7 +117,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                 .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
                 .setValuation(valuation)
                 .setState(state)
-                .addAllPseudoConfig(pseudoContext.getPseudoConfigItems())
+                .setPseudoConfig(pseudoContext.getCatalogPseudoConfig().orElse(null))
                 .addLocations(addLocation);
 
         if (mode == SaveMode.Overwrite) {
