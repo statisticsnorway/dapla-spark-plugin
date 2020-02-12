@@ -184,6 +184,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         }
         sparkSession.conf().set(SparkOptions.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(SparkOptions.CURRENT_OPERATION, privilege.name());
+        /*
         try {
             UserGroupInformation.getCurrentUser().addToken(service,
                     BrokerDelegationTokenBinding.createHadoopToken(service, new Text(privilege.name()),
@@ -191,6 +192,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+         */
     }
 
     @Override

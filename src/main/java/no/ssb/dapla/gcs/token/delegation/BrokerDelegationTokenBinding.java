@@ -5,13 +5,10 @@ import com.google.cloud.hadoop.fs.gcs.auth.AbstractDelegationTokenBinding;
 import com.google.cloud.hadoop.util.AccessTokenProvider;
 import no.ssb.dapla.gcs.token.broker.BrokerAccessTokenProvider;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.delegation.web.DelegationTokenIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Iterator;
 
 /**
  * A DelegationTokenBinding implementation that binds a file system to a BrokerAccessTokenProvider.
