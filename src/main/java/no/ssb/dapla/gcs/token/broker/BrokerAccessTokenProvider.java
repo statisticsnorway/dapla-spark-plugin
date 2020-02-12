@@ -5,6 +5,7 @@ import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.DataAccessClient;
+import no.ssb.dapla.spark.plugin.SparkOptions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 
@@ -50,7 +51,7 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
                 DataAccessClient dataAccessClient = new DataAccessClient(this.config);
                 String userId = tokenIdentifier.getRealUser().toString();
                 AccessTokenRequest.Privilege privilege = AccessTokenRequest.Privilege.valueOf(
-                        tokenIdentifier.getOperation().toString());
+                        config.get(SparkOptions.CURRENT_OPERATION));
                 accessToken = dataAccessClient.getAccessToken(userId, this.service.toString(), privilege);
             }
         } catch (Exception e) {
@@ -67,11 +68,11 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
             throw new IllegalStateException("Invalid session. Cannot find required token identifier.");
         }
 
-        if (config == null || config.get(BrokerTokenIdentifier.CURRENT_NAMESPACE) == null ||
-                config.get(BrokerTokenIdentifier.CURRENT_OPERATION) == null) {
+        if (config == null || config.get(SparkOptions.CURRENT_NAMESPACE) == null ||
+                config.get(SparkOptions.CURRENT_OPERATION) == null) {
             throw new IllegalStateException("Invalid session. Cannot get current namespace or operation.");
         }
-
+        System.out.println("tokenIdentifier " + tokenIdentifier);
         /*
         if (!tokenIdentifier.getOperation().toString().equals(config.get(BrokerTokenIdentifier.CURRENT_OPERATION))) {
             throw new IllegalStateException(String.format(

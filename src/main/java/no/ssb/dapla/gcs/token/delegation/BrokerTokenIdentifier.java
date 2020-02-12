@@ -17,8 +17,6 @@ import org.apache.hadoop.security.token.delegation.web.DelegationTokenIdentifier
 public class BrokerTokenIdentifier extends DelegationTokenIdentifier {
 
     public static final Text KIND = new Text("GCPBrokerSessionToken");
-    public static final String CURRENT_OPERATION = "spark.ssb.session.operation";
-    public static final String CURRENT_NAMESPACE = "spark.ssb.session.namespace";
     private Text operation;
     private Text namespace;
 
