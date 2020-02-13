@@ -18,12 +18,13 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     private final SQLContext context;
     private final String path;
     private final PseudoContext pseudoContext;
-    private StructType schema;
+    private final StructType schema;
 
     public GsimRelation(SQLContext context, String path, PseudoContext pseudoContext) {
         this.context = context;
         this.pseudoContext = pseudoContext;
         this.path = path;
+        this.schema = getDataset().schema();
     }
 
     /**
@@ -50,9 +51,6 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     @Override
     public synchronized StructType schema() {
-        if (schema == null) { // Memoize.
-            schema = getDataset().schema();
-        }
         return schema;
     }
 

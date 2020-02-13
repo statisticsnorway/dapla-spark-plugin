@@ -100,8 +100,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         try {
             log.info("writing file(s) to: {}", pathToNewDataSet);
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
-            SparkSession sparkSession = sqlContext.sparkSession();
-            setUserContext(sparkSession, AccessTokenRequest.Privilege.WRITE, host, namespace, userId);
+            setUserContext(data.sparkSession(), AccessTokenRequest.Privilege.WRITE, host, namespace, userId);
             data = pseudoContext.apply(data);
             // Write to GCS before updating catalog
             data.coalesce(1).write().parquet(pathToNewDataSet);
@@ -184,7 +183,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         }
         sparkSession.conf().set(SparkOptions.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(SparkOptions.CURRENT_OPERATION, privilege.name());
-        /*
         try {
             UserGroupInformation.getCurrentUser().addToken(service,
                     BrokerDelegationTokenBinding.createHadoopToken(service, new Text(privilege.name()),
@@ -192,8 +190,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-         */
     }
 
     @Override
