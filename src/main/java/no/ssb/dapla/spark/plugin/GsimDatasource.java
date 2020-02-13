@@ -44,6 +44,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.info("CreateRelation via read {}", parameters);
+        System.out.println("Is cache disabled from CreateRelation? " + sqlContext.sparkSession().conf().get(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE));
         SparkOptions options = new SparkOptions(parameters);
         final String namespace = options.getPath();
         System.out.println("Leser datasett fra: " + namespace);
