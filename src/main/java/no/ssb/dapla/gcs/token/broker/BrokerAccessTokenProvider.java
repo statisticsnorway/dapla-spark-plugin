@@ -39,7 +39,11 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
 
     @Override
     public void refresh() {
-        if (1==1) throw new IllegalStateException("Check me out");
+        try {
+            if (1==1) throw new IllegalStateException("Check me out");
+        } catch (Exception e) {
+            e.printStackTrace(System.out);
+        }
 
         validateTokenIdentifier();
         LOG.debug("Issuing access token for service: " + this.service);
