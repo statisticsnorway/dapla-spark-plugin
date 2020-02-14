@@ -5,9 +5,11 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Objects;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.security.token.TokenRenewer;
 import org.apache.hadoop.security.token.delegation.web.DelegationTokenIdentifier;
 
 /**
@@ -20,12 +22,30 @@ public class BrokerTokenIdentifier extends DelegationTokenIdentifier {
     private Text operation;
     private Text namespace;
 
-    public static class Renewer extends Token.TrivialRenewer {
-        public Renewer() {
+    public static class Renewer extends TokenRenewer {
+
+        @Override
+        public boolean handleKind(Text kind) {
+            return BrokerTokenIdentifier.KIND.equals(kind);
         }
 
-        protected Text getKind() {
-            return BrokerTokenIdentifier.KIND;
+        @Override
+        public long renew(Token<?> token, Configuration conf) throws IOException, InterruptedException {
+            System.out.println("Renew token");
+            if (1==1) throw new IOException("Renew is not yet implemented");
+            return 0;
+        }
+
+        @Override
+        public void cancel(Token<?> token, Configuration conf) throws IOException, InterruptedException {
+            System.out.println("Cancel token");
+            if (1==1) throw new IOException("Cancel is not yet implemented");
+        }
+
+        @Override
+        public boolean isManaged(Token<?> token) throws IOException {
+            // Return true to indicate that tokens can be renewed and cancelled
+            return true;
         }
     }
 
