@@ -63,7 +63,7 @@ public class PseudoOptionsTest {
         PseudoOptions opts = PseudoOptions.parse(new Map.Map1<>(
           "pseudo", " ;  col1=func1;col2=func2(someParam);; ; col3;;        ;    "
         )).orElse(null);
-        assertThat(opts.toJson()).isEqualTo("[{\"col\":\"col1\",\"pseudoFunc\":\"func1()\"},{\"col\":\"col2\",\"pseudoFunc\":\"func2(someParam)\"},{\"col\":\"col3\",\"pseudoFunc\":\"undefined\"}]");
+        assertThat(opts.toJson()).isEqualTo("[{\"var\":\"col1\",\"pseudoFunc\":\"func1()\"},{\"var\":\"col2\",\"pseudoFunc\":\"func2(someParam)\"},{\"var\":\"col3\",\"pseudoFunc\":\"undefined\"}]");
     }
 
     @Test
@@ -74,7 +74,7 @@ public class PseudoOptionsTest {
 
     @Test
     public void fromJson_jsonWithPseudoFuncs_shouldParseSuccessfully() {
-        String json = "[{\"col\":\"col1\",\"pseudoFunc\":\"func1()\"},{\"col\":\"col2\",\"pseudoFunc\":\"func2(someParam)\"},{\"col\":\"col3\",\"pseudoFunc\":\"undefined\"}]";
+        String json = "[{\"var\":\"col1\",\"pseudoFunc\":\"func1()\"},{\"var\":\"col2\",\"pseudoFunc\":\"func2(someParam)\"},{\"var\":\"col3\",\"pseudoFunc\":\"undefined\"}]";
         assertThat(PseudoOptions.fromJson(json).vars()).contains("col1", "col2", "col3");
     }
 

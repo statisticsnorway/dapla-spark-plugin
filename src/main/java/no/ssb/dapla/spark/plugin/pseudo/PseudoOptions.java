@@ -126,7 +126,7 @@ public class PseudoOptions {
         }
     }
 
-    /** Used for json serde */
+    /** Used for json serialization */
     private static class ConfigElement {
         private String var;
         private String pseudoFunc;
