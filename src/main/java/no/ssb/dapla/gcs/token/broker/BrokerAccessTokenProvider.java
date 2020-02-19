@@ -44,7 +44,8 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
         try {
             if (useLocalCredentials()) {
                 System.out.println("Using local credentials file");
-                GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(true, "https://www.googleapis.com/auth/devstorage.read_write");
+                final String scope = tokenIdentifier.getOperation().toString().equals("READ") ? "https://www.googleapis.com/auth/devstorage.read_only" : "https://www.googleapis.com/auth/devstorage.read_write";
+                GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(true, scope);
                 accessToken =  new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
             } else {
                 DataAccessClient dataAccessClient = new DataAccessClient(this.config);
