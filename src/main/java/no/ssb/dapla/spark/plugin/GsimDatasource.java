@@ -30,6 +30,7 @@ import scala.collection.immutable.Map;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
@@ -50,10 +51,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         System.out.println("Leser datasett fra: " + namespace);
         String userId = getUserId(sqlContext.sparkContext());
 
-        SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
-        no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.getDataset(userId, namespace);
+        //SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
+        //no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.getDataset(userId, namespace);
 
-        final String location = dataset.getLocations(0);
+        final String location = "gs://ssb-data-staging/datastore/skatt/person/rawdata-2019";
         final String host = getHost(location);
         System.out.println("Fant datasett: " + location);
         SQLContext isolatedSqlContext = isolatedContext(sqlContext, host, namespace, userId);
@@ -86,13 +87,13 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         Valuation valuation = Valuation.valueOf(options.getValuation());
         DatasetState state = DatasetState.valueOf(options.getState());
 
-        SparkServiceClient sparkServiceClient = new SparkServiceClient(conf);
-        no.ssb.dapla.catalog.protobuf.Dataset intendToCreateDataset = sparkServiceClient.createDataset(userId, mode, namespace,
-                valuation, state);
-        String datasetId = intendToCreateDataset.getId().getId();
+        //SparkServiceClient sparkServiceClient = new SparkServiceClient(conf);
+        //no.ssb.dapla.catalog.protobuf.Dataset intendToCreateDataset = sparkServiceClient.createDataset(userId, mode, namespace,
+                //valuation, state);
+        //String datasetId = intendToCreateDataset.getId().getId();
         // TODO; Host should be determined from sparkServiceClient
         String host = daplaSparkConfig.getHost();
-        final String pathToNewDataSet = getPathToNewDataset(host, outputPathPrefix, datasetId);
+        final String pathToNewDataSet = getPathToNewDataset(host, outputPathPrefix, UUID.randomUUID().toString());
         PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
 
         Lock datasetLock = new ReentrantLock();
@@ -106,12 +107,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // Write to GCS before updating catalog
             data.coalesce(1).write().parquet(pathToNewDataSet);
 
-            no.ssb.dapla.catalog.protobuf.Dataset writeDataset = createWriteDataset(intendToCreateDataset, mode, namespace, valuation, state, pathToNewDataSet);
-            sparkServiceClient.writeDataset(writeDataset, userId);
+            //no.ssb.dapla.catalog.protobuf.Dataset writeDataset = createWriteDataset(intendToCreateDataset, mode, namespace, valuation, state, pathToNewDataSet);
+            //sparkServiceClient.writeDataset(writeDataset, userId);
 
             // For now give more info in Zepplin
-            String resultOutputPath = writeDataset.getLocations(0);
-            System.out.println(resultOutputPath);
+            //String resultOutputPath = writeDataset.getLocations(0);
+            System.out.println(pathToNewDataSet);
             return new GsimRelation(isolatedContext(sqlContext, host, namespace, userId), pathToNewDataSet, pseudoContext);
         } finally {
             datasetLock.unlock();
