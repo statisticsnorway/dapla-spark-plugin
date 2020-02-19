@@ -178,12 +178,15 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     private void setUserContext(SparkSession sparkSession, AccessTokenRequest.Privilege privilege, String host,
                                 String namespace, String userId) {
         Text service = new Text(host);
+        //Text service = new Text(privilege.name() + ":" + namespace);
         if (sparkSession.conf().contains(SparkOptions.CURRENT_NAMESPACE) ||
                 sparkSession.conf().contains(SparkOptions.CURRENT_OPERATION)) {
             System.out.println("Current namespace and/or operation already exists");
         }
         sparkSession.conf().set(SparkOptions.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(SparkOptions.CURRENT_OPERATION, privilege.name());
+        sparkSession.conf().set(SparkOptions.CURRENT_USER, userId);
+        /*
         try {
             UserGroupInformation.getCurrentUser().addToken(service,
                     BrokerDelegationTokenBinding.createHadoopToken(service, new Text(privilege.name()),
@@ -191,6 +194,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+         */
     }
 
     @Override

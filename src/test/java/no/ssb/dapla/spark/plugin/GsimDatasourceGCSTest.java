@@ -10,6 +10,7 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import no.ssb.dapla.catalog.protobuf.DatasetId;
 import no.ssb.dapla.data.access.protobuf.AccessTokenResponse;
+import no.ssb.dapla.gcs.connector.GoogleHadoopFileSystemExt;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
@@ -119,6 +120,7 @@ public class GsimDatasourceGCSTest {
                 .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE, "gs://" + bucket)
                 .config(SparkServiceClient.CONFIG_ROUTER_URL, routerUrl.toString())
                 .config(DataAccessClient.CONFIG_DATA_ACCESS_URL, accessServerUrl.toString())
+                .config("spark.hadoop.fs.gs.impl", GoogleHadoopFileSystemExt.class.getCanonicalName())
                 .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
                 //.config("spark.hadoop.fs.gs.auth.access.token.provider.impl", BrokerAccessTokenProvider.class.getCanonicalName())
                 .getOrCreate();
