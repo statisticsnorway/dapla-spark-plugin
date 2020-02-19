@@ -54,11 +54,22 @@ public class GoogleHadoopFileSystemExt extends GoogleHadoopFileSystem {
 
     @Override
     public FSDataInputStream open(Path hadoopPath, int bufferSize) throws IOException {
-        String operation = getConf().get(SparkOptions.CURRENT_OPERATION);
-        String namespace = getConf().get("spark.ssb.session.namespace");
+        checkDelegationToken();
+        return super.open(hadoopPath, bufferSize);
+    }
+
+    @Override
+    public FSDataOutputStream create(Path hadoopPath, FsPermission permission, boolean overwrite, int bufferSize, short replication, long blockSize, Progressable progress) throws IOException {
+        checkDelegationToken();
+        return super.create(hadoopPath, permission, overwrite, bufferSize, replication, blockSize, progress);
+    }
+
+    private void checkDelegationToken() throws IOException {
         Token<DelegationTokenIdentifier> boundToken = delegationTokens.getBoundDT();
         if (boundToken != null) {
             BrokerTokenIdentifier brokerTokenIdentifier = (BrokerTokenIdentifier) boundToken.decodeIdentifier();
+            String operation = getConf().get(SparkOptions.CURRENT_OPERATION);
+            String namespace = getConf().get(SparkOptions.CURRENT_NAMESPACE);
             if (!brokerTokenIdentifier.getOperation().toString().equals(operation)) {
                 System.out.println("Current token has different operation: " + brokerTokenIdentifier.getOperation().toString());
                 this.setGcsFs(this.createGcsFs(getConf()));
@@ -68,16 +79,6 @@ public class GoogleHadoopFileSystemExt extends GoogleHadoopFileSystem {
                 this.setGcsFs(this.createGcsFs(getConf()));
             }
         }
-        return super.open(hadoopPath, bufferSize);
-    }
-
-    @Override
-    public FSDataOutputStream create(Path hadoopPath, FsPermission permission, boolean overwrite, int bufferSize, short replication, long blockSize, Progressable progress) throws IOException {
-        String operation = getConf().get(SparkOptions.CURRENT_OPERATION);
-        if (!AccessTokenRequest.Privilege.WRITE.name().equals(operation)) {
-            this.setGcsFs(this.createGcsFs(getConf()));
-        }
-        return super.create(hadoopPath, permission, overwrite, bufferSize, replication, blockSize, progress);
     }
 
 }
