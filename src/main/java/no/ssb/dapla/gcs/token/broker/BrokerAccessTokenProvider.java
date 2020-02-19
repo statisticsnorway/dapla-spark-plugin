@@ -39,12 +39,6 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
 
     @Override
     public void refresh() {
-        try {
-            if (1==1) throw new IllegalStateException("Check me out");
-        } catch (Exception e) {
-            e.printStackTrace(System.out);
-        }
-
         validateTokenIdentifier();
         LOG.debug("Issuing access token for service: " + this.service);
         try {
@@ -78,19 +72,17 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
             throw new IllegalStateException("Invalid session. Cannot get current namespace or operation.");
         }
         System.out.println("tokenIdentifier " + tokenIdentifier);
-        /*
-        if (!tokenIdentifier.getOperation().toString().equals(config.get(BrokerTokenIdentifier.CURRENT_OPERATION))) {
+        if (!tokenIdentifier.getOperation().toString().equals(config.get(SparkOptions.CURRENT_OPERATION))) {
             throw new IllegalStateException(String.format(
                     "Invalid session. Current operation %s does not match the token identifier operation %s",
-                    config.get(BrokerTokenIdentifier.CURRENT_OPERATION), tokenIdentifier.getOperation()));
+                    config.get(SparkOptions.CURRENT_OPERATION), tokenIdentifier.getOperation()));
         }
 
-        if (!tokenIdentifier.getNamespace().toString().equals(config.get(BrokerTokenIdentifier.CURRENT_NAMESPACE))) {
+        if (!tokenIdentifier.getNamespace().toString().equals(config.get(SparkOptions.CURRENT_NAMESPACE))) {
             throw new IllegalStateException(String.format(
                     "Invalid session. Current namespace %s does not match the token identifier namespace %s",
-                    config.get(BrokerTokenIdentifier.CURRENT_NAMESPACE), tokenIdentifier.getNamespace()));
+                    config.get(SparkOptions.CURRENT_NAMESPACE), tokenIdentifier.getNamespace()));
         }
-         */
     }
 
     @Override
