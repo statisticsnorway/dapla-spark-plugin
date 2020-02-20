@@ -1,13 +1,11 @@
 package no.ssb.dapla.spark.plugin;
 
-import no.ssb.dapla.catalog.protobuf.Dataset.DatasetState;
-import no.ssb.dapla.catalog.protobuf.Dataset.Valuation;
-import no.ssb.dapla.catalog.protobuf.DatasetId;
-import no.ssb.dapla.catalog.protobuf.PseudoConfig;
+import no.ssb.dapla.data.access.protobuf.LocationResponse;
+import no.ssb.dapla.dataset.api.DatasetId;
+import no.ssb.dapla.dataset.api.DatasetMeta;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
-import no.ssb.dapla.service.SparkServiceClient;
-import no.ssb.dapla.spark.plugin.pseudo.PseudoContext;
+import no.ssb.dapla.service.DataAccessClient;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -43,43 +41,39 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.info("CreateRelation via read {}", parameters);
         SparkOptions options = new SparkOptions(parameters);
-        final String namespace = options.getPath();
-        System.out.println("Leser datasett fra: " + namespace);
+        final String localPath = options.getPath();
+        System.out.println("Leser datasett fra: " + localPath);
         String userId = getUserId(sqlContext.sparkContext());
 
-        SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
-        no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.getDataset(userId, namespace);
+        DataAccessClient dataAccessClient = new DataAccessClient(sqlContext.sparkContext().getConf());
+        LocationResponse locationResponse = dataAccessClient.getLocationWithLatestVersion(userId, localPath);
 
-        final String location = dataset.getLocations(0);
-        System.out.println("Fant datasett: " + location);
-        SQLContext isolatedSqlContext = isolatedContext(sqlContext, namespace);
-        PseudoContext pseudoContext = new PseudoContext(isolatedSqlContext, dataset, parameters, "read");
-        return new GsimRelation(isolatedSqlContext, location, pseudoContext);
+        // TODO: use a util for this
+        String fullPath = locationResponse.getParentUri() + localPath + "/" + locationResponse.getVersion();
+
+        System.out.println("Path til dataset: " + fullPath);
+        SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath);
+        return new GsimRelation(isolatedSqlContext, fullPath);
     }
 
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
         log.info("CreateRelation via write {}", parameters);
         SparkOptions options = new SparkOptions(parameters);
-        final String namespace = options.getPath();
-        System.out.println("Skriver datasett til: " + namespace);
+        final String localPath = options.getPath();
+        System.out.println("Skriver datasett til: " + localPath);
 
         SparkContext sparkContext = sqlContext.sparkContext();
         SparkConf conf = sparkContext.getConf();
-        DaplaSparkConfig daplaSparkConfig = new DaplaSparkConfig(conf);
 
         String userId = getUserId(sparkContext);
-        String host = daplaSparkConfig.getHost();
-        String outputPathPrefix = daplaSparkConfig.getOutputOathPrefix();
-        Valuation valuation = Valuation.valueOf(options.getValuation());
-        DatasetState state = DatasetState.valueOf(options.getState());
 
-        SparkServiceClient sparkServiceClient = new SparkServiceClient(conf);
-        no.ssb.dapla.catalog.protobuf.Dataset intendToCreateDataset = sparkServiceClient.createDataset(userId, mode, namespace,
-                valuation, state);
+        DataAccessClient dataAccessClient = new DataAccessClient(conf);
+        long version = System.currentTimeMillis();
+        LocationResponse location = dataAccessClient.getLocation(userId, localPath, version);
 
-        String datasetId = intendToCreateDataset.getId().getId();
-        final String pathToNewDataSet = getPathToNewDataset(host, outputPathPrefix, datasetId);
+        // Should we still use outputPathPrefix? I think not
+        final String pathToNewDataSet = getPathToNewDataset(location.getParentUri(), localPath, version);
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
@@ -88,45 +82,37 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             log.info("writing file(s) to: {}", pathToNewDataSet);
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
             SparkSession sparkSession = sqlContext.sparkSession();
-            setUserContext(sparkSession, "write", namespace);
-            PseudoContext pseudoContext = new PseudoContext(sqlContext, intendToCreateDataset, parameters, "write");
-            data = pseudoContext.apply(data);
+            setUserContext(sparkSession, "write", localPath);
             // Write to GCS before updating catalog
             data.coalesce(1).write().parquet(pathToNewDataSet);
 
-            no.ssb.dapla.catalog.protobuf.Dataset writeDataset = createWriteDataset(intendToCreateDataset, mode, namespace, valuation, state, pathToNewDataSet, pseudoContext);
-            sparkServiceClient.writeDataset(writeDataset, userId);
+            // TODO: This should noe be written to the bucket as a metadata file
+            DatasetMeta datasetMeta = DatasetMeta.newBuilder()
+                    .setId(DatasetId.newBuilder()
+                            .setPath(localPath)
+                            .setVersion(version)
+                            .build())
+                    .setType(DatasetMeta.Type.BOUNDED)
+                    .setValuation(DatasetMeta.Valuation.valueOf(options.getValuation()))
+                    .setState(DatasetMeta.DatasetState.valueOf(options.getState()))
+                    .setParentUri(location.getParentUri())
+                    .setCreatedBy("todo") // TODO: userid
+                    .build();
+            // Save as json with name: 'dataset-meta.json'
 
             // For now give more info in Zepplin
-            String resultOutputPath = writeDataset.getLocations(0);
-            System.out.println(resultOutputPath);
-            return new GsimRelation(isolatedContext(sqlContext, namespace), pathToNewDataSet, pseudoContext);
+            System.out.println("Path to dataset:" + pathToNewDataSet);
+            return new GsimRelation(isolatedContext(sqlContext, localPath), pathToNewDataSet);
         } finally {
             datasetLock.unlock();
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
         }
     }
 
-    private String getPathToNewDataset(String host, String outputPrefix, String datasetId) {
-        return host + Path.SEPARATOR
-                + outputPrefix + Path.SEPARATOR
-                + datasetId + Path.SEPARATOR
-                + System.currentTimeMillis();
-    }
-
-    private no.ssb.dapla.catalog.protobuf.Dataset createWriteDataset(no.ssb.dapla.catalog.protobuf.Dataset dataset, SaveMode mode, String namespace, Valuation valuation, DatasetState state, String addLocation, PseudoContext pseudoContext) {
-        no.ssb.dapla.catalog.protobuf.Dataset.Builder datasetBuilder = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
-                .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
-                .setValuation(valuation)
-                .setState(state)
-                .setPseudoConfig(pseudoContext.getCatalogPseudoConfig().orElse(PseudoConfig.newBuilder().build()))
-                .addLocations(addLocation);
-
-        if (mode == SaveMode.Overwrite) {
-            datasetBuilder.clearLocations();
-        }
-        datasetBuilder.addLocations(addLocation).build();
-        return datasetBuilder.build();
+    private String getPathToNewDataset(String parentUri, String path, long version) {
+        return parentUri
+                + path + Path.SEPARATOR
+                + version;
     }
 
     /**

@@ -1,8 +1,9 @@
 package no.ssb.dapla.service;
 
-import no.ssb.dapla.catalog.protobuf.Dataset;
-import no.ssb.dapla.catalog.protobuf.Dataset.DatasetState;
-import no.ssb.dapla.catalog.protobuf.Dataset.Valuation;
+import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
+import no.ssb.dapla.data.access.protobuf.AccessTokenResponse;
+import no.ssb.dapla.data.access.protobuf.LocationRequest;
+import no.ssb.dapla.data.access.protobuf.LocationResponse;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
@@ -11,7 +12,6 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.apache.spark.SparkConf;
-import org.apache.spark.sql.SaveMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.util.Optional;
 
-public class SparkServiceClient {
+public class DataAccessClient {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     static final String CONFIG = "spark.ssb.dapla.";
@@ -33,8 +33,8 @@ public class SparkServiceClient {
     private OkHttpClient client;
     private String baseURL;
 
-    public SparkServiceClient(final SparkConf conf) {
-        okhttp3.OkHttpClient.Builder builder = new okhttp3.OkHttpClient.Builder();
+    public DataAccessClient(final SparkConf conf) {
+        OkHttpClient.Builder builder = new OkHttpClient.Builder();
         createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
         this.client = builder.build();
         this.baseURL = conf.get(CONFIG_ROUTER_URL);
@@ -53,66 +53,62 @@ public class SparkServiceClient {
         return Optional.empty();
     }
 
-    public void listNamespace(String namespace) {
-        Request request = new Request.Builder()
-                .url(buildUrl("prefix/%s", namespace))
-                .build();
-        try (Response response = client.newCall(request).execute()) {
-            String json = getJson(response);
-            System.out.println(json);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (Exception e) {
-            log.error("listNamespace failed", e);
-            throw e;
-        }
-    }
-
     private String buildUrl(String format, Object... args) {
         return this.baseURL + String.format(format, args);
     }
 
-    public Dataset getDataset(String userId, String namespace) {
+    public AccessTokenResponse getAccessToken(String userId, String path, AccessTokenRequest.Privilege privilege) {
+        AccessTokenRequest tokenRequest = AccessTokenRequest.newBuilder()
+                .setUserId(userId)
+                .setPath(path)
+                .setPrivilege(privilege)
+                .build();
+
+        String body = ProtobufJsonUtils.toString(tokenRequest);
+
         Request request = new Request.Builder()
-                .url(buildUrl("dataset-meta?name=%s&operation=READ&userId=%s", namespace, userId))
+                .url(buildUrl("rpc/DataAccessService/getAccessToken"))
+                .post(RequestBody.create(body, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
                 .build();
         try (Response response = client.newCall(request).execute()) {
             String json = getJson(response);
-            handleErrorCodes(userId, namespace, response, json);
-            return ProtobufJsonUtils.toPojo(json, Dataset.class);
+            handleErrorCodes(userId, path, response, json);
+            return ProtobufJsonUtils.toPojo(json, AccessTokenResponse.class);
         } catch (IOException e) {
-            log.error("getDataset failed", e);
+            log.error("getAccessToken failed", e);
             throw new RuntimeException(e);
         } catch (Exception e) {
-            log.error("getDataset failed", e);
+            log.error("getAccessToken failed", e);
             throw e;
         }
     }
 
-    public Dataset createDataset(String userId, SaveMode mode, String namespace, Valuation valuation, DatasetState state) {
-        String operation;
-        if (mode == SaveMode.Append) {
-            operation = "UPDATE";
-        } else {
-            operation = "CREATE"; // TODO: Check if this is correct for Overwrite
-        }
-        final String url = buildUrl("dataset-meta?name=%s&operation=%s&valuation=%s&state=%s&userId=%s",
-                namespace, operation, valuation.name(), state.name(), userId);
-        log.info("createDataset URL: {}", url);
-        System.out.println("URL: " + url);
-        Request request = new Request.Builder()
-                .url(url)
+    public LocationResponse getLocationWithLatestVersion(String userId, String path) {
+        return getLocation(userId, path, 0);
+    }
+
+    public LocationResponse getLocation(String userId, String path, long snapshot) {
+        LocationRequest locationRequest = LocationRequest.newBuilder()
+                .setUserId(userId)
+                .setSnapshot(snapshot)
+                .setPath(path)
                 .build();
 
+        String body = ProtobufJsonUtils.toString(locationRequest);
+
+        Request request = new Request.Builder()
+                .url(buildUrl("rpc/DataAccessService/getLocation"))
+                .post(RequestBody.create(body, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .build();
         try (Response response = client.newCall(request).execute()) {
             String json = getJson(response);
-            handleErrorCodes(userId, namespace, response, json);
-            return ProtobufJsonUtils.toPojo(json, Dataset.class);
+            handleErrorCodes(userId, path, response, json);
+            return ProtobufJsonUtils.toPojo(json, LocationResponse.class);
         } catch (IOException e) {
-            log.error("createDataset failed", e);
+            log.error("getLocation failed", e);
             throw new RuntimeException(e);
         } catch (Exception e) {
-            log.error("createDataset failed", e);
+            log.error("getLocation failed", e);
             throw e;
         }
     }
@@ -123,42 +119,25 @@ public class SparkServiceClient {
         return body.string();
     }
 
-    public void writeDataset(Dataset dataset, String userId) {
-        String body = ProtobufJsonUtils.toString(dataset);
-        Request request = new Request.Builder()
-                .url(buildUrl("dataset-meta?userId=%s", userId))
-                .put(RequestBody.create(body, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
-                .build();
-        try (Response response = client.newCall(request).execute()) {
-            handleErrorCodes("userId", "namespace", response, body);
-        } catch (IOException e) {
-            log.error("writeDataset failed", e);
-            throw new SparkServiceException(e, body);
-        } catch (Exception e) {
-            log.error("writeDataset failed", e);
-            throw e;
-        }
-    }
-
     private void handleErrorCodes(String userId, String namespace, Response response, String body) {
         if (response.code() == HttpURLConnection.HTTP_UNAUTHORIZED || response.code() == HttpURLConnection.HTTP_FORBIDDEN) {
-            throw new SparkServiceException(String.format("Din bruker %s har ikke tilgang til %s", userId, namespace), body);
+            throw new DataAccessServiceException(String.format("Din bruker %s har ikke tilgang til %s", userId, namespace), body);
         } else if (response.code() == HttpURLConnection.HTTP_NOT_FOUND) {
-            throw new SparkServiceException(String.format("Fant ingen datasett for %s", namespace), body);
+            throw new DataAccessServiceException(String.format("Fant ingen datasett for %s", namespace), body);
         } else if (response.code() < 200 || response.code() >= 400) {
-            throw new SparkServiceException("En feil har oppstått: " + response.toString(), body);
+            throw new DataAccessServiceException("En feil har oppstått: " + response.toString(), body);
         }
     }
 
-    static class SparkServiceException extends RuntimeException {
+    static class DataAccessServiceException extends RuntimeException {
         private final String body;
 
-        public SparkServiceException(Throwable cause, String body) {
+        public DataAccessServiceException(Throwable cause, String body) {
             super(cause);
             this.body = body;
         }
 
-        public SparkServiceException(String message, String body) {
+        public DataAccessServiceException(String message, String body) {
             super(message);
             this.body = body;
         }
