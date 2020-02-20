@@ -6,6 +6,7 @@ import no.ssb.dapla.dataset.api.DatasetMeta;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.DataAccessClient;
+import no.ssb.dapla.spark.plugin.metadata.MetaDataWriterFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -69,11 +70,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String userId = getUserId(sparkContext);
 
         DataAccessClient dataAccessClient = new DataAccessClient(conf);
-        long version = System.currentTimeMillis();
-        LocationResponse location = dataAccessClient.getLocation(userId, localPath, version);
+        long currentTimeStamp = System.currentTimeMillis();
+        LocationResponse location = dataAccessClient.getLocation(userId, localPath, currentTimeStamp);
 
-        // Should we still use outputPathPrefix? I think not
-        final String pathToNewDataSet = getPathToNewDataset(location.getParentUri(), localPath, version);
+        final String pathToNewDataSet = getPathToNewDataset(location.getParentUri(), localPath, currentTimeStamp);
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
@@ -83,14 +83,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
             SparkSession sparkSession = sqlContext.sparkSession();
             setUserContext(sparkSession, "write", localPath);
-            // Write to GCS before updating catalog
+            // Write to GCS before writing metadata
             data.coalesce(1).write().parquet(pathToNewDataSet);
 
             // TODO: This should noe be written to the bucket as a metadata file
             DatasetMeta datasetMeta = DatasetMeta.newBuilder()
                     .setId(DatasetId.newBuilder()
                             .setPath(localPath)
-                            .setVersion(version)
+                            .setVersion(currentTimeStamp)
                             .build())
                     .setType(DatasetMeta.Type.BOUNDED)
                     .setValuation(DatasetMeta.Valuation.valueOf(options.getValuation()))
@@ -98,11 +98,17 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                     .setParentUri(location.getParentUri())
                     .setCreatedBy("todo") // TODO: userid
                     .build();
-            // Save as json with name: 'dataset-meta.json'
+
+            MetaDataWriterFactory.fromSparkConf(conf)
+                    .create()
+                    .write(datasetMeta);
 
             // For now give more info in Zepplin
             System.out.println("Path to dataset:" + pathToNewDataSet);
             return new GsimRelation(isolatedContext(sqlContext, localPath), pathToNewDataSet);
+        } catch (IOException e) {
+            log.error("Could not write meta-data to bucket", e);
+            throw new RuntimeException(e);
         } finally {
             datasetLock.unlock();
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
@@ -151,7 +157,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     // TODO: This should only be set when the user has access to the current operation and namespace
     private void setUserContext(SparkSession sparkSession, String operation, String namespace) {
         SparkConf conf = sparkSession.sparkContext().getConf();
-        Text service = new Text(DaplaSparkConfig.getHost(conf));
+        Text service = new Text(DaplaSparkConfig.getStoragePath(conf));
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(BrokerTokenIdentifier.CURRENT_OPERATION, operation);
         try {

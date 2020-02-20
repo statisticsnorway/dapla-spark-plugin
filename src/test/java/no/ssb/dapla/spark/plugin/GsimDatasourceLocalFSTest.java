@@ -2,6 +2,8 @@ package no.ssb.dapla.spark.plugin;
 
 import no.ssb.dapla.data.access.protobuf.LocationRequest;
 import no.ssb.dapla.data.access.protobuf.LocationResponse;
+import no.ssb.dapla.dataset.api.DatasetMeta;
+import no.ssb.dapla.spark.plugin.metadata.LocalFSMetaDataWriter;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
@@ -26,7 +28,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static no.ssb.dapla.spark.plugin.metadata.LocalFSMetaDataWriter.DATASET_META_FILE_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class GsimDatasourceLocalFSTest {
@@ -64,14 +70,14 @@ public class GsimDatasourceLocalFSTest {
     @Before
     public void setUp() throws IOException {
         tempOutPutDirectory = Files.createTempDirectory("spark-output").toFile();
-        System.out.println("tempOutPutDirectory created: " + tempOutPutDirectory.toString());
+        sparkStoragePath = tempOutPutDirectory.toString();
+        System.out.println("tempOutPutDirectory created: " + sparkStoragePath);
 
         this.server = new MockWebServer();
         this.server.start();
         HttpUrl baseUrl = server.url("/spark-service/");
 
         // Read the unit dataset json example.
-        sparkStoragePath = "file://" + tempOutPutDirectory.toString();
         SparkSession session = SparkSession.builder()
                 .appName(GsimDatasourceLocalFSTest.class.getSimpleName())
                 .master("local")
@@ -80,6 +86,7 @@ public class GsimDatasourceLocalFSTest {
                 .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE, sparkStoragePath)
                 .config("spark.ssb.dapla.output.prefix", "test-output")
                 .config("spark.ssb.dapla.router.url", baseUrl.toString())
+                .config("spark.ssb.dapla.metadata.writer", LocalFSMetaDataWriter.class.getName())
                 .getOrCreate();
 
         this.sparkContext = session.sparkContext();
@@ -92,7 +99,7 @@ public class GsimDatasourceLocalFSTest {
     public ExpectedException thrown = ExpectedException.none();
 
     @Test
-    public void testWrite() throws InterruptedException {
+    public void testWrite() throws InterruptedException, IOException {
         LocationResponse locationResponse = createLocationResponse();
         server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(locationResponse)).setResponseCode(200));
 
@@ -115,6 +122,19 @@ public class GsimDatasourceLocalFSTest {
         LocationRequest request = ProtobufJsonUtils.toPojo(json, LocationRequest.class);
         assertThat(request.getPath()).isEqualTo("/rawdata/skatt/konto");
         assertThat(request.getUserId()).isEqualTo("dapla_test");
+
+        String metaDatafileName = sparkStoragePath + "/" + DATASET_META_FILE_NAME;
+        try (Stream<String> stream = Files.lines(Paths.get(metaDatafileName))) {
+            String all = stream.collect(Collectors.joining("\n"));
+            DatasetMeta datasetMeta = ProtobufJsonUtils.toPojo(all, DatasetMeta.class);
+
+            assertThat(datasetMeta.getParentUri()).isEqualTo(sparkStoragePath);
+            assertThat(datasetMeta.getValuation().name()).isEqualTo("INTERNAL");
+            assertThat(datasetMeta.getState().name()).isEqualTo("INPUT");
+
+            assertThat(datasetMeta.getId().getPath()).isEqualTo("/rawdata/skatt/konto");
+            assertThat(datasetMeta.getId().getVersion()).isLessThan(System.currentTimeMillis() + 1);
+        }
     }
 
     @Test
