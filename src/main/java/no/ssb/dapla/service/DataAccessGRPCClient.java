@@ -35,8 +35,8 @@ public class DataAccessGRPCClient {
 
     public AccessTokenResponse getTokenResponse() {
         AccessTokenRequest tokenRequest = AccessTokenRequest.newBuilder()
-                .setUserId("user")
-                .setPath("path")
+                .setUserId("user1")
+                .setPath("/skatt/person")
                 .setPrivilege(AccessTokenRequest.Privilege.READ)
                 .build();
 
