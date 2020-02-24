@@ -171,7 +171,7 @@ public class GsimDatasourceLocalFSTest {
     private LocationResponse createLocationResponse() {
         return LocationResponse.newBuilder()
                 .setParentUri(sparkStoragePath)
-                .setVersion(1)
+                .setVersion("1")
                 .build();
     }
 }

@@ -28,7 +28,7 @@ public class DataAccessClientTest {
     }
 
     @Test
-//    @Ignore
+    @Ignore
     public void getLocation() {
         DataAccessClient dataAccessClient = new DataAccessClient(sparkConf);
 

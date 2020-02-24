@@ -8,12 +8,16 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import no.ssb.dapla.data.access.protobuf.LocationRequest;
+import no.ssb.dapla.data.access.protobuf.LocationResponse;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.HttpUrl;
+import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -48,7 +52,8 @@ public class GsimDatasourceGCSTest {
     private static File tempDirectory;
     private static Path parquetFile;
     private static String bucket;
-    private static String testFolder;
+    private static String namespace = "test/dapla/namespace";
+    private static String version = UUID.randomUUID().toString();
     private static BlobId blobId;
     private MockWebServer server;
 
@@ -61,7 +66,6 @@ public class GsimDatasourceGCSTest {
         }
         // Setup GCS test bucket
         bucket = Optional.ofNullable(System.getenv().get("DAPLA_SPARK_TEST_BUCKET")).orElse("dev-datalager-store");
-        testFolder = "dapla-spark-plugin-" + UUID.randomUUID().toString();
         // Create temporary folder and copy test data into it.
         tempDirectory = Files.createTempDirectory("lds-gsim-spark").toFile();
         InputStream parquetContent = GsimDatasourceGCSTest.class.getResourceAsStream("data/dataset.parquet");
@@ -74,7 +78,7 @@ public class GsimDatasourceGCSTest {
     @AfterClass
     public static void clearBucketFolder() {
         final Storage storage = getStorage();
-        Page<Blob> page = storage.list(bucket, Storage.BlobListOption.prefix(testFolder + "/"));
+        Page<Blob> page = storage.list(bucket, Storage.BlobListOption.prefix(namespace + "/"));
         BlobId[] blobs = StreamSupport.stream(page.iterateAll().spliterator(), false).map(BlobInfo::getBlobId).collect(Collectors.toList()).toArray(new BlobId[0]);
         if (blobs.length > 0) {
             List<Boolean> deletedList = storage.delete(blobs);
@@ -121,7 +125,7 @@ public class GsimDatasourceGCSTest {
     }
 
     private static BlobId createBucketTestFile(byte[] bytes) {
-        BlobId blobId = BlobId.of(bucket, testFolder + "/dataset-" + UUID.randomUUID().toString() + ".dat");
+        BlobId blobId = BlobId.of(bucket, namespace + "/" + version + "/" + UUID.randomUUID().toString() + ".dat");
         getStorage().create(BlobInfo.newBuilder(blobId).build(), bytes, Storage.BlobTargetOption.doesNotExist());
         System.out.println("Blob created: " + blobId.toString());
         return blobId;
@@ -175,18 +179,24 @@ public class GsimDatasourceGCSTest {
     }
 
     @Test
-    public void testReadFromBucket() {
-        final String location = "gs://" + blobId.getBucket() + "/" + blobId.getName();
-//        no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset(location);
-//
-//        server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock)).setResponseCode(200));
-//        Dataset<Row> dataset = sqlContext.read()
-//                .format("gsim")
-//                .load("dapla.namespace");
-//
-//        assertThat(dataset).isNotNull();
-//        assertThat(dataset.isEmpty()).isFalse();
+    public void testReadFromBucket() throws InterruptedException {
+        LocationResponse mockResponse = createMockResponse("gs://" + blobId.getBucket(), version);
+
+        server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(mockResponse)).setResponseCode(200));
+        Dataset<Row> dataset = sqlContext.read()
+                .format("gsim")
+                .load("test/dapla/namespace");
+
+        assertThat(dataset).isNotNull();
+        assertThat(dataset.isEmpty()).isFalse();
+
+        final LocationRequest actual = ProtobufJsonUtils.toPojo(server.takeRequest().getBody().readByteString().utf8(),
+                LocationRequest.class);
+        assertThat(actual.getUserId()).isEqualTo("dapla_test");
+        assertThat(actual.getPath()).isEqualTo("test/dapla/namespace");
+        assertThat(actual.getSnapshot()).isEqualTo(0L);
     }
+
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
@@ -197,15 +207,20 @@ public class GsimDatasourceGCSTest {
         thrown.expectMessage("Din bruker dapla_test har ikke tilgang til dapla.namespace");
         sqlContext.read()
                 .format("gsim")
-                .load("dapla.namespace");
+                .load("test/dapla/namespace");
     }
 
     @Test
     public void testWriteBucket() throws InterruptedException {
-//        no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset("");
+        server.setDispatcher(new Dispatcher() {
+            public MockResponse dispatch(RecordedRequest request) {
+                final LocationRequest body = ProtobufJsonUtils.toPojo(request.getBody().readByteString().utf8(),
+                        LocationRequest.class);
+                return new MockResponse().setBody(ProtobufJsonUtils.toString(createMockResponse(
+                        "gs://" + blobId.getBucket(), Long.toString(body.getSnapshot()))));
+            }
+        });
 
-//        server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock)).setResponseCode(200));
-        server.enqueue(new MockResponse().setResponseCode(201));
         Dataset<Row> dataset = sqlContext.read()
                 .load(parquetFile.toString());
         dataset.write()
@@ -213,22 +228,21 @@ public class GsimDatasourceGCSTest {
                 .mode(SaveMode.Overwrite)
                 .option("valuation", "INTERNAL")
                 .option("state", "INPUT")
-                .save("dapla.namespace");
+                .save("test/dapla/namespace");
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
 
-        assertThat(server.takeRequest().getRequestUrl().query()).isEqualTo(
-                "name=dapla.namespace&operation=CREATE&valuation=INTERNAL&state=INPUT&userId=dapla_test");
-
+        final LocationRequest actual = ProtobufJsonUtils.toPojo(server.takeRequest().getBody().readByteString().utf8(),
+                LocationRequest.class);
+        assertThat(actual.getUserId()).isEqualTo("dapla_test");
+        assertThat(actual.getPath()).isEqualTo("test/dapla/namespace");
+        assertThat(actual.getSnapshot()).isEqualTo(0L);
     }
 
-//    private no.ssb.dapla.catalog.protobuf.Dataset createMockDataset(String location) {
-//        return no.ssb.dapla.catalog.protobuf.Dataset.newBuilder()
-//                .setId(DatasetId.newBuilder().setId("mockId").addName("dapla.namespace").build())
-//                .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf("SENSITIVE"))
-//                .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf("INPUT"))
-//                .addLocations(location).build();
-//    }
-
+    private LocationResponse createMockResponse(String parentUri, String version) {
+        return LocationResponse.newBuilder()
+                .setParentUri(parentUri)
+                .setVersion(version).build();
+    }
 
 }

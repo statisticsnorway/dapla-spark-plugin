@@ -50,7 +50,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         LocationResponse locationResponse = dataAccessClient.getLocationWithLatestVersion(userId, localPath);
 
         // TODO: use a util for this
-        String fullPath = locationResponse.getParentUri() + localPath + "/" + locationResponse.getVersion();
+        String fullPath = locationResponse.getParentUri() + "/" + localPath + "/" + locationResponse.getVersion();
 
         System.out.println("Path til dataset: " + fullPath);
         SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath);
@@ -116,7 +116,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     }
 
     private String getPathToNewDataset(String parentUri, String path, long version) {
-        return parentUri
+        return parentUri + Path.SEPARATOR
                 + path + Path.SEPARATOR
                 + version;
     }
