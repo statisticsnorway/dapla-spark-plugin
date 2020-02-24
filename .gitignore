@@ -3,3 +3,4 @@
 target/
 .env
 /secret/
+.DS_Store

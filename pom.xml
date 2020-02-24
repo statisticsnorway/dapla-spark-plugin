@@ -86,9 +86,9 @@
     <dependencies>
 
         <dependency>
-            <groupId>no.ssb.dapla.spark</groupId>
-            <artifactId>dapla-spark-protobuf</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <groupId>no.ssb.dapla.data</groupId>
+            <artifactId>data-access-protobuf</artifactId>
+            <version>0.2-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -99,9 +99,9 @@
         </dependency>
 
         <dependency>
-            <groupId>no.ssb.dapla.catalog</groupId>
-            <artifactId>dapla-catalog-protobuf</artifactId>
-            <version>0.2</version>
+            <groupId>no.ssb.dapla</groupId>
+            <artifactId>dataset-api</artifactId>
+            <version>0.1-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
 
@@ -237,6 +237,11 @@
             <artifactId>assertj-core</artifactId>
             <version>3.11.1</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+            <version>1.19.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -388,8 +393,8 @@
                                     <include>com.google.api-client:*</include>
                                     <include>com.google.http-client:*</include>
                                     <include>io.opencensus:*</include>
-                                    <include>no.ssb.dapla.spark:*</include>
-                                    <include>no.ssb.dapla.catalog:*</include>
+                                    <include>no.ssb.dapla:dataset-api</include>
+                                    <include>no.ssb.dapla.data:*</include>
                                     <include>okhttp3:*</include>
                                     <!-- Remove if google CredentialFactory is not used
                                     <include>com.google.cloud.bigdataoss:util</include>
