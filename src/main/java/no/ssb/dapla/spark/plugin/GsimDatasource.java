@@ -4,6 +4,7 @@ import no.ssb.dapla.catalog.protobuf.Dataset.DatasetState;
 import no.ssb.dapla.catalog.protobuf.Dataset.Valuation;
 import no.ssb.dapla.catalog.protobuf.DatasetId;
 import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
+import no.ssb.dapla.catalog.protobuf.PseudoConfig;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.SparkServiceClient;
@@ -51,14 +52,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         System.out.println("Leser datasett fra: " + namespace);
         String userId = getUserId(sqlContext.sparkContext());
 
-        //SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
-        //no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.getDataset(userId, namespace);
+        SparkServiceClient sparkServiceClient = new SparkServiceClient(sqlContext.sparkContext().getConf());
+        no.ssb.dapla.catalog.protobuf.Dataset dataset = sparkServiceClient.getDataset(userId, namespace);
 
-        final String location = "gs://ssb-data-staging/datastore/skatt/person/rawdata-2019";
+        final String location = dataset.getLocations(0);
         final String host = getHost(location);
         System.out.println("Fant datasett: " + location);
         SQLContext isolatedSqlContext = isolatedContext(sqlContext, host, namespace, userId);
-        PseudoContext pseudoContext = new PseudoContext(isolatedSqlContext, parameters);
+        PseudoContext pseudoContext = new PseudoContext(isolatedSqlContext, dataset, parameters, "read");
         return new GsimRelation(isolatedSqlContext, location, pseudoContext);
     }
 
@@ -87,14 +88,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         Valuation valuation = Valuation.valueOf(options.getValuation());
         DatasetState state = DatasetState.valueOf(options.getState());
 
-        //SparkServiceClient sparkServiceClient = new SparkServiceClient(conf);
-        //no.ssb.dapla.catalog.protobuf.Dataset intendToCreateDataset = sparkServiceClient.createDataset(userId, mode, namespace,
-                //valuation, state);
-        //String datasetId = intendToCreateDataset.getId().getId();
+        SparkServiceClient sparkServiceClient = new SparkServiceClient(conf);
+        no.ssb.dapla.catalog.protobuf.Dataset intendToCreateDataset = sparkServiceClient.createDataset(userId, mode, namespace,
+                valuation, state);
+        String datasetId = intendToCreateDataset.getId().getId();
         // TODO; Host should be determined from sparkServiceClient
         String host = daplaSparkConfig.getHost();
-        final String pathToNewDataSet = getPathToNewDataset(host, outputPathPrefix, UUID.randomUUID().toString());
-        PseudoContext pseudoContext = new PseudoContext(sqlContext, parameters);
+        final String pathToNewDataSet = getPathToNewDataset(host, outputPathPrefix, datasetId);
+        PseudoContext pseudoContext = new PseudoContext(sqlContext, intendToCreateDataset, parameters, "write");
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
@@ -107,12 +108,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // Write to GCS before updating catalog
             data.coalesce(1).write().parquet(pathToNewDataSet);
 
-            //no.ssb.dapla.catalog.protobuf.Dataset writeDataset = createWriteDataset(intendToCreateDataset, mode, namespace, valuation, state, pathToNewDataSet);
-            //sparkServiceClient.writeDataset(writeDataset, userId);
+            no.ssb.dapla.catalog.protobuf.Dataset writeDataset = createWriteDataset(intendToCreateDataset, mode, namespace, valuation, state, pathToNewDataSet, pseudoContext);
+            sparkServiceClient.writeDataset(writeDataset, userId);
 
             // For now give more info in Zepplin
-            //String resultOutputPath = writeDataset.getLocations(0);
-            System.out.println(pathToNewDataSet);
+            String resultOutputPath = writeDataset.getLocations(0);
+            System.out.println(resultOutputPath);
             return new GsimRelation(isolatedContext(sqlContext, host, namespace, userId), pathToNewDataSet, pseudoContext);
         } finally {
             datasetLock.unlock();
@@ -127,12 +128,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                 + System.currentTimeMillis();
     }
 
-    private no.ssb.dapla.catalog.protobuf.Dataset createWriteDataset(no.ssb.dapla.catalog.protobuf.Dataset dataset, SaveMode mode, String namespace, Valuation valuation, DatasetState state, String addLocation) {
+    private no.ssb.dapla.catalog.protobuf.Dataset createWriteDataset(no.ssb.dapla.catalog.protobuf.Dataset dataset, SaveMode mode, String namespace, Valuation valuation, DatasetState state, String addLocation, PseudoContext pseudoContext) {
         no.ssb.dapla.catalog.protobuf.Dataset.Builder datasetBuilder = no.ssb.dapla.catalog.protobuf.Dataset.newBuilder().mergeFrom(dataset)
                 .setId(DatasetId.newBuilder().setId(dataset.getId().getId()).addName(namespace).build())
                 .setValuation(valuation)
                 .setState(state)
+                .setPseudoConfig(pseudoContext.getCatalogPseudoConfig().orElse(PseudoConfig.newBuilder().build()))
                 .addLocations(addLocation);
+
         if (mode == SaveMode.Overwrite) {
             datasetBuilder.clearLocations();
         }

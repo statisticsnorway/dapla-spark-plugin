@@ -1,6 +1,16 @@
 package no.ssb.dapla.spark.plugin.pseudo;
 
-import com.google.common.collect.ImmutableSet;
+import com.google.common.base.Function;
+import com.google.common.collect.Maps;
+import no.ssb.dapla.catalog.protobuf.PseudoConfig;
+import no.ssb.dapla.catalog.protobuf.SecretPseudoConfigItem;
+import no.ssb.dapla.catalog.protobuf.VarPseudoConfigItem;
+import no.ssb.dapla.dlp.pseudo.func.PseudoFuncConfig;
+import no.ssb.dapla.dlp.pseudo.func.fpe.FpeFunc;
+import no.ssb.dapla.dlp.pseudo.func.fpe.FpeFuncConfig;
+import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
+import no.ssb.dapla.service.SecretServiceClient;
+import no.ssb.dapla.spark.plugin.SparkOptions;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -8,26 +18,64 @@ import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.functions;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.StructField;
-import scala.collection.immutable.Map;
 
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static no.ssb.dapla.spark.plugin.pseudo.PseudoUDFs.TransformationType.APPLY;
+import static no.ssb.dapla.spark.plugin.pseudo.PseudoUDFs.TransformationType.RESTORE;
+import static no.ssb.dapla.spark.plugin.pseudo.PseudoUDFs.udfNameOf;
 
 public class PseudoContext {
 
-    private final Set<String> registeredUDFs = new HashSet<>();
+    private final no.ssb.dapla.catalog.protobuf.Dataset datasetMeta;
     private final Optional<PseudoOptions> pseudoOptions;
+    private final SecretServiceClient secretServiceClient = new SecretServiceClient();
+    private final Set<String> referencedSecretIds = new HashSet<>();
+    private final SQLContext sqlContext;
+    private final String operationType;
 
-    public PseudoContext(SQLContext sqlContext, Map<String, String> parameters) {
+    public PseudoContext(SQLContext sqlContext, no.ssb.dapla.catalog.protobuf.Dataset datasetMeta, scala.collection.immutable.Map<String, String> parameters, String operationType) {
+        this.sqlContext = sqlContext;
+        this.datasetMeta = datasetMeta;
+        this.operationType = operationType; // TODO: Determine this from SQLContext
         this.pseudoOptions = PseudoOptions.parse(parameters);
-        PseudoUDFs.BY_TRANSFORMATION.forEach((transformation, udf) -> {
-            PseudoUDFs.supportedDatatypes().forEach(dataType -> {
-                String udfName = udfNameOf(transformation, dataType);
-                sqlContext.udf().register(udfName, udf, dataType);
-                registeredUDFs.add(udfName);
-            });
-        });
+        if (pseudoOptions.isPresent()) {
+            PseudoOptions opts = pseudoOptions.get();
+            Set<PseudoFuncConfig> funcConfigs = (isWriteOperation())
+              ? parseWritePseudoConfigs(opts)
+              : parseReadPseudoConfigs(opts, datasetMeta.getPseudoConfig()) ;
+
+            referencedSecretIds.addAll(findReferencedSecretIds(funcConfigs));
+            Set<SecretServiceClient.Secret> secrets = fetchSecrets(referencedSecretIds);
+            enrichSecrets(funcConfigs, secrets);
+
+            PseudoUDFs.registerUDFs(sqlContext, funcConfigs);
+        }
+    }
+
+    private static Set<PseudoFuncConfig> parseWritePseudoConfigs(PseudoOptions opts) {
+        // TODO: Validate that function declaration is valid
+        return opts.functions().stream()
+          .map(PseudoFuncConfigFactory::get)
+          .collect(Collectors.toSet());
+    }
+
+    private static Set<PseudoFuncConfig> parseReadPseudoConfigs(PseudoOptions opts, PseudoConfig catalogPseudoConfig) {
+        Map<String, String> catalogVarToFuncMap = catalogPseudoConfig.getVarsList().stream()
+          .collect(Collectors.toMap(VarPseudoConfigItem::getVar, VarPseudoConfigItem::getPseudoFunc));
+
+        // TODO: Consistency validation, err out if mismatch beteween catalog and supplied options
+        return opts.vars().stream()
+          .map(var -> {
+              String pseudoFuncDecl = Optional.ofNullable(catalogVarToFuncMap.get(var)).orElseThrow(() -> new PseudoException("Could not find pseudo config for variable " + var + " in catalog"));
+              return PseudoFuncConfigFactory.get(pseudoFuncDecl);
+          })
+          .collect(Collectors.toSet());
     }
 
     @Override
@@ -37,33 +85,119 @@ public class PseudoContext {
           '}';
     }
 
+    Set<SecretServiceClient.Secret> fetchSecrets(Set<String> secretIds) {
+        return (isWriteOperation())
+          ? secretServiceClient.createOrGetDefaultSecrets(datasetPath(), secretIds)
+          : secretServiceClient.getSecrets(datasetPath());
+    }
+
+    public boolean isReadOperation() {
+        return "read".equals(this.operationType);
+        // return "read".equals(operationTypeOf(sqlContext));
+    }
+
+    public boolean isWriteOperation() {
+        return "write".equals(this.operationType);
+        // return "write".equals(operationTypeOf(sqlContext));
+    }
+
+    private static Set<String> findReferencedSecretIds(Collection<PseudoFuncConfig> funcConfigs) {
+        Set<String> refSecs = new HashSet<>();
+        funcConfigs.stream().forEach(funcConfig -> {
+            Optional<String> keyId = funcConfig.get(FpeFuncConfig.Param.KEY_ID, String.class);
+            if (keyId.isPresent() && FpeFunc.class.getName().equals(funcConfig.getFuncImpl())) {
+                refSecs.add(keyId.get());
+            }
+        });
+        return refSecs;
+    }
+
+    private static void enrichSecrets(Collection<PseudoFuncConfig> funcConfigs, Iterable<SecretServiceClient.Secret> secrets) {
+        final Map<String, SecretServiceClient.Secret> secretsMap =  Maps.uniqueIndex(secrets, new Function<SecretServiceClient.Secret, String>() {
+            public String apply(SecretServiceClient.Secret secret) {
+                return secret.getId();
+            }
+        });
+
+        funcConfigs.stream().forEach(funcConfig -> {
+            Optional<String> keyId = funcConfig.get(FpeFuncConfig.Param.KEY_ID, String.class);
+
+            if (keyId.isPresent() && FpeFunc.class.getName().equals(funcConfig.getFuncImpl())) {
+                SecretServiceClient.Secret secret = Optional.ofNullable(secretsMap.get(keyId.get())).orElseThrow(() ->
+                  new PseudoException("No secret found for FPE keyId=" + keyId));
+                funcConfig.add(FpeFuncConfig.Param.KEY, secret.getBase64EncodedBody());
+            }
+        });
+    }
+
+    public Optional<PseudoConfig> getCatalogPseudoConfig() {
+        if (pseudoOptions.isPresent()) {
+            PseudoOptions opts = pseudoOptions.get();
+            PseudoConfig.Builder pseudoConfig = PseudoConfig.newBuilder()
+              .addAllVars(
+                opts.vars().stream().map(var -> VarPseudoConfigItem.newBuilder()
+                  .setVar(var)
+                  .setPseudoFunc(opts.pseudoFunc(var).orElse(""))
+                  .build())
+                  .collect(Collectors.toList()
+                  ))
+              .addAllSecrets(referencedSecretIds.stream().map(secretId -> SecretPseudoConfigItem.newBuilder()
+                .setId(secretId)
+                .build())
+                .collect(Collectors.toList())
+              );
+
+            return Optional.of(pseudoConfig.build());
+        }
+        else {
+            return Optional.empty();
+        }
+    }
+
+    public String getConfigJson() {
+        return pseudoOptions.isPresent() ? pseudoOptions.get().toJson() : "[]";
+    }
+
+    private String datasetPath() {
+        return String.join("/",  datasetMeta.getId().getNameList());
+    }
+
     public Dataset<Row> apply(Dataset<Row> ds) {
-        return transform(ds, PseudoUDFs.Transformation.APPLY);
+        if (isReadOperation()) {
+            throw new PseudoException("Illegal pseudo context state. Cannot pseudonymize in a read-only context.");
+        }
+        return transform(ds, APPLY);
     }
 
     public Dataset<Row> restore(Dataset<Row> ds) {
-        return transform(ds, PseudoUDFs.Transformation.RESTORE);
+        if (isWriteOperation()) {
+            throw new PseudoException("");
+        }
+        return transform(ds, RESTORE);
     }
 
-    public Set<String> registeredUDFs() {
-        return ImmutableSet.copyOf(registeredUDFs);
-    }
-
-    // TODO: Error handling. E.g. what if columns does not exist
-    private Dataset<Row> transform(Dataset<Row> ds, PseudoUDFs.Transformation transformation) {
+    private Dataset<Row> transform(Dataset<Row> ds, PseudoUDFs.TransformationType transformation) {
         if (pseudoOptions.isPresent()) {
-            final PseudoOptions pseudoOptions = this.pseudoOptions.get();
-            for (String colName : pseudoOptions.columns()) {
-                DataType dataType = columnDataType(colName, ds);
+
+            if (transformation == RESTORE && isWriteOperation()) {
+                throw new PseudoException("Illegal pseudo context state. Cannot depseudonymize in a write context.");
+            }
+            else if (transformation == APPLY && isReadOperation()) {
+                throw new PseudoException("Illegal pseudo context state. Cannot pseudonymize in a read context.");
+            }
+
+            final PseudoOptions opts = this.pseudoOptions.get();
+            for (String var : opts.vars()) {
+                String funcDecl = opts.pseudoFunc(var).orElseThrow( () -> new PseudoException("Missing pseudoFunc for variable " + var));
+                DataType dataType = columnDataType(var, ds);
 
                 if (PseudoUDFs.isSupportedDataType(dataType)) {
-                    String udfName = udfNameOf(transformation, dataType);
-                    Column data = functions.col(colName);
-                    Column func = functions.lit(pseudoOptions.columnFunc(colName).get());
-                    ds = ds.withColumn(colName, functions.callUDF(udfName, func, data));
+                    String udfName = udfNameOf(funcDecl, transformation, dataType);
+                    Column data = functions.col(var);
+                    ds = ds.withColumn(var, functions.callUDF(udfName, data));
                 }
                 else {
-                    throw new PseudoException("Unsupported column dataType for pseudo apply UDF: " + dataType);
+                    throw new PseudoException("Unsupported column dataType for pseudo UDF: " + dataType);
                 }
             }
         }
@@ -81,14 +215,19 @@ public class PseudoContext {
         throw new PseudoException("Unable to determine dataType for column '" + colName + "'. Does the column exist?");
     }
 
-    /** DataType specific UDF name */
-    private static String udfNameOf(PseudoUDFs.Transformation trans, DataType dataType) {
-        return String.format("pseudo_%s_%s_udf", trans, dataType.typeName()).toLowerCase();
-    }
-
-    public static class PseudoException extends RuntimeException {
-        public PseudoException(String message) {
-            super(message);
+    /**
+     * Inspect SQLContext and return current operation. Assumes that the current operation has been specified in
+     * advance, e.g. by the Datasource.
+     *
+     * @throws PseudoException if current operation type could not be determined
+     */
+    private static String operationTypeOf(SQLContext sqlContext) {
+        try {
+            return sqlContext.sparkSession().conf().get(SparkOptions.CURRENT_OPERATION).toLowerCase();
+        }
+        catch (Exception e) {
+            throw new PseudoException("Unable to determine pseudo operation from current spark session", e);
         }
     }
+
 }
