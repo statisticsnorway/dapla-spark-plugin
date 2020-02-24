@@ -135,7 +135,6 @@ public class GsimDatasourceGCSTest {
     private Dispatcher getStandardDispatcher() {
         // Prepare mock responses
         final String location = "gs://" + blobId.getBucket() + "/" + blobId.getName();
-        no.ssb.dapla.catalog.protobuf.Dataset datasetMock = createMockDataset(location);
         GoogleCredentialsDetails credentialsDetails = GoogleCredentialsFactory.createCredentialsDetails(false,
                 StorageScopes.DEVSTORAGE_FULL_CONTROL);
         AccessTokenResponse accessTokenResponse = AccessTokenResponse.newBuilder().setAccessToken(
@@ -144,7 +143,7 @@ public class GsimDatasourceGCSTest {
             @Override
             public MockResponse dispatch (RecordedRequest request) {
                 if (request.getPath().startsWith("/spark-service/dataset-meta") && request.getMethod().equals("GET")) {
-                    return new MockResponse().setBody(ProtobufJsonUtils.toString(datasetMock))
+                    return new MockResponse().setBody(ProtobufJsonUtils.toString(createMockDataset(location, request)))
                             .setResponseCode(200);
                 } else if (request.getPath().startsWith("/spark-service/dataset-meta") &&
                         request.getMethod().equals("PUT")) {
@@ -256,9 +255,9 @@ public class GsimDatasourceGCSTest {
 
     }
 
-    private no.ssb.dapla.catalog.protobuf.Dataset createMockDataset(String location) {
+    private no.ssb.dapla.catalog.protobuf.Dataset createMockDataset(String location, RecordedRequest request) {
         return no.ssb.dapla.catalog.protobuf.Dataset.newBuilder()
-                .setId(DatasetId.newBuilder().setId("mockId").addName("dapla.namespace").build())
+                .setId(DatasetId.newBuilder().setId("mockId").addName(request.getRequestUrl().queryParameter("name")).build())
                 .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf("SENSITIVE"))
                 .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf("INPUT"))
                 .addLocations(location).build();
