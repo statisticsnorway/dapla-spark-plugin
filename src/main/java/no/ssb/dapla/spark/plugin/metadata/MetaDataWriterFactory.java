@@ -27,6 +27,8 @@ public class MetaDataWriterFactory {
             return new LocalFSMetaDataWriter(new DaplaSparkConfig(conf));
         } else if (option.get().equals(GoogleCSMetaDataWriter.class.getName())) {
             return new GoogleCSMetaDataWriter();
+        } else if (option.get().equals(NoOpMetadataWriter.class.getName())) {
+            return new NoOpMetadataWriter();
         }
 
         throw new IllegalStateException("No implementation found for " + option.get());

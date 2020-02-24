@@ -12,6 +12,7 @@ import no.ssb.dapla.data.access.protobuf.LocationRequest;
 import no.ssb.dapla.data.access.protobuf.LocationResponse;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
+import no.ssb.dapla.spark.plugin.metadata.NoOpMetadataWriter;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.Dispatcher;
@@ -114,6 +115,7 @@ public class GsimDatasourceGCSTest {
                 .config(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true)
                 .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE, "gs://" + bucket)
                 .config("spark.ssb.dapla.router.url", baseUrl.toString())
+                .config("spark.ssb.dapla.metadata.writer", NoOpMetadataWriter.class.getCanonicalName())
                 .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
                 //.config("spark.hadoop.fs.gs.auth.access.token.provider.impl", BrokerAccessTokenProvider.class.getCanonicalName())
                 .getOrCreate();
@@ -204,14 +206,14 @@ public class GsimDatasourceGCSTest {
     @Test
     public void testUnauthorizedReadShouldFail() {
         server.enqueue(new MockResponse().setResponseCode(403));
-        thrown.expectMessage("Din bruker dapla_test har ikke tilgang til dapla.namespace");
+        thrown.expectMessage("Din bruker dapla_test har ikke tilgang til test/dapla/namespace");
         sqlContext.read()
                 .format("gsim")
                 .load("test/dapla/namespace");
     }
 
     @Test
-    public void testWriteBucket() throws InterruptedException {
+    public void testWriteBucket() {
         server.setDispatcher(new Dispatcher() {
             public MockResponse dispatch(RecordedRequest request) {
                 final LocationRequest body = ProtobufJsonUtils.toPojo(request.getBody().readByteString().utf8(),
@@ -231,12 +233,6 @@ public class GsimDatasourceGCSTest {
                 .save("test/dapla/namespace");
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
-
-        final LocationRequest actual = ProtobufJsonUtils.toPojo(server.takeRequest().getBody().readByteString().utf8(),
-                LocationRequest.class);
-        assertThat(actual.getUserId()).isEqualTo("dapla_test");
-        assertThat(actual.getPath()).isEqualTo("test/dapla/namespace");
-        assertThat(actual.getSnapshot()).isEqualTo(0L);
     }
 
     private LocationResponse createMockResponse(String parentUri, String version) {
