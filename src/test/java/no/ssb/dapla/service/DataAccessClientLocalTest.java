@@ -15,7 +15,7 @@ public class DataAccessClientLocalTest {
 
     @Before
     public void setUp() {
-        this.sparkConf.set(CONFIG_DATA_ACCESS_URL, "http://localhost:20148/");
+        this.sparkConf.set(CONFIG_DATA_ACCESS_URL, "http://localhost:20140/");
     }
 
     @Test
@@ -24,7 +24,7 @@ public class DataAccessClientLocalTest {
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
         AccessTokenProvider.AccessToken accessToken = dataAccessClient.getAccessToken("user1", "/skatt/person/rawdata-2019",
                 AccessTokenRequest.Privilege.READ);
-        System.out.println(accessToken);
+        System.out.println(accessToken.getToken());
     }
 
     @Test
