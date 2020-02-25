@@ -46,8 +46,10 @@ public class DataAccessClientTest {
         assertThat(accessToken.getExpirationTimeMilliSeconds()).isEqualTo(1580828806046L);
 
         RecordedRequest recordedRequest = server.takeRequest();
-        HttpUrl requestUrl = recordedRequest.getRequestUrl();
-        assertThat(requestUrl.query()).isEqualTo("userId=user1&location=myBucket&privilege=READ");
+        assertThat(recordedRequest.getBody().readByteString().utf8()).isEqualTo("{\n" +
+                "  \"userId\": \"user1\",\n" +
+                "  \"path\": \"myBucket\"\n" +
+                "}");
     }
 
     @Test

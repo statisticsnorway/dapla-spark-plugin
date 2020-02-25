@@ -16,8 +16,7 @@ public class GoogleHadoopFileSystemExt extends GoogleHadoopFileSystem {
     @Override
     public void initialize(URI path, Configuration config) throws IOException {
         Text service = new Text(this.getScheme() + "://" + path.getAuthority());
-        Token<?> token = UserGroupInformation.getCurrentUser().getCredentials().getToken(service);
-        if (token == null && hasSufficientSparkConfig(config)) {
+        if (hasSufficientSparkConfig(config)) {
             // Initialise delegation token
             System.out.println("Initialise delegation token");
             String operation = config.get(SparkOptions.CURRENT_OPERATION);
@@ -26,7 +25,7 @@ public class GoogleHadoopFileSystemExt extends GoogleHadoopFileSystem {
             UserGroupInformation.getCurrentUser().addToken(service,
                     BrokerDelegationTokenBinding.createHadoopToken(service, new Text(operation),
                             new Text(namespace), new Text(userId)));
-        } else if (token == null) {
+        } else {
             throw new IllegalStateException("Invalid session. Cannot get current namespace or operation.");
         }
         super.initialize(path, config);

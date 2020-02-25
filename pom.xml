@@ -86,22 +86,22 @@
     <dependencies>
 
         <dependency>
-            <groupId>no.ssb.dapla.spark</groupId>
-            <artifactId>dapla-spark-protobuf</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <groupId>no.ssb.dapla.data</groupId>
+            <artifactId>data-access-protobuf</artifactId>
+            <version>0.2-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>no.ssb.dapla.dlp.pseudo.func</groupId>
             <artifactId>dapla-dlp-pseudo-func</artifactId>
-            <version>0.1.2-SNAPSHOT</version>
+            <version>0.1.2</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
-            <groupId>no.ssb.dapla.catalog</groupId>
-            <artifactId>dapla-catalog-protobuf</artifactId>
-            <version>0.2</version>
+            <groupId>no.ssb.dapla</groupId>
+            <artifactId>dataset-api</artifactId>
+            <version>0.1-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
 
@@ -109,12 +109,6 @@
             <groupId>no.ssb.dapla.secret</groupId>
             <artifactId>secret-service-protobuf</artifactId>
             <version>0.0.1-SNAPSHOT</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>no.ssb.dapla.data</groupId>
-            <artifactId>data-access-protobuf</artifactId>
-            <version>0.1-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
 
@@ -162,8 +156,8 @@
 
         <dependency>
             <groupId>com.google.cloud.bigdataoss</groupId>
-            <artifactId>ssb-gcs-connector</artifactId>
-            <version>hadoop2-2.0.1.1-SNAPSHOT</version>
+            <artifactId>gcs-connector</artifactId>
+            <version>hadoop2-2.0.1</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.google.guava</groupId>
@@ -243,6 +237,11 @@
             <artifactId>assertj-core</artifactId>
             <version>3.11.1</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+            <version>1.19.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -394,8 +393,7 @@
                                     <include>com.google.api-client:*</include>
                                     <include>com.google.http-client:*</include>
                                     <include>io.opencensus:*</include>
-                                    <include>no.ssb.dapla.spark:*</include>
-                                    <include>no.ssb.dapla.catalog:*</include>
+                                    <include>no.ssb.dapla:dataset-api</include>
                                     <include>no.ssb.dapla.data:*</include>
                                     <include>okhttp3:*</include>
                                     <!-- Remove if google CredentialFactory is not used

@@ -1,6 +1,5 @@
 package no.ssb.dapla.spark.plugin;
 
-import no.ssb.dapla.spark.plugin.pseudo.PseudoContext;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
@@ -17,12 +16,10 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     private final SQLContext context;
     private final String path;
-    private final PseudoContext pseudoContext;
     private final StructType schema;
 
-    public GsimRelation(SQLContext context, String path, PseudoContext pseudoContext) {
+    public GsimRelation(SQLContext context, String path) {
         this.context = context;
-        this.pseudoContext = pseudoContext;
         this.path = path;
         System.out.println("Is cache disabled from GsimRelation? " + context.sparkSession().conf().get(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE));
         this.schema = getDataset().schema();
@@ -51,7 +48,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     }
 
     @Override
-    public synchronized StructType schema() {
+    public StructType schema() {
         return schema;
     }
 
@@ -64,9 +61,6 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         dataset = dataset.select(requiredColumns);
         if (filter.isPresent()) {
             dataset = dataset.filter(filter.get());
-        }
-        if (pseudoContext != null) {
-            dataset = pseudoContext.restore(dataset);
         }
 
         return dataset.rdd();

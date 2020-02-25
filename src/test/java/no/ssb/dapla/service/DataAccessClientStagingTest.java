@@ -1,7 +1,7 @@
 package no.ssb.dapla.service;
 import com.google.cloud.hadoop.util.AccessTokenProvider;
 import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
-import no.ssb.dapla.data.access.protobuf.LocationRequest;
+import no.ssb.dapla.data.access.protobuf.LocationResponse;
 import org.apache.spark.SparkConf;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -35,8 +35,7 @@ public class DataAccessClientStagingTest {
     @Ignore
     public void testGetLocation() {
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
-        String location = dataAccessClient.getLocation(LocationRequest.Valuation.SENSITIVE,
-                LocationRequest.DatasetState.INPUT);
+        LocationResponse location = dataAccessClient.getLocationWithLatestVersion("user1", "myBucket");
         System.out.println(location);
     }
 

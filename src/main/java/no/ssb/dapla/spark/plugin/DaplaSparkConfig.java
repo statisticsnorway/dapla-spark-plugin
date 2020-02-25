@@ -20,8 +20,13 @@ public class DaplaSparkConfig {
         this.conf = sparkConf;
     }
 
-    String getHost() {
+    public String getStoragePath() {
         throwExceptionIfNotExist(SPARK_SSB_DAPLA_GCS_STORAGE);
+        return conf.get(SPARK_SSB_DAPLA_GCS_STORAGE);
+    }
+
+    public static String getStoragePath(SparkConf conf) {
+        throwExceptionIfNotExist(conf, SPARK_SSB_DAPLA_GCS_STORAGE);
         return conf.get(SPARK_SSB_DAPLA_GCS_STORAGE);
     }
 
