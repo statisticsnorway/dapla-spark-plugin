@@ -21,7 +21,6 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     public GsimRelation(SQLContext context, String path) {
         this.context = context;
         this.path = path;
-        System.out.println("Is cache disabled from GsimRelation? " + context.sparkSession().conf().get(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE));
         this.schema = getDataset().schema();
     }
 
