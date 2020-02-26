@@ -54,7 +54,6 @@ public class BrokerDelegationTokenBinding extends AbstractDelegationTokenBinding
         // This DelegationTokenBinding implementation requires a DelegationTokenIdentifier.
         // When this method is called, it means that the file system cannot find a delegation token, and instead
         // tries to use direct authentication.
-        //return new BrokerAccessTokenProvider(getService(), (BrokerTokenIdentifier) createEmptyIdentifier());
         throw new IllegalStateException("This operation is not allowed");
     }
 

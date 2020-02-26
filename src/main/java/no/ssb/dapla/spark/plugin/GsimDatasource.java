@@ -46,8 +46,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         DataAccessClient dataAccessClient = new DataAccessClient(sqlContext.sparkContext().getConf());
         LocationResponse locationResponse = dataAccessClient.getLocationWithLatestVersion(userId, localPath);
 
-        // TODO: use a util for this
-        String fullPath = locationResponse.getParentUri() + "/" + localPath + "/" + locationResponse.getVersion();
+        String fullPath = getPathToNewDataset(locationResponse.getParentUri(), localPath, locationResponse.getVersion());
 
         System.out.println("Path til dataset: " + fullPath);
         SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, userId);
@@ -59,7 +58,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         log.info("CreateRelation via write {}", parameters);
         SparkOptions options = new SparkOptions(parameters);
         final String localPath = options.getPath();
-        System.out.println("Skriver datasett til: " + localPath);
 
         SparkContext sparkContext = sqlContext.sparkContext();
         SparkConf conf = sparkContext.getConf();
@@ -70,13 +68,14 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         long currentTimeStamp = System.currentTimeMillis();
         LocationResponse location = dataAccessClient.getLocation(userId, localPath, currentTimeStamp);
 
-        final String pathToNewDataSet = getPathToNewDataset(location.getParentUri(), localPath, currentTimeStamp);
+        final String pathToNewDataSet = getPathToNewDataset(location.getParentUri(), localPath, Long.toString(currentTimeStamp));
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
         RuntimeConfig runtimeConfig = data.sparkSession().conf();
         try {
             log.info("writing file(s) to: {}", pathToNewDataSet);
+            System.out.println("Skriver datasett til: " + pathToNewDataSet);
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
             SparkSession sparkSession = sqlContext.sparkSession();
             setUserContext(sparkSession, AccessTokenRequest.Privilege.WRITE, localPath, userId);
@@ -100,22 +99,28 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                     .create()
                     .write(datasetMeta);
 
-            // For now give more info in Zepplin
-            System.out.println("Path to dataset:" + pathToNewDataSet);
         } catch (IOException e) {
             log.error("Could not write meta-data to bucket", e);
             throw new RuntimeException(e);
         } finally {
             datasetLock.unlock();
+            unsetUserContext(sqlContext.sparkSession());
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
         }
         return new GsimRelation(isolatedContext(sqlContext, localPath, userId), pathToNewDataSet);
     }
 
-    private String getPathToNewDataset(String parentUri, String path, long version) {
-        return parentUri + Path.SEPARATOR
-                + path + Path.SEPARATOR
-                + version;
+    // TODO: use a util for this
+    private String getPathToNewDataset(String parentUri, String path, String version) {
+        return addTrailingSeparator(parentUri) + addTrailingSeparator(path) + version;
+    }
+
+    private String addTrailingSeparator(String fragment) {
+        if (fragment.substring(fragment.length()).equals(Path.SEPARATOR)) {
+            return fragment;
+        } else {
+            return fragment + Path.SEPARATOR;
+        }
     }
 
     /**
@@ -162,6 +167,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         sparkSession.conf().set(SparkOptions.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(SparkOptions.CURRENT_OPERATION, privilege.name());
         sparkSession.conf().set(SparkOptions.CURRENT_USER, userId);
+    }
+
+    private void unsetUserContext(SparkSession sparkSession) {
+        sparkSession.conf().unset(SparkOptions.CURRENT_NAMESPACE);
+        sparkSession.conf().unset(SparkOptions.CURRENT_OPERATION);
+        sparkSession.conf().unset(SparkOptions.CURRENT_USER);
     }
 
     @Override
