@@ -1,5 +1,6 @@
 package no.ssb.dapla.service;
 
+import com.google.cloud.hadoop.util.AccessTokenProvider;
 import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
 import no.ssb.dapla.data.access.protobuf.AccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.LocationRequest;
@@ -11,6 +12,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.spark.SparkConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,46 +20,49 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.util.Optional;
+import java.util.Map;
 
 public class DataAccessClient {
+
+    public static final String CONFIG_DATA_ACCESS_URL = "spark.ssb.dapla.data.access.url";
+
     private final Logger log = LoggerFactory.getLogger(this.getClass());
-
-    static final String CONFIG = "spark.ssb.dapla.";
-    static final String CONFIG_ROUTER_URL = CONFIG + "router.url";
-    static final String CONFIG_ROUTER_OAUTH_TOKEN_URL = CONFIG + "oauth.tokenUrl";
-    static final String CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE = CONFIG + "oauth.credentials.file";
-    static final String CONFIG_ROUTER_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
-    static final String CONFIG_ROUTER_OAUTH_CLIENT_SECRET = CONFIG + "oauth.clientSecret";
-
     private OkHttpClient client;
     private String baseURL;
 
-    public DataAccessClient(final SparkConf conf) {
-        OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
-        this.client = builder.build();
-        this.baseURL = conf.get(CONFIG_ROUTER_URL);
+    public DataAccessClient(final Configuration conf) {
+        init(getSparkConf(conf));
     }
 
-    private Optional<OAuth2Interceptor> createOAuth2Interceptor(final SparkConf conf) {
-        if (conf.contains(CONFIG_ROUTER_OAUTH_TOKEN_URL)) {
-            OAuth2Interceptor interceptor = new OAuth2Interceptor(
-                    conf.get(CONFIG_ROUTER_OAUTH_TOKEN_URL, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_ID, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, null)
-            );
-            return Optional.of(interceptor);
+    public DataAccessClient(final SparkConf conf) {
+        init(conf);
+    }
+
+    public void init(final SparkConf conf) {
+        okhttp3.OkHttpClient.Builder builder = new okhttp3.OkHttpClient.Builder();
+        OAuth2Interceptor.createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
+        this.client = builder.build();
+        this.baseURL = conf.get(CONFIG_DATA_ACCESS_URL);
+        if (!this.baseURL.endsWith("/")) {
+            this.baseURL = this.baseURL + "/";
         }
-        return Optional.empty();
+    }
+
+    private SparkConf getSparkConf(Configuration conf) {
+        SparkConf sparkConf = new SparkConf();
+        for (Map.Entry<String,String> entry: conf) {
+            if (entry.getKey().startsWith("spark.")) {
+                sparkConf.set(entry.getKey(), entry.getValue());
+            }
+        }
+        return sparkConf;
     }
 
     private String buildUrl(String format, Object... args) {
         return this.baseURL + String.format(format, args);
     }
 
-    public AccessTokenResponse getAccessToken(String userId, String path, AccessTokenRequest.Privilege privilege) {
+    public AccessTokenProvider.AccessToken getAccessToken(String userId, String path, AccessTokenRequest.Privilege privilege) {
         AccessTokenRequest tokenRequest = AccessTokenRequest.newBuilder()
                 .setUserId(userId)
                 .setPath(path)
@@ -72,11 +77,11 @@ public class DataAccessClient {
                 .build();
         try (Response response = client.newCall(request).execute()) {
             String json = getJson(response);
-            handleErrorCodes(userId, path, response, json);
-            return ProtobufJsonUtils.toPojo(json, AccessTokenResponse.class);
+            handleErrorCodes(userId, path, privilege, response, json);
+            return toAccessToken(json);
         } catch (IOException e) {
             log.error("getAccessToken failed", e);
-            throw new RuntimeException(e);
+            throw new DataAccessServiceException(e);
         } catch (Exception e) {
             log.error("getAccessToken failed", e);
             throw e;
@@ -106,7 +111,7 @@ public class DataAccessClient {
             return ProtobufJsonUtils.toPojo(json, LocationResponse.class);
         } catch (IOException e) {
             log.error("getLocation failed", e);
-            throw new RuntimeException(e);
+            throw new DataAccessServiceException(e);
         } catch (Exception e) {
             log.error("getLocation failed", e);
             throw e;
@@ -117,6 +122,24 @@ public class DataAccessClient {
         ResponseBody body = response.body();
         if (body == null) return null;
         return body.string();
+    }
+
+    private AccessTokenProvider.AccessToken toAccessToken(String json) {
+        AccessTokenResponse response = ProtobufJsonUtils.toPojo(json, AccessTokenResponse.class);
+        return new AccessTokenProvider.AccessToken(response.getAccessToken(), response.getExpirationTime());
+    }
+
+
+    private void handleErrorCodes(String userId, String location, AccessTokenRequest.Privilege privilege,
+                                  Response response, String body) {
+        if (response.code() == HttpURLConnection.HTTP_UNAUTHORIZED || response.code() == HttpURLConnection.HTTP_FORBIDDEN) {
+            throw new DataAccessServiceException(String.format("Din bruker %s har ikke %s tilgang til %s",
+                    userId, privilege.name(), location), body);
+        } else if (response.code() == HttpURLConnection.HTTP_NOT_FOUND) {
+            throw new DataAccessServiceException(String.format("Fant ingen location %s", location), body);
+        } else if (response.code() < 200 || response.code() >= 400) {
+            throw new DataAccessServiceException("En feil har oppstått: " + response.toString(), body);
+        }
     }
 
     private void handleErrorCodes(String userId, String namespace, Response response, String body) {
@@ -132,9 +155,9 @@ public class DataAccessClient {
     static class DataAccessServiceException extends RuntimeException {
         private final String body;
 
-        public DataAccessServiceException(Throwable cause, String body) {
+        public DataAccessServiceException(Throwable cause) {
             super(cause);
-            this.body = body;
+            this.body = null;
         }
 
         public DataAccessServiceException(String message, String body) {

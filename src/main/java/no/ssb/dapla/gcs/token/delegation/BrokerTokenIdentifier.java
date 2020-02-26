@@ -5,8 +5,11 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Objects;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.security.token.TokenRenewer;
 import org.apache.hadoop.security.token.delegation.web.DelegationTokenIdentifier;
 
 /**
@@ -16,11 +19,35 @@ import org.apache.hadoop.security.token.delegation.web.DelegationTokenIdentifier
 public class BrokerTokenIdentifier extends DelegationTokenIdentifier {
 
     public static final Text KIND = new Text("GCPBrokerSessionToken");
-    public static final String BROKER_SCOPE = "https://www.googleapis.com/auth/devstorage.read_write";
-    public static final String CURRENT_OPERATION = "spark.ssb.session.operation";
-    public static final String CURRENT_NAMESPACE = "spark.ssb.session.namespace";
     private Text operation;
     private Text namespace;
+
+    public static class Renewer extends TokenRenewer {
+
+        @Override
+        public boolean handleKind(Text kind) {
+            return BrokerTokenIdentifier.KIND.equals(kind);
+        }
+
+        @Override
+        public long renew(Token<?> token, Configuration conf) throws IOException, InterruptedException {
+            System.out.println("Renew token");
+            if (1==1) throw new IOException("Renew is not yet implemented");
+            return 0;
+        }
+
+        @Override
+        public void cancel(Token<?> token, Configuration conf) throws IOException, InterruptedException {
+            System.out.println("Cancel token");
+            if (1==1) throw new IOException("Cancel is not yet implemented");
+        }
+
+        @Override
+        public boolean isManaged(Token<?> token) throws IOException {
+            // Return true to indicate that tokens can be renewed and cancelled
+            return true;
+        }
+    }
 
     public BrokerTokenIdentifier() {
         super(KIND);
@@ -98,6 +125,7 @@ public class BrokerTokenIdentifier extends DelegationTokenIdentifier {
         private Text service;
         private Text operation;
         private Text namespace;
+        private Text realUser;
 
         public BrokerTokenIdentifier.Builder withService(Text service) {
             this.service = service;
@@ -114,13 +142,17 @@ public class BrokerTokenIdentifier extends DelegationTokenIdentifier {
             return this;
         }
 
+        public BrokerTokenIdentifier.Builder withRealUser(Text realUser) {
+            this.realUser = realUser;
+            return this;
+        }
+
         public BrokerTokenIdentifier build() {
             try {
                 UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
                 String user = ugi.getUserName();
                 Text owner = new Text(user);
-                Text realUser = null;
-                if (ugi.getRealUser() != null) {
+                if (realUser == null && ugi.getRealUser() != null) {
                     realUser = new Text(ugi.getRealUser().getUserName());
                 }
                 return new BrokerTokenIdentifier(owner, service, realUser, operation, namespace);

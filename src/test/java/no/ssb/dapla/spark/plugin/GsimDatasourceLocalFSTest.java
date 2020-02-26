@@ -3,6 +3,7 @@ package no.ssb.dapla.spark.plugin;
 import no.ssb.dapla.data.access.protobuf.LocationRequest;
 import no.ssb.dapla.data.access.protobuf.LocationResponse;
 import no.ssb.dapla.dataset.api.DatasetMeta;
+import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.spark.plugin.metadata.LocalFSMetaDataWriter;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.HttpUrl;
@@ -85,7 +86,7 @@ public class GsimDatasourceLocalFSTest {
                 .config("fs.gs.impl.disable.cache", true)
                 .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE, sparkStoragePath)
                 .config("spark.ssb.dapla.output.prefix", "test-output")
-                .config("spark.ssb.dapla.router.url", baseUrl.toString())
+                .config(DataAccessClient.CONFIG_DATA_ACCESS_URL, baseUrl.toString())
                 .config("spark.ssb.dapla.metadata.writer", LocalFSMetaDataWriter.class.getName())
                 .getOrCreate();
 

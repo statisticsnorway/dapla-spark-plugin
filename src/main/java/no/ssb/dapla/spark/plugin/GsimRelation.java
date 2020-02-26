@@ -16,11 +16,12 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     private final SQLContext context;
     private final String path;
-    private StructType schema;
+    private final StructType schema;
 
     public GsimRelation(SQLContext context, String path) {
         this.context = context;
         this.path = path;
+        this.schema = getDataset().schema();
     }
 
     /**
@@ -46,10 +47,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     }
 
     @Override
-    public synchronized StructType schema() {
-        if (schema == null) { // Memoize.
-            schema = this.sqlContext().read().parquet(inputFiles()).schema();
-        }
+    public StructType schema() {
         return schema;
     }
 
@@ -58,7 +56,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         Column[] requiredColumns = Stream.of(columns).map(Column::new).toArray(Column[]::new);
         Optional<Column> filter = Stream.of(filters).map(this::convertFilter).reduce(Column::and);
 
-        Dataset<Row> dataset = this.sqlContext().read().parquet(inputFiles());
+        Dataset<Row> dataset = getDataset();
         dataset = dataset.select(requiredColumns);
         if (filter.isPresent()) {
             dataset = dataset.filter(filter.get());
@@ -69,7 +67,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     @Override
     public RDD<Row> buildScan() {
-        return this.sqlContext().read().parquet(inputFiles()).rdd();
+        return getDataset().rdd();
     }
 
     /**
@@ -118,6 +116,10 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         } else {
             throw new UnsupportedOperationException("Could not convert " + filter + " to Column");
         }
+    }
+
+    private Dataset<Row> getDataset() {
+        return this.sqlContext().read().parquet(path);
     }
 
     @Override

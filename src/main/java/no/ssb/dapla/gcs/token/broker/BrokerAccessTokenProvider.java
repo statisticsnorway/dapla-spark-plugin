@@ -1,8 +1,11 @@
 package no.ssb.dapla.gcs.token.broker;
 
+import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
+import no.ssb.dapla.service.DataAccessClient;
+import no.ssb.dapla.spark.plugin.SparkOptions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 
@@ -36,33 +39,28 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
 
     @Override
     public void refresh() {
-
         validateTokenIdentifier();
-        /*
-        GetAccessTokenResponse response = loginUser.doAs((PrivilegedAction<GetAccessTokenResponse>) () -> {
-            BrokerGateway gateway = new BrokerGateway(config, sessionToken);
-            GetAccessTokenRequest request = GetAccessTokenRequest.newBuilder()
-                    .setScope(BrokerTokenIdentifier.BROKER_SCOPE)
-                    .setOwner(currentUser.getUserName())
-                    .setTarget(service.toString())
-                    .build();
-            GetAccessTokenResponse r = gateway.getStub().getAccessToken(request);
-            gateway.getManagedChannel().shutdown();
-            return r;'
-        });
-
-        String tokenString = response.getAccessToken();
-        long expiresAt = response.getExpiresAt();
-        accessToken = new AccessToken(tokenString, expiresAt);
-         */
         LOG.debug("Issuing access token for service: " + this.service);
         try {
-            // TODO: Turn useComputeEngineFallback OFF when the following has been resolved: https://statistics-norway.atlassian.net/browse/BIP-379
-            GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(true, BrokerTokenIdentifier.BROKER_SCOPE);
-            accessToken =  new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
+            if (useLocalCredentials()) {
+                System.out.println("Using local credentials file");
+                final String scope = tokenIdentifier.getOperation().toString().equals("READ") ? "https://www.googleapis.com/auth/devstorage.read_only" : "https://www.googleapis.com/auth/devstorage.read_write";
+                GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(true, scope);
+                accessToken =  new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
+            } else {
+                DataAccessClient dataAccessClient = new DataAccessClient(this.config);
+                String userId = tokenIdentifier.getRealUser().toString();
+                AccessTokenRequest.Privilege privilege = AccessTokenRequest.Privilege.valueOf(
+                        config.get(SparkOptions.CURRENT_OPERATION));
+                accessToken = dataAccessClient.getAccessToken(userId, this.service.toString(), privilege);
+            }
         } catch (Exception e) {
-            throw new RuntimeException("GoogleCredentialsFactory failed", e);
+            throw new RuntimeException("Issuing access token failed for service: " + this.service, e);
         }
+    }
+
+    private boolean useLocalCredentials() {
+        return config.getBoolean("spark.ssb.use.local.credentials", true);
     }
 
     private void validateTokenIdentifier() {
@@ -70,21 +68,21 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
             throw new IllegalStateException("Invalid session. Cannot find required token identifier.");
         }
 
-        if (config == null || config.get(BrokerTokenIdentifier.CURRENT_NAMESPACE) == null ||
-                config.get(BrokerTokenIdentifier.CURRENT_OPERATION) == null) {
+        if (config == null || config.get(SparkOptions.CURRENT_NAMESPACE) == null ||
+                config.get(SparkOptions.CURRENT_OPERATION) == null) {
             throw new IllegalStateException("Invalid session. Cannot get current namespace or operation.");
         }
-
-        if (!tokenIdentifier.getOperation().toString().equals(config.get(BrokerTokenIdentifier.CURRENT_OPERATION))) {
+        System.out.println("tokenIdentifier " + tokenIdentifier);
+        if (!tokenIdentifier.getOperation().toString().equals(config.get(SparkOptions.CURRENT_OPERATION))) {
             throw new IllegalStateException(String.format(
                     "Invalid session. Current operation %s does not match the token identifier operation %s",
-                    config.get(BrokerTokenIdentifier.CURRENT_OPERATION), tokenIdentifier.getOperation()));
+                    config.get(SparkOptions.CURRENT_OPERATION), tokenIdentifier.getOperation()));
         }
 
-        if (!tokenIdentifier.getNamespace().toString().equals(config.get(BrokerTokenIdentifier.CURRENT_NAMESPACE))) {
+        if (!tokenIdentifier.getNamespace().toString().equals(config.get(SparkOptions.CURRENT_NAMESPACE))) {
             throw new IllegalStateException(String.format(
                     "Invalid session. Current namespace %s does not match the token identifier namespace %s",
-                    config.get(BrokerTokenIdentifier.CURRENT_NAMESPACE), tokenIdentifier.getNamespace()));
+                    config.get(SparkOptions.CURRENT_NAMESPACE), tokenIdentifier.getNamespace()));
         }
     }
 
