@@ -4,9 +4,9 @@ import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
 import no.ssb.dapla.data.access.protobuf.LocationResponse;
 import no.ssb.dapla.dataset.api.DatasetId;
 import no.ssb.dapla.dataset.api.DatasetMeta;
+import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.spark.plugin.metadata.MetaDataWriterFactory;
-import org.apache.hadoop.fs.Path;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
@@ -46,7 +46,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         DataAccessClient dataAccessClient = new DataAccessClient(sqlContext.sparkContext().getConf());
         LocationResponse locationResponse = dataAccessClient.getLocationWithLatestVersion(userId, localPath);
 
-        String fullPath = getPathToNewDataset(locationResponse.getParentUri(), localPath, locationResponse.getVersion());
+        String fullPath = DatasetUri.of(locationResponse.getParentUri(), localPath, locationResponse.getVersion()).toString();
 
         System.out.println("Path til dataset: " + fullPath);
         SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, userId);
@@ -68,7 +68,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         long currentTimeStamp = System.currentTimeMillis();
         LocationResponse location = dataAccessClient.getLocation(userId, localPath, currentTimeStamp);
 
-        final String pathToNewDataSet = getPathToNewDataset(location.getParentUri(), localPath, Long.toString(currentTimeStamp));
+        final String pathToNewDataSet = DatasetUri.of(location.getParentUri(), localPath, currentTimeStamp).toString();
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
@@ -108,19 +108,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
         }
         return new GsimRelation(isolatedContext(sqlContext, localPath, userId), pathToNewDataSet);
-    }
-
-    // TODO: use a util for this
-    private String getPathToNewDataset(String parentUri, String path, String version) {
-        return addTrailingSeparator(parentUri) + addTrailingSeparator(path) + version;
-    }
-
-    private String addTrailingSeparator(String fragment) {
-        if (fragment.substring(fragment.length()).equals(Path.SEPARATOR)) {
-            return fragment;
-        } else {
-            return fragment + Path.SEPARATOR;
-        }
     }
 
     /**
