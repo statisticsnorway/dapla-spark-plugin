@@ -27,6 +27,56 @@ steps:
     - authenticate
     - restore-cache
 
+- name: test
+  image: maven:3-jdk-8
+  commands:
+    # Create a service account keyfile to be used by GCS tests
+    - mkdir secret
+    - printf "%s" "$GAC" > secret/gcs_sa_test.json
+    - mvn verify test -P ssb-bip,coverage -Dmaven.repo.local=/drone/src/.m2/repository --batch-mode --global-settings settings.xml
+  environment:
+    DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE: secret/gcs_sa_test.json
+    DAPLA_SPARK_TEST_BUCKET: bip-drone-dependency-cache
+    GAC:
+      from_secret: gcs_credentials
+  depends_on:
+    - build
+
+- name: codecov
+  image: alpine:3
+  commands:
+    - apk add --no-cache bash curl findutils git
+    - curl -s https://codecov.io/bash | bash
+  environment:
+    CODECOV_TOKEN:
+      from_secret: codecov_token
+  depends_on:
+    - test
+
+- name: codacy
+  image: maven:3-jdk-8
+  commands:
+    - curl -Ls -o codacy-coverage-reporter "https://github.com/codacy/codacy-coverage-reporter/releases/download/6.1.3/codacy-coverage-reporter-linux-6.1.3"
+    - chmod +x codacy-coverage-reporter
+    - ./codacy-coverage-reporter report -l Java -r target/site/jacoco/jacoco.xml
+  environment:
+    CODACY_PROJECT_TOKEN:
+      from_secret: codacy_token
+  depends_on:
+    - test
+
+- name: sonarqube
+  image: maven:3-jdk-8
+  commands:
+    - mvn -Djdk.tls.client.protocols="TLSv1.2" -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_PROJECTKEY sonar:sonar -P ssb-bip,coverage -Dmaven.repo.local=/drone/src/.m2/repository -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
+  environment:
+    SONAR_HOST_URL: https://sonarqube.prod-bip-ci.ssb.no
+    SONAR_PROJECTKEY:
+      from_secret: sonar_token
+  depends_on:
+    - codacy
+    - codecov
+
 - name: publish-maven
   image: maven:3-jdk-8
   commands:
