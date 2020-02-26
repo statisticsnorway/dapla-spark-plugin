@@ -83,11 +83,10 @@ steps:
     - mvn clean package deploy -P ssb-bip -Dmaven.repo.local=/drone/src/.m2/repository -DskipTests=true -Djdk.tls.client.protocols="TLSv1.2" --batch-mode --global-settings settings.xml
   when:
     ref:
-      - refs/heads/feature/*
       - refs/heads/develop
       - refs/tags/*
   depends_on:
-    - build
+    - sonarqube
 
 - name: publish-docker-zeppelin
   image: plugins/gcr
@@ -120,6 +119,19 @@ steps:
       - refs/tags/*
   depends_on:
     - publish-maven
+
+- name: slack
+  image: plugins/slack
+  settings:
+    webhook:
+      from_secret: slack_webhook_url
+    channel: bip-ci-test
+  when:
+    status: [ success, failure ]
+  depends_on:
+    - publish-maven
+    - publish-docker-zeppelin
+    - publish-docker-polynote
 
 # Rebuild cache if it has changed with this build
 - name: rebuild-cache
