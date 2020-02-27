@@ -25,10 +25,13 @@ public class FilesystemMetaDataWriter implements MetaDataWriter {
     public void write(DatasetMeta datasetMeta) {
         final URI storagePath = DatasetUri.of(datasetMeta.getParentUri(), datasetMeta.getId().getPath(),
                 datasetMeta.getId().getVersion()).toURI();
-        try {
+        final Path metadataPath = new Path(storagePath + Path.SEPARATOR + DATASET_META_FILE_NAME);
+        try (
+                FileSystem fs = FileSystem.get(storagePath, context.hadoopConfiguration());
+                FSDataOutputStream outputStream = fs.create(metadataPath, false);
+        ) {
             String body = ProtobufJsonUtils.toString(datasetMeta);
-            FileSystem fs = FileSystem.get(storagePath, context.hadoopConfiguration());
-            FSDataOutputStream outputStream = fs.create(new Path(storagePath  + "/" + DATASET_META_FILE_NAME));
+            System.out.println("Metadata path: " + metadataPath);
             IOUtils.write(body, outputStream);
         } catch (IOException e) {
             throw new RuntimeException("Error writing metadata file", e);

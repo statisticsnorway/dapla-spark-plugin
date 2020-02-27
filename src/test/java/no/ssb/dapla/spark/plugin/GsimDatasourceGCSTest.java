@@ -15,6 +15,7 @@ import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.service.MetadataPublisherClient;
+import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
 import no.ssb.dapla.spark.plugin.metadata.NoOpMetadataWriter;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.HttpUrl;
@@ -125,7 +126,7 @@ public class GsimDatasourceGCSTest {
                 .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE, "gs://" + bucket)
                 .config(DataAccessClient.CONFIG_DATA_ACCESS_URL, baseUrl.toString())
                 .config(MetadataPublisherClient.CONFIG_METADATA_PUBLISHER_URL, publisherUrl.toString())
-                .config("spark.ssb.dapla.metadata.writer", NoOpMetadataWriter.class.getCanonicalName())
+                .config("spark.ssb.dapla.metadata.writer", FilesystemMetaDataWriter.class.getCanonicalName())
                 .config("spark.hadoop.fs.gs.impl", GoogleHadoopFileSystemExt.class.getCanonicalName())
                 .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
                 //.config("spark.hadoop.fs.gs.auth.access.token.provider.impl", BrokerAccessTokenProvider.class.getCanonicalName())

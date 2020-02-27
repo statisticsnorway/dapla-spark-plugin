@@ -70,7 +70,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         long currentTimeStamp = System.currentTimeMillis();
         LocationResponse location = dataAccessClient.getLocation(userId, localPath, currentTimeStamp);
 
-        final String pathToNewDataSet = DatasetUri.of(location.getParentUri(), localPath, currentTimeStamp).toString();
+        final DatasetUri pathToNewDataSet = DatasetUri.of(location.getParentUri(), localPath, currentTimeStamp);
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
@@ -82,7 +82,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             SparkSession sparkSession = sqlContext.sparkSession();
             setUserContext(sparkSession, AccessTokenRequest.Privilege.WRITE, localPath, userId);
             // Write to GCS before writing metadata
-            data.coalesce(1).write().parquet(pathToNewDataSet);
+            data.coalesce(1).write().parquet(pathToNewDataSet.toString());
 
             DatasetMeta datasetMeta = DatasetMeta.newBuilder()
                     .setId(DatasetId.newBuilder()
@@ -96,13 +96,13 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                     .setCreatedBy(userId)
                     .build();
 
-            MetaDataWriterFactory.fromSparkContext(sparkContext)
+           MetaDataWriterFactory.fromSparkContext(sparkContext)
                     .create()
                     .write(datasetMeta);
 
             // Publish that new data has arrived
             MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf);
-            metadataPublisherClient.dataChanged(location.getParentUri(), localPath, currentTimeStamp);
+            metadataPublisherClient.dataChanged(pathToNewDataSet);
 
         } catch (IOException e) {
             log.error("Could not write meta-data to bucket", e);
@@ -112,7 +112,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             unsetUserContext(sqlContext.sparkSession());
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
         }
-        return new GsimRelation(isolatedContext(sqlContext, localPath, userId), pathToNewDataSet);
+        return new GsimRelation(isolatedContext(sqlContext, localPath, userId), pathToNewDataSet.toString());
     }
 
     /**
