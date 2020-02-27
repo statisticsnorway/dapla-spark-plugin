@@ -113,6 +113,13 @@
         </dependency>
 
         <dependency>
+            <groupId>no.ssb.dapla</groupId>
+            <artifactId>metadata-distributor-protobuf</artifactId>
+            <version>0.1</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
             <version>1.19.0</version>
@@ -395,6 +402,7 @@
                                     <include>io.opencensus:*</include>
                                     <include>no.ssb.dapla:dataset-api</include>
                                     <include>no.ssb.dapla:dataset-uri</include>
+                                    <include>no.ssb.dapla:metadata-distributor-protobuf</include>
                                     <include>no.ssb.dapla.data:*</include>
                                     <include>okhttp3:*</include>
                                     <!-- Remove if google CredentialFactory is not used

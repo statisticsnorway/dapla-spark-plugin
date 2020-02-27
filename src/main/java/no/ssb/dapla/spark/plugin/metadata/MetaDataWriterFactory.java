@@ -1,6 +1,5 @@
 package no.ssb.dapla.spark.plugin.metadata;
 
-import no.ssb.dapla.spark.plugin.DaplaSparkConfig;
 import org.apache.spark.SparkConf;
 import scala.Option;
 
@@ -24,7 +23,7 @@ public class MetaDataWriterFactory {
         }
 
         if (option.get().equals(LocalFSMetaDataWriter.class.getName())) {
-            return new LocalFSMetaDataWriter(new DaplaSparkConfig(conf));
+            return new LocalFSMetaDataWriter();
         } else if (option.get().equals(GoogleCSMetaDataWriter.class.getName())) {
             return new GoogleCSMetaDataWriter();
         } else if (option.get().equals(NoOpMetadataWriter.class.getName())) {
