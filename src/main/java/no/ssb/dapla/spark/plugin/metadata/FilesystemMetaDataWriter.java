@@ -14,7 +14,7 @@ import java.net.URI;
 
 public class FilesystemMetaDataWriter implements MetaDataWriter {
 
-    public static final String DATASET_META_FILE_NAME = "dataset-meta.json";
+    public static final String DATASET_META_FILE_NAME = ".dataset-meta.json";
     private final SparkContext context;
 
     public FilesystemMetaDataWriter(SparkContext context) {
