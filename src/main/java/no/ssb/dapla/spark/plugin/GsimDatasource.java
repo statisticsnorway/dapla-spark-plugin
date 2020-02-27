@@ -6,6 +6,7 @@ import no.ssb.dapla.dataset.api.DatasetId;
 import no.ssb.dapla.dataset.api.DatasetMeta;
 import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.service.DataAccessClient;
+import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.MetaDataWriterFactory;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
@@ -22,6 +23,7 @@ import org.apache.spark.sql.sources.RelationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.immutable.Map;
+
 
 import java.io.IOException;
 import java.util.concurrent.locks.Lock;
@@ -82,7 +84,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // Write to GCS before writing metadata
             data.coalesce(1).write().parquet(pathToNewDataSet);
 
-            // TODO: This should noe be written to the bucket as a metadata file
             DatasetMeta datasetMeta = DatasetMeta.newBuilder()
                     .setId(DatasetId.newBuilder()
                             .setPath(localPath)
@@ -92,12 +93,16 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                     .setValuation(DatasetMeta.Valuation.valueOf(options.getValuation()))
                     .setState(DatasetMeta.DatasetState.valueOf(options.getState()))
                     .setParentUri(location.getParentUri())
-                    .setCreatedBy("todo") // TODO: userid
+                    .setCreatedBy(userId)
                     .build();
 
-            MetaDataWriterFactory.fromSparkConf(conf)
+            MetaDataWriterFactory.fromSparkContext(sparkContext)
                     .create()
                     .write(datasetMeta);
+
+            // Publish that new data has arrived
+            MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf);
+            metadataPublisherClient.dataChanged(location.getParentUri(), localPath, currentTimeStamp);
 
         } catch (IOException e) {
             log.error("Could not write meta-data to bucket", e);

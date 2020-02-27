@@ -14,6 +14,7 @@ import no.ssb.dapla.gcs.connector.GoogleHadoopFileSystemExt;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.service.DataAccessClient;
+import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.NoOpMetadataWriter;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.HttpUrl;
@@ -60,6 +61,7 @@ public class GsimDatasourceGCSTest {
     private static String version = UUID.randomUUID().toString();
     private static BlobId blobId;
     private MockWebServer server;
+    private MockWebServer publisher;
 
     @BeforeClass
     public static void setupBucketFolder() throws Exception {
@@ -110,6 +112,10 @@ public class GsimDatasourceGCSTest {
         this.server.start();
         HttpUrl baseUrl = server.url("/spark-service-gcs/");
 
+        this.publisher = new MockWebServer();
+        this.publisher.start();
+        HttpUrl publisherUrl = publisher.url("/metadata-publisher/");
+
         // Read the unit dataset json example.
         SparkSession session = SparkSession.builder()
                 .appName(GsimDatasourceGCSTest.class.getSimpleName())
@@ -118,6 +124,7 @@ public class GsimDatasourceGCSTest {
                 .config(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true)
                 .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE, "gs://" + bucket)
                 .config(DataAccessClient.CONFIG_DATA_ACCESS_URL, baseUrl.toString())
+                .config(MetadataPublisherClient.CONFIG_METADATA_PUBLISHER_URL, publisherUrl.toString())
                 .config("spark.ssb.dapla.metadata.writer", NoOpMetadataWriter.class.getCanonicalName())
                 .config("spark.hadoop.fs.gs.impl", GoogleHadoopFileSystemExt.class.getCanonicalName())
                 .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
@@ -219,6 +226,7 @@ public class GsimDatasourceGCSTest {
 
     @Test
     public void testWriteBucket() {
+        publisher.enqueue(new MockResponse().setResponseCode(200));
         server.setDispatcher(new Dispatcher() {
             public MockResponse dispatch(RecordedRequest request) {
                 final LocationRequest body = ProtobufJsonUtils.toPojo(request.getBody().readByteString().utf8(),

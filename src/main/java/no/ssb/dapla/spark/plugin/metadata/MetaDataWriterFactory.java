@@ -1,32 +1,31 @@
 package no.ssb.dapla.spark.plugin.metadata;
 
-import no.ssb.dapla.spark.plugin.DaplaSparkConfig;
 import org.apache.spark.SparkConf;
+import org.apache.spark.SparkContext;
 import scala.Option;
 
 public class MetaDataWriterFactory {
 
     static final String METADATA_WRITER = "spark.ssb.dapla.metadata.writer";
-    private final SparkConf conf;
+    private final SparkContext context;
 
-    private MetaDataWriterFactory(SparkConf conf) {
-        this.conf = conf;
+    public MetaDataWriterFactory(SparkContext context) {
+        this.context = context;
     }
 
-    public static MetaDataWriterFactory fromSparkConf(SparkConf conf) {
-        return new MetaDataWriterFactory(conf);
+    public static MetaDataWriterFactory fromSparkContext(SparkContext context) {
+        return new MetaDataWriterFactory(context);
     }
 
     public MetaDataWriter create() {
+        SparkConf conf = context.getConf();
         Option<String> option = conf.getOption(METADATA_WRITER);
         if (option.isEmpty()) {
             throw new IllegalArgumentException("Missing spark config: " + METADATA_WRITER);
         }
 
-        if (option.get().equals(LocalFSMetaDataWriter.class.getName())) {
-            return new LocalFSMetaDataWriter(new DaplaSparkConfig(conf));
-        } else if (option.get().equals(GoogleCSMetaDataWriter.class.getName())) {
-            return new GoogleCSMetaDataWriter();
+        if (option.get().equals(FilesystemMetaDataWriter.class.getName())) {
+            return new FilesystemMetaDataWriter(context);
         } else if (option.get().equals(NoOpMetadataWriter.class.getName())) {
             return new NoOpMetadataWriter();
         }
