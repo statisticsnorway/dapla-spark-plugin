@@ -96,7 +96,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                     .setCreatedBy(userId)
                     .build();
 
-            MetaDataWriterFactory.fromSparkConf(conf)
+            MetaDataWriterFactory.fromSparkContext(sparkContext)
                     .create()
                     .write(datasetMeta);
 

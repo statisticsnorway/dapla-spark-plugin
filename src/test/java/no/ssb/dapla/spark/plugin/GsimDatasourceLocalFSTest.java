@@ -2,7 +2,6 @@ package no.ssb.dapla.spark.plugin;
 
 import no.ssb.dapla.data.access.protobuf.LocationRequest;
 import no.ssb.dapla.data.access.protobuf.LocationResponse;
-import no.ssb.dapla.dataset.api.DatasetMeta;
 import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.NoOpMetadataWriter;
@@ -30,11 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import static no.ssb.dapla.spark.plugin.metadata.LocalFSMetaDataWriter.DATASET_META_FILE_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class GsimDatasourceLocalFSTest {
