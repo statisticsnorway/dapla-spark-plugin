@@ -1,7 +1,9 @@
 package no.ssb.dapla.service;
 
+import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.metadata.distributor.protobuf.DataChangedRequest;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
+import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -41,11 +43,14 @@ public class MetadataPublisherClient {
         return this.baseURL + String.format(format, args);
     }
 
-    public void dataChanged(String parentUri, String localPath, long currentTimeStamp) {
+    public void dataChanged(DatasetUri datasetUri) {
         DataChangedRequest dataChangedRequest = DataChangedRequest.newBuilder()
-                .setParentUri(parentUri)
-                .setPath(localPath)
-                .setVersion(currentTimeStamp)
+                .setParentUri(datasetUri.getParentUri())
+                .setPath(datasetUri.getPath())
+                .setVersion(Long.parseLong(datasetUri.getVersion()))
+                .setProjectId("dapla")
+                .setTopicName("file-events-1")
+                .setFilename(FilesystemMetaDataWriter.DATASET_META_FILE_NAME)
                 .build();
 
         String body = ProtobufJsonUtils.toString(dataChangedRequest);
