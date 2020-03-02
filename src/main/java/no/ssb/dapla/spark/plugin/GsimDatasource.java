@@ -6,6 +6,7 @@ import no.ssb.dapla.dataset.api.DatasetId;
 import no.ssb.dapla.dataset.api.DatasetMeta;
 import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.service.DataAccessClient;
+import no.ssb.dapla.service.DataAccessClient.DataAccessServiceException;
 import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.MetaDataWriterFactory;
 import org.apache.spark.SparkConf;
@@ -23,7 +24,6 @@ import org.apache.spark.sql.sources.RelationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.immutable.Map;
-
 
 import java.io.IOException;
 import java.util.concurrent.locks.Lock;
@@ -46,6 +46,9 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String userId = getUserId(sqlContext.sparkContext());
 
         DataAccessClient dataAccessClient = new DataAccessClient(sqlContext.sparkContext().getConf());
+
+        checkAccess(dataAccessClient, userId, AccessTokenRequest.Privilege.READ, localPath, 0);
+
         LocationResponse locationResponse = dataAccessClient.getLocationWithLatestVersion(userId, localPath);
 
         String fullPath = DatasetUri.of(locationResponse.getParentUri(), localPath, locationResponse.getVersion()).toString();
@@ -53,6 +56,18 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         System.out.println("Path til dataset: " + fullPath);
         SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, userId);
         return new GsimRelation(isolatedSqlContext, fullPath);
+    }
+
+    /**
+     * Check whether user has access to perform operation on path
+     * @param dataAccessClient
+     * @param userId
+     * @param operation
+     * @param path
+     * @throws DataAccessServiceException if an error occurs or permission is denied
+     */
+    void checkAccess(DataAccessClient dataAccessClient, String userId, AccessTokenRequest.Privilege operation, String path, long snapshot) {
+        dataAccessClient.getAccessToken(userId, path, snapshot, operation);
     }
 
     @Override
@@ -68,6 +83,9 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         DataAccessClient dataAccessClient = new DataAccessClient(conf);
         long currentTimeStamp = System.currentTimeMillis();
+
+        checkAccess(dataAccessClient, userId, AccessTokenRequest.Privilege.WRITE, localPath, 0);
+
         LocationResponse location = dataAccessClient.getLocation(userId, localPath, currentTimeStamp);
 
         final DatasetUri pathToNewDataSet = DatasetUri.of(location.getParentUri(), localPath, currentTimeStamp);
