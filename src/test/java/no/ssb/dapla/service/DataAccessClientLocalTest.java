@@ -23,7 +23,7 @@ public class DataAccessClientLocalTest {
     public void testGetAccessToken() {
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
         AccessTokenProvider.AccessToken accessToken = dataAccessClient.getAccessToken("user1", "/skatt/person/rawdata-2019",
-                AccessTokenRequest.Privilege.READ);
+                0, AccessTokenRequest.Privilege.READ);
         System.out.println(accessToken.getToken());
     }
 

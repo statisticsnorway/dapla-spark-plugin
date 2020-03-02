@@ -1,5 +1,6 @@
 package no.ssb.dapla.gcs.token.broker;
 
+import com.google.cloud.hadoop.util.AccessTokenProvider;
 import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
@@ -8,8 +9,6 @@ import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.spark.plugin.SparkOptions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
-
-import com.google.cloud.hadoop.util.AccessTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +52,7 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
                 AccessTokenRequest.Privilege privilege = AccessTokenRequest.Privilege.valueOf(
                         config.get(SparkOptions.CURRENT_OPERATION));
                 accessToken = dataAccessClient.getAccessToken(userId,
-                        config.get(SparkOptions.CURRENT_NAMESPACE), privilege);
+                        config.get(SparkOptions.CURRENT_NAMESPACE), 0, privilege);
             }
         } catch (Exception e) {
             throw new RuntimeException("Issuing access token failed for service: " + this.service, e);

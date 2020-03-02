@@ -62,11 +62,12 @@ public class DataAccessClient {
         return this.baseURL + String.format(format, args);
     }
 
-    public AccessTokenProvider.AccessToken getAccessToken(String userId, String path, AccessTokenRequest.Privilege privilege) {
+    public AccessTokenProvider.AccessToken getAccessToken(String userId, String path, long snapshot, AccessTokenRequest.Privilege privilege) {
         AccessTokenRequest tokenRequest = AccessTokenRequest.newBuilder()
                 .setUserId(userId)
                 .setPath(path)
                 .setPrivilege(privilege)
+                .setSnapshot(snapshot)
                 .build();
 
         String body = ProtobufJsonUtils.toString(tokenRequest);
@@ -152,7 +153,7 @@ public class DataAccessClient {
         }
     }
 
-    static class DataAccessServiceException extends RuntimeException {
+    public static class DataAccessServiceException extends RuntimeException {
         private final String body;
 
         public DataAccessServiceException(Throwable cause) {

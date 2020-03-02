@@ -1,4 +1,5 @@
 package no.ssb.dapla.service;
+
 import com.google.cloud.hadoop.util.AccessTokenProvider;
 import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
 import no.ssb.dapla.data.access.protobuf.LocationResponse;
@@ -7,8 +8,10 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import static no.ssb.dapla.service.DataAccessClient.*;
-import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.*;
+import static no.ssb.dapla.service.DataAccessClient.CONFIG_DATA_ACCESS_URL;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_ID;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_SECRET;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_TOKEN_URL;
 
 public class DataAccessClientStagingTest {
 
@@ -27,7 +30,7 @@ public class DataAccessClientStagingTest {
     public void testGetAccessToken() {
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
         AccessTokenProvider.AccessToken accessToken = dataAccessClient.getAccessToken("user1", "/skatt/person/rawdata-2019",
-                AccessTokenRequest.Privilege.READ);
+                0, AccessTokenRequest.Privilege.READ);
         System.out.println(accessToken);
     }
 
