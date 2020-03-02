@@ -26,7 +26,7 @@ public class DataAccessClientStagingTest {
     @Ignore
     public void testGetAccessToken() {
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
-        AccessTokenProvider.AccessToken accessToken = dataAccessClient.getAccessToken("user1", "myBucket",
+        AccessTokenProvider.AccessToken accessToken = dataAccessClient.getAccessToken("user1", "/skatt/person/rawdata-2019",
                 AccessTokenRequest.Privilege.READ);
         System.out.println(accessToken);
     }
@@ -35,7 +35,7 @@ public class DataAccessClientStagingTest {
     @Ignore
     public void testGetLocation() {
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
-        LocationResponse location = dataAccessClient.getLocationWithLatestVersion("user1", "myBucket");
+        LocationResponse location = dataAccessClient.getLocationWithLatestVersion("user1", "/skatt/person/rawdata-2019");
         System.out.println(location);
     }
 

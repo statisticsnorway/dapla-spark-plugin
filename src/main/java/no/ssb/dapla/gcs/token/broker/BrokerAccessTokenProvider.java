@@ -52,7 +52,8 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
                 String userId = tokenIdentifier.getRealUser().toString();
                 AccessTokenRequest.Privilege privilege = AccessTokenRequest.Privilege.valueOf(
                         config.get(SparkOptions.CURRENT_OPERATION));
-                accessToken = dataAccessClient.getAccessToken(userId, this.service.toString(), privilege);
+                accessToken = dataAccessClient.getAccessToken(userId,
+                        config.get(SparkOptions.CURRENT_NAMESPACE), privilege);
             }
         } catch (Exception e) {
             throw new RuntimeException("Issuing access token failed for service: " + this.service, e);
