@@ -3,8 +3,12 @@ package no.ssb.dapla.service;
 import com.google.cloud.hadoop.util.AccessTokenProvider;
 import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
 import no.ssb.dapla.data.access.protobuf.AccessTokenResponse;
+import no.ssb.dapla.data.access.protobuf.DatasetState;
 import no.ssb.dapla.data.access.protobuf.LocationRequest;
 import no.ssb.dapla.data.access.protobuf.LocationResponse;
+import no.ssb.dapla.data.access.protobuf.Privilege;
+import no.ssb.dapla.data.access.protobuf.Valuation;
+import no.ssb.dapla.data.access.protobuf.WriteOptions;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
@@ -50,7 +54,7 @@ public class DataAccessClient {
 
     private SparkConf getSparkConf(Configuration conf) {
         SparkConf sparkConf = new SparkConf();
-        for (Map.Entry<String,String> entry: conf) {
+        for (Map.Entry<String, String> entry : conf) {
             if (entry.getKey().startsWith("spark.")) {
                 sparkConf.set(entry.getKey(), entry.getValue());
             }
@@ -62,13 +66,19 @@ public class DataAccessClient {
         return this.baseURL + String.format(format, args);
     }
 
-    public AccessTokenProvider.AccessToken getAccessToken(String userId, String path, long snapshot, AccessTokenRequest.Privilege privilege) {
-        AccessTokenRequest tokenRequest = AccessTokenRequest.newBuilder()
+    public AccessTokenProvider.AccessToken getAccessToken(String userId, String path, long snapshot, Privilege privilege, Valuation valuation, DatasetState state) {
+        AccessTokenRequest.Builder builder = AccessTokenRequest.newBuilder()
                 .setUserId(userId)
                 .setPath(path)
                 .setPrivilege(privilege)
-                .setSnapshot(snapshot)
-                .build();
+                .setSnapshot(snapshot);
+        if (valuation != null) {
+            builder.setWriteOptions(WriteOptions.newBuilder()
+                    .setValuation(valuation)
+                    .setState(state)
+                    .build());
+        }
+        AccessTokenRequest tokenRequest = builder.build();
 
         String body = ProtobufJsonUtils.toString(tokenRequest);
 
@@ -131,7 +141,7 @@ public class DataAccessClient {
     }
 
 
-    private void handleErrorCodes(String userId, String location, AccessTokenRequest.Privilege privilege,
+    private void handleErrorCodes(String userId, String location, Privilege privilege,
                                   Response response, String body) {
         if (response.code() == HttpURLConnection.HTTP_UNAUTHORIZED || response.code() == HttpURLConnection.HTTP_FORBIDDEN) {
             throw new DataAccessServiceException(String.format("Din bruker %s har ikke %s tilgang til %s",

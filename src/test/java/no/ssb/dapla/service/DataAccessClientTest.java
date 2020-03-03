@@ -2,7 +2,7 @@ package no.ssb.dapla.service;
 
 
 import com.google.cloud.hadoop.util.AccessTokenProvider;
-import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
+import no.ssb.dapla.data.access.protobuf.Privilege;
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -41,7 +41,7 @@ public class DataAccessClientTest {
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
 
         AccessTokenProvider.AccessToken accessToken = dataAccessClient.getAccessToken("user1", "myBucket",
-                0, AccessTokenRequest.Privilege.READ);
+                0, Privilege.READ, null, null);
         assertThat(accessToken.getToken()).isEqualTo("myToken");
         assertThat(accessToken.getExpirationTimeMilliSeconds()).isEqualTo(1580828806046L);
 
@@ -57,7 +57,7 @@ public class DataAccessClientTest {
         server.enqueue(new MockResponse().setResponseCode(403));
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
         thrown.expectMessage("Din bruker user1 har ikke READ tilgang til myBucket");
-        dataAccessClient.getAccessToken("user1", "myBucket", 0, AccessTokenRequest.Privilege.READ);
+        dataAccessClient.getAccessToken("user1", "myBucket", 0, Privilege.READ, null, null);
     }
 
     @Test
@@ -65,7 +65,7 @@ public class DataAccessClientTest {
         server.enqueue(new MockResponse().setResponseCode(404));
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
         thrown.expectMessage("Fant ingen location myBucket");
-        dataAccessClient.getAccessToken("user1", "myBucket", 0, AccessTokenRequest.Privilege.READ);
+        dataAccessClient.getAccessToken("user1", "myBucket", 0, Privilege.READ, null, null);
     }
 
     @Test
@@ -76,6 +76,6 @@ public class DataAccessClientTest {
         thrown.expectMessage("En feil har oppstått:");
         thrown.expectMessage("Message from server");
 
-        dataAccessClient.getAccessToken("user1", "myBucket", 0, AccessTokenRequest.Privilege.READ);
+        dataAccessClient.getAccessToken("user1", "myBucket", 0, Privilege.READ, null, null);
     }
 }

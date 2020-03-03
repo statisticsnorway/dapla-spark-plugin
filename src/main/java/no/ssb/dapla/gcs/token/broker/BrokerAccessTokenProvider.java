@@ -1,7 +1,7 @@
 package no.ssb.dapla.gcs.token.broker;
 
 import com.google.cloud.hadoop.util.AccessTokenProvider;
-import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
+import no.ssb.dapla.data.access.protobuf.Privilege;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
@@ -45,14 +45,14 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
                 System.out.println("Using local credentials file");
                 final String scope = "https://www.googleapis.com/auth/devstorage.read_write";
                 GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(true, scope);
-                accessToken =  new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
+                accessToken = new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
             } else {
                 DataAccessClient dataAccessClient = new DataAccessClient(this.config);
                 String userId = tokenIdentifier.getRealUser().toString();
-                AccessTokenRequest.Privilege privilege = AccessTokenRequest.Privilege.valueOf(
+                Privilege privilege = Privilege.valueOf(
                         config.get(SparkOptions.CURRENT_OPERATION));
                 accessToken = dataAccessClient.getAccessToken(userId,
-                        config.get(SparkOptions.CURRENT_NAMESPACE), 0, privilege);
+                        config.get(SparkOptions.CURRENT_NAMESPACE), 0, privilege, null, null);
             }
         } catch (Exception e) {
             throw new RuntimeException("Issuing access token failed for service: " + this.service, e);

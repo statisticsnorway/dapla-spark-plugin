@@ -1,7 +1,8 @@
 package no.ssb.dapla.service;
+
 import com.google.cloud.hadoop.util.AccessTokenProvider;
-import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
 import no.ssb.dapla.data.access.protobuf.LocationResponse;
+import no.ssb.dapla.data.access.protobuf.Privilege;
 import org.apache.spark.SparkConf;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -23,7 +24,7 @@ public class DataAccessClientLocalTest {
     public void testGetAccessToken() {
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
         AccessTokenProvider.AccessToken accessToken = dataAccessClient.getAccessToken("user1", "/skatt/person/rawdata-2019",
-                0, AccessTokenRequest.Privilege.READ);
+                0, Privilege.READ, null, null);
         System.out.println(accessToken.getToken());
     }
 
