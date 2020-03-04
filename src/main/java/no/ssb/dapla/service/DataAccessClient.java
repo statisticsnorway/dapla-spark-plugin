@@ -99,16 +99,28 @@ public class DataAccessClient {
         }
     }
 
-    public LocationResponse getLocationWithLatestVersion(String userId, String path) {
-        return getLocation(userId, path, 0);
+    public LocationResponse getReadLocation(String userId, String path, int snapshot) {
+        return getLocation(userId, Privilege.READ, path, snapshot, null);
     }
 
-    public LocationResponse getLocation(String userId, String path, long snapshot) {
-        LocationRequest locationRequest = LocationRequest.newBuilder()
+    public LocationResponse getReadLocationWithLatestVersion(String userId, String path) {
+        return getLocation(userId, Privilege.READ, path, 0, null);
+    }
+
+    public LocationResponse getWriteLocation(String userId, String path, WriteOptions writeOptions) {
+        return getLocation(userId, Privilege.WRITE, path, 0, writeOptions);
+    }
+
+    public LocationResponse getLocation(String userId, Privilege privilege, String path, long snapshot, WriteOptions writeOptions) {
+        LocationRequest.Builder builder = LocationRequest.newBuilder()
                 .setUserId(userId)
-                .setSnapshot(snapshot)
+                .setPrivilege(privilege)
                 .setPath(path)
-                .build();
+                .setSnapshot(snapshot);
+        if (writeOptions != null) {
+            builder.setWriteOptions(writeOptions);
+        }
+        LocationRequest locationRequest = builder.build();
 
         String body = ProtobufJsonUtils.toString(locationRequest);
 

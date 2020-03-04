@@ -179,6 +179,7 @@ public class GsimDatasourceLocalFSTest {
         return LocationResponse.newBuilder()
                 .setParentUri("file://" + sparkStoragePath)
                 .setVersion("1")
+                .setAccessAllowed(true)
                 .build();
     }
 }

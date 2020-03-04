@@ -38,7 +38,7 @@ public class DataAccessClientStagingTest {
     @Ignore
     public void testGetLocation() {
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
-        LocationResponse location = dataAccessClient.getLocationWithLatestVersion("user1", "/skatt/person/rawdata-2019");
+        LocationResponse location = dataAccessClient.getReadLocationWithLatestVersion("user1", "/skatt/person/rawdata-2019");
         System.out.println(location);
     }
 
