@@ -4,11 +4,11 @@ import no.ssb.dapla.data.access.protobuf.DatasetState;
 import no.ssb.dapla.data.access.protobuf.LocationResponse;
 import no.ssb.dapla.data.access.protobuf.Privilege;
 import no.ssb.dapla.data.access.protobuf.Valuation;
+import no.ssb.dapla.data.access.protobuf.WriteOptions;
 import no.ssb.dapla.dataset.api.DatasetId;
 import no.ssb.dapla.dataset.api.DatasetMeta;
 import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.service.DataAccessClient;
-import no.ssb.dapla.service.DataAccessClient.DataAccessServiceException;
 import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.MetaDataWriterFactory;
 import org.apache.spark.SparkConf;
@@ -49,9 +49,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         DataAccessClient dataAccessClient = new DataAccessClient(sqlContext.sparkContext().getConf());
 
-        checkAccess(dataAccessClient, userId, Privilege.READ, localPath, 0, null, null);
+        LocationResponse locationResponse = dataAccessClient.getReadLocationWithLatestVersion(userId, localPath);
 
-        LocationResponse locationResponse = dataAccessClient.getLocationWithLatestVersion(userId, localPath);
+        if (!locationResponse.getAccessAllowed()) {
+            throw new RuntimeException("Permission denied");
+        }
 
         String fullPath = DatasetUri.of(locationResponse.getParentUri(), localPath, locationResponse.getVersion()).toString();
 
@@ -65,6 +67,9 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         log.info("CreateRelation via write {}", parameters);
         SparkOptions options = new SparkOptions(parameters);
         final String localPath = options.getPath();
+        Valuation valuation = Valuation.valueOf(options.getValuation());
+        DatasetState state = DatasetState.valueOf(options.getState());
+        WriteOptions writeOptions = WriteOptions.newBuilder().setValuation(valuation).setState(state).build();
 
         SparkContext sparkContext = sqlContext.sparkContext();
         SparkConf conf = sparkContext.getConf();
@@ -72,14 +77,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String userId = getUserId(sparkContext);
 
         DataAccessClient dataAccessClient = new DataAccessClient(conf);
-        long currentTimeStamp = System.currentTimeMillis();
 
-        checkAccess(dataAccessClient, userId, Privilege.WRITE, localPath, 0,
-                Valuation.valueOf(options.getValuation()), DatasetState.valueOf(options.getState()));
+        LocationResponse location = dataAccessClient.getWriteLocation(userId, localPath, writeOptions);
 
-        LocationResponse location = dataAccessClient.getLocation(userId, localPath, currentTimeStamp);
+        long version = System.currentTimeMillis();
 
-        final DatasetUri pathToNewDataSet = DatasetUri.of(location.getParentUri(), localPath, currentTimeStamp);
+        final DatasetUri pathToNewDataSet = DatasetUri.of(location.getParentUri(), localPath, version);
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
@@ -96,7 +99,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             DatasetMeta datasetMeta = DatasetMeta.newBuilder()
                     .setId(DatasetId.newBuilder()
                             .setPath(localPath)
-                            .setVersion(currentTimeStamp)
+                            .setVersion(version)
                             .build())
                     .setType(DatasetMeta.Type.BOUNDED)
                     .setValuation(DatasetMeta.Valuation.valueOf(options.getValuation()))
@@ -122,21 +125,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
         }
         return new GsimRelation(isolatedContext(sqlContext, localPath, userId), pathToNewDataSet.toString());
-    }
-
-    /**
-     * Check whether user has access to perform operation on path
-     *
-     * @param valuation
-     * @param state
-     * @param dataAccessClient
-     * @param userId
-     * @param operation
-     * @param path
-     * @throws DataAccessServiceException if an error occurs or permission is denied
-     */
-    void checkAccess(DataAccessClient dataAccessClient, String userId, Privilege operation, String path, long snapshot, Valuation valuation, DatasetState state) {
-        dataAccessClient.getAccessToken(userId, path, snapshot, operation, valuation, state);
     }
 
     /**
