@@ -78,11 +78,13 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         DataAccessClient dataAccessClient = new DataAccessClient(conf);
 
-        LocationResponse location = dataAccessClient.getWriteLocation(userId, localPath, writeOptions);
+        LocationResponse locationResponse = dataAccessClient.getWriteLocation(userId, localPath, writeOptions);
 
-        long version = System.currentTimeMillis();
+        if (!locationResponse.getAccessAllowed()) {
+            throw new RuntimeException("Permission denied");
+        }
 
-        final DatasetUri pathToNewDataSet = DatasetUri.of(location.getParentUri(), localPath, version);
+        final DatasetUri pathToNewDataSet = DatasetUri.of(locationResponse.getParentUri(), localPath, System.currentTimeMillis());
 
         Lock datasetLock = new ReentrantLock();
         datasetLock.lock();
@@ -92,19 +94,19 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             System.out.println("Skriver datasett til: " + pathToNewDataSet);
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
             SparkSession sparkSession = sqlContext.sparkSession();
-            setUserContext(sparkSession, Privilege.WRITE, localPath, userId);
+            setUserContext(sparkSession, Privilege.WRITE, pathToNewDataSet.getPath(), userId);
             // Write to GCS before writing metadata
             data.coalesce(1).write().parquet(pathToNewDataSet.toString());
 
             DatasetMeta datasetMeta = DatasetMeta.newBuilder()
                     .setId(DatasetId.newBuilder()
-                            .setPath(localPath)
-                            .setVersion(version)
+                            .setPath(pathToNewDataSet.getPath())
+                            .setVersion(Long.parseLong(pathToNewDataSet.getVersion()))
                             .build())
                     .setType(DatasetMeta.Type.BOUNDED)
                     .setValuation(DatasetMeta.Valuation.valueOf(options.getValuation()))
                     .setState(DatasetMeta.DatasetState.valueOf(options.getState()))
-                    .setParentUri(location.getParentUri())
+                    .setParentUri(pathToNewDataSet.getParentUri())
                     .setCreatedBy(userId)
                     .build();
 
@@ -124,7 +126,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             unsetUserContext(sqlContext.sparkSession());
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
         }
-        return new GsimRelation(isolatedContext(sqlContext, localPath, userId), pathToNewDataSet.toString());
+        return new GsimRelation(isolatedContext(sqlContext, pathToNewDataSet.getPath(), userId), pathToNewDataSet.toString());
     }
 
     /**
