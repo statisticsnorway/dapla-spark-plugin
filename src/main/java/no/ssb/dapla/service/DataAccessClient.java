@@ -112,13 +112,15 @@ public class DataAccessClient {
     }
 
     public LocationResponse getLocation(String userId, Privilege privilege, String path, long snapshot, WriteOptions writeOptions) {
-        LocationRequest locationRequest = LocationRequest.newBuilder()
+        LocationRequest.Builder builder = LocationRequest.newBuilder()
                 .setUserId(userId)
                 .setPrivilege(privilege)
                 .setPath(path)
-                .setSnapshot(snapshot)
-                .setWriteOptions(writeOptions)
-                .build();
+                .setSnapshot(snapshot);
+        if (writeOptions != null) {
+            builder.setWriteOptions(writeOptions);
+        }
+        LocationRequest locationRequest = builder.build();
 
         String body = ProtobufJsonUtils.toString(locationRequest);
 
