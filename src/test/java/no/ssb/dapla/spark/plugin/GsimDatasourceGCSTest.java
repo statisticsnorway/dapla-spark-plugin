@@ -16,7 +16,6 @@ import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
 import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
-import no.ssb.dapla.spark.plugin.metadata.NoOpMetadataWriter;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.Dispatcher;
@@ -49,7 +48,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class GsimDatasourceGCSTest {
 
@@ -252,7 +251,9 @@ public class GsimDatasourceGCSTest {
     private LocationResponse createMockResponse(String parentUri, String version) {
         return LocationResponse.newBuilder()
                 .setParentUri(parentUri)
-                .setVersion(version).build();
+                .setVersion(version)
+                .setAccessAllowed(true)
+                .build();
     }
 
 }
