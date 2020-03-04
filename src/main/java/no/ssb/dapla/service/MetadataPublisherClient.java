@@ -20,23 +20,27 @@ import java.io.IOException;
 public class MetadataPublisherClient {
 
     public static final String CONFIG_METADATA_PUBLISHER_URL = "spark.ssb.dapla.metadata.publisher.url";
+    public static final String CONFIG_METADATA_PUBLISHER_PROJECT_ID = "spark.ssb.dapla.metadata.publisher.project.id";
+    public static final String CONFIG_METADATA_PUBLISHER_TOPIC_NAME = "spark.ssb.dapla.metadata.publisher.topic.name";
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
-    private OkHttpClient client;
-    private String baseURL;
+    private final OkHttpClient client;
+    private final String baseURL;
+    private final String projectId;
+    private final String topicName;
 
     public MetadataPublisherClient(final SparkConf conf) {
-        init(conf);
-    }
-
-    public void init(final SparkConf conf) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
         OAuth2Interceptor.createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
         this.client = builder.build();
-        this.baseURL = conf.get(CONFIG_METADATA_PUBLISHER_URL);
-        if (!this.baseURL.endsWith("/")) {
-            this.baseURL = this.baseURL + "/";
+        String url = conf.get(CONFIG_METADATA_PUBLISHER_URL);
+        if (!url.endsWith("/")) {
+            this.baseURL = url + "/";
+        } else {
+            this.baseURL = url;
         }
+        this.projectId = conf.get(CONFIG_METADATA_PUBLISHER_PROJECT_ID);
+        this.topicName = conf.get(CONFIG_METADATA_PUBLISHER_TOPIC_NAME);
     }
 
     private String buildUrl(String format, Object... args) {
@@ -48,8 +52,8 @@ public class MetadataPublisherClient {
                 .setParentUri(datasetUri.getParentUri())
                 .setPath(datasetUri.getPath())
                 .setVersion(Long.parseLong(datasetUri.getVersion()))
-                .setProjectId("dapla")
-                .setTopicName("file-events-1")
+                .setProjectId(projectId)
+                .setTopicName(topicName)
                 .setFilename(FilesystemMetaDataWriter.DATASET_META_FILE_NAME)
                 .build();
 
