@@ -6,10 +6,25 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.execution.FileRelation;
-import org.apache.spark.sql.sources.*;
-import org.apache.spark.sql.types.*;
+import org.apache.spark.sql.sources.BaseRelation;
+import org.apache.spark.sql.sources.EqualNullSafe;
+import org.apache.spark.sql.sources.EqualTo;
+import org.apache.spark.sql.sources.Filter;
+import org.apache.spark.sql.sources.GreaterThan;
+import org.apache.spark.sql.sources.GreaterThanOrEqual;
+import org.apache.spark.sql.sources.In;
+import org.apache.spark.sql.sources.IsNotNull;
+import org.apache.spark.sql.sources.IsNull;
+import org.apache.spark.sql.sources.LessThan;
+import org.apache.spark.sql.sources.LessThanOrEqual;
+import org.apache.spark.sql.sources.PrunedFilteredScan;
+import org.apache.spark.sql.sources.StringContains;
+import org.apache.spark.sql.sources.StringEndsWith;
+import org.apache.spark.sql.sources.StringStartsWith;
+import org.apache.spark.sql.sources.TableScan;
+import org.apache.spark.sql.types.StructType;
 
-import java.util.*;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 public class GsimRelation extends BaseRelation implements PrunedFilteredScan, FileRelation, TableScan {
@@ -22,6 +37,12 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         this.context = context;
         this.path = path;
         this.schema = getDataset().schema();
+    }
+
+    public GsimRelation(SQLContext context, String path, StructType schema) {
+        this.context = context;
+        this.path = path;
+        this.schema = schema;
     }
 
     /**

@@ -2,7 +2,6 @@ package no.ssb.dapla.service;
 
 import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.metadata.distributor.protobuf.DataChangedRequest;
-import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
 import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
@@ -31,7 +30,6 @@ public class MetadataPublisherClient {
 
     public MetadataPublisherClient(final SparkConf conf) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        OAuth2Interceptor.createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
         this.client = builder.build();
         String url = conf.get(CONFIG_METADATA_PUBLISHER_URL);
         if (!url.endsWith("/")) {
@@ -47,7 +45,7 @@ public class MetadataPublisherClient {
         return this.baseURL + String.format(format, args);
     }
 
-    public void dataChanged(DatasetUri datasetUri) {
+    public void dataChanged(String userAccessToken, DatasetUri datasetUri) {
         DataChangedRequest dataChangedRequest = DataChangedRequest.newBuilder()
                 .setParentUri(datasetUri.getParentUri())
                 .setPath(datasetUri.getPath())
@@ -61,6 +59,7 @@ public class MetadataPublisherClient {
 
         Request request = new Request.Builder()
                 .url(buildUrl("rpc/MetadataDistributorService/dataChanged"))
+                .header("Authorization", String.format("Bearer %s", userAccessToken))
                 .post(RequestBody.create(body, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
                 .build();
         try (Response response = client.newCall(request).execute()) {

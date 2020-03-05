@@ -1,7 +1,9 @@
 package no.ssb.dapla.gcs.token.broker;
 
 import com.google.cloud.hadoop.util.AccessTokenProvider;
+import no.ssb.dapla.data.access.protobuf.DatasetState;
 import no.ssb.dapla.data.access.protobuf.Privilege;
+import no.ssb.dapla.data.access.protobuf.Valuation;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
@@ -11,6 +13,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static java.util.Optional.ofNullable;
 
 /**
  * An AccessTokenProvider implementation that requires a "session token" represented by a BrokerTokenIdentifier.
@@ -48,11 +52,18 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
                 accessToken = new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
             } else {
                 DataAccessClient dataAccessClient = new DataAccessClient(this.config);
-                String userId = tokenIdentifier.getRealUser().toString();
-                Privilege privilege = Privilege.valueOf(
-                        config.get(SparkOptions.CURRENT_OPERATION));
-                accessToken = dataAccessClient.getAccessToken(userId,
-                        config.get(SparkOptions.CURRENT_NAMESPACE), 0, privilege, null, null);
+                String userAccessToken = config.get("spark.ssb.access");
+                Privilege privilege = Privilege.valueOf(config.get(SparkOptions.CURRENT_OPERATION));
+                String path = config.get(SparkOptions.CURRENT_NAMESPACE);
+                Valuation valuation = ofNullable(config.get(SparkOptions.CURRENT_DATASET_VALUATION))
+                        .filter(v -> !v.trim().isEmpty())
+                        .map(Valuation::valueOf)
+                        .orElse(null);
+                DatasetState state = ofNullable(config.get(SparkOptions.CURRENT_DATASET_STATE))
+                        .filter(v -> !v.trim().isEmpty())
+                        .map(DatasetState::valueOf)
+                        .orElse(null);
+                accessToken = dataAccessClient.getAccessToken(userAccessToken, path, 0, privilege, valuation, state);
             }
         } catch (Exception e) {
             throw new RuntimeException("Issuing access token failed for service: " + this.service, e);
@@ -60,7 +71,7 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
     }
 
     private boolean useLocalCredentials() {
-        return config.getBoolean("spark.ssb.use.local.credentials", true);
+        return config.getBoolean("spark.ssb.use.local.credentials", false);
     }
 
     private void validateTokenIdentifier() {

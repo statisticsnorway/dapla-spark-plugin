@@ -7,6 +7,8 @@ public class SparkOptions {
     public static final String CURRENT_OPERATION = "spark.ssb.session.operation";
     public static final String CURRENT_NAMESPACE = "spark.ssb.session.namespace";
     public static final String CURRENT_USER = "spark.ssb.session.userId";
+    public static final String CURRENT_DATASET_VALUATION = "spark.ssb.session.dataset.valuation";
+    public static final String CURRENT_DATASET_STATE = "spark.ssb.session.dataset.state";
     static final String PATH = "PATH";
     static final String VALUATION = "valuation";
     static final String STATE = "state";

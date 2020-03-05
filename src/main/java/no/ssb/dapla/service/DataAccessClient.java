@@ -9,7 +9,6 @@ import no.ssb.dapla.data.access.protobuf.LocationResponse;
 import no.ssb.dapla.data.access.protobuf.Privilege;
 import no.ssb.dapla.data.access.protobuf.Valuation;
 import no.ssb.dapla.data.access.protobuf.WriteOptions;
-import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -43,9 +42,7 @@ public class DataAccessClient {
     }
 
     public void init(final SparkConf conf) {
-        okhttp3.OkHttpClient.Builder builder = new okhttp3.OkHttpClient.Builder();
-        OAuth2Interceptor.createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
-        this.client = builder.build();
+        this.client = new okhttp3.OkHttpClient.Builder().build();
         this.baseURL = conf.get(CONFIG_DATA_ACCESS_URL);
         if (!this.baseURL.endsWith("/")) {
             this.baseURL = this.baseURL + "/";
@@ -66,9 +63,8 @@ public class DataAccessClient {
         return this.baseURL + String.format(format, args);
     }
 
-    public AccessTokenProvider.AccessToken getAccessToken(String userId, String path, long snapshot, Privilege privilege, Valuation valuation, DatasetState state) {
+    public AccessTokenProvider.AccessToken getAccessToken(String userAccessToken, String path, long snapshot, Privilege privilege, Valuation valuation, DatasetState state) {
         AccessTokenRequest.Builder builder = AccessTokenRequest.newBuilder()
-                .setUserId(userId)
                 .setPath(path)
                 .setPrivilege(privilege)
                 .setSnapshot(snapshot);
@@ -84,11 +80,12 @@ public class DataAccessClient {
 
         Request request = new Request.Builder()
                 .url(buildUrl("rpc/DataAccessService/getAccessToken"))
+                .header("Authorization", String.format("Bearer %s", userAccessToken))
                 .post(RequestBody.create(body, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
                 .build();
         try (Response response = client.newCall(request).execute()) {
             String json = getJson(response);
-            handleErrorCodes(userId, path, privilege, response, json);
+            handleErrorCodes(path, privilege, response, json);
             return toAccessToken(json);
         } catch (IOException e) {
             log.error("getAccessToken failed", e);
@@ -99,21 +96,20 @@ public class DataAccessClient {
         }
     }
 
-    public LocationResponse getReadLocation(String userId, String path, int snapshot) {
-        return getLocation(userId, Privilege.READ, path, snapshot, null);
+    public LocationResponse getReadLocation(String userAccessToken, String path, int snapshot) {
+        return getLocation(userAccessToken, Privilege.READ, path, snapshot, null);
     }
 
-    public LocationResponse getReadLocationWithLatestVersion(String userId, String path) {
-        return getLocation(userId, Privilege.READ, path, 0, null);
+    public LocationResponse getReadLocationWithLatestVersion(String userAccessToken, String path) {
+        return getLocation(userAccessToken, Privilege.READ, path, 0, null);
     }
 
-    public LocationResponse getWriteLocation(String userId, String path, WriteOptions writeOptions) {
-        return getLocation(userId, Privilege.WRITE, path, 0, writeOptions);
+    public LocationResponse getWriteLocation(String userAccessToken, String path, WriteOptions writeOptions) {
+        return getLocation(userAccessToken, Privilege.WRITE, path, 0, writeOptions);
     }
 
-    public LocationResponse getLocation(String userId, Privilege privilege, String path, long snapshot, WriteOptions writeOptions) {
+    public LocationResponse getLocation(String userAccessToken, Privilege privilege, String path, long snapshot, WriteOptions writeOptions) {
         LocationRequest.Builder builder = LocationRequest.newBuilder()
-                .setUserId(userId)
                 .setPrivilege(privilege)
                 .setPath(path)
                 .setSnapshot(snapshot);
@@ -127,10 +123,11 @@ public class DataAccessClient {
         Request request = new Request.Builder()
                 .url(buildUrl("rpc/DataAccessService/getLocation"))
                 .post(RequestBody.create(body, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .header("Authorization", String.format("Bearer %s", userAccessToken))
                 .build();
         try (Response response = client.newCall(request).execute()) {
             String json = getJson(response);
-            handleErrorCodes(userId, path, response, json);
+            handleErrorCodes(path, response, json);
             return ProtobufJsonUtils.toPojo(json, LocationResponse.class);
         } catch (IOException e) {
             log.error("getLocation failed", e);
@@ -153,11 +150,11 @@ public class DataAccessClient {
     }
 
 
-    private void handleErrorCodes(String userId, String location, Privilege privilege,
+    private void handleErrorCodes(String location, Privilege privilege,
                                   Response response, String body) {
         if (response.code() == HttpURLConnection.HTTP_UNAUTHORIZED || response.code() == HttpURLConnection.HTTP_FORBIDDEN) {
-            throw new DataAccessServiceException(String.format("Din bruker %s har ikke %s tilgang til %s",
-                    userId, privilege.name(), location), body);
+            throw new DataAccessServiceException(String.format("Din bruker har ikke %s tilgang til %s",
+                    privilege.name(), location), body);
         } else if (response.code() == HttpURLConnection.HTTP_NOT_FOUND) {
             throw new DataAccessServiceException(String.format("Fant ingen location %s", location), body);
         } else if (response.code() < 200 || response.code() >= 400) {
@@ -165,9 +162,9 @@ public class DataAccessClient {
         }
     }
 
-    private void handleErrorCodes(String userId, String namespace, Response response, String body) {
+    private void handleErrorCodes(String namespace, Response response, String body) {
         if (response.code() == HttpURLConnection.HTTP_UNAUTHORIZED || response.code() == HttpURLConnection.HTTP_FORBIDDEN) {
-            throw new DataAccessServiceException(String.format("Din bruker %s har ikke tilgang til %s", userId, namespace), body);
+            throw new DataAccessServiceException(String.format("Din bruker har ikke tilgang til %s", namespace), body);
         } else if (response.code() == HttpURLConnection.HTTP_NOT_FOUND) {
             throw new DataAccessServiceException(String.format("Fant ingen datasett for %s", namespace), body);
         } else if (response.code() < 200 || response.code() >= 400) {

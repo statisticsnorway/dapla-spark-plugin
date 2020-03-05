@@ -47,7 +47,6 @@ public class DataAccessClientTest {
 
         RecordedRequest recordedRequest = server.takeRequest();
         assertThat(recordedRequest.getBody().readByteString().utf8()).isEqualTo("{\n" +
-                "  \"userId\": \"user1\",\n" +
                 "  \"path\": \"myBucket\"\n" +
                 "}");
     }
@@ -56,7 +55,7 @@ public class DataAccessClientTest {
     public void testHandleAccessDenied() {
         server.enqueue(new MockResponse().setResponseCode(403));
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
-        thrown.expectMessage("Din bruker user1 har ikke READ tilgang til myBucket");
+        thrown.expectMessage("Din bruker har ikke READ tilgang til myBucket");
         dataAccessClient.getAccessToken("user1", "myBucket", 0, Privilege.READ, null, null);
     }
 
