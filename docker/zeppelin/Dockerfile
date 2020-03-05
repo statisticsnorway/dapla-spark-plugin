@@ -12,6 +12,8 @@ RUN wget -P /tmp https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-had
 
 # Merge the content of the interpreter settings.
 COPY docker/zeppelin/interpreter-template.json /zeppelin/conf/interpreter-new.json
+
+USER root
 RUN apk --no-cache add --virtual jq-dependencies jq && \
     mv /zeppelin/conf/interpreter.json /zeppelin/conf/interpreter-original.json && \
     jq -n 'reduce inputs as $i ({}; . * $i)' /zeppelin/conf/interpreter-original.json \
@@ -21,4 +23,6 @@ RUN apk --no-cache add --virtual jq-dependencies jq && \
 
 COPY docker/zeppelin/env.sh /env.sh
 
+RUN chown -R zeppelin:zeppelin /zeppelin
+USER zeppelin:zeppelin
 CMD ["/env.sh"]
