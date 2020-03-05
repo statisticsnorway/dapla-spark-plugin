@@ -1,4 +1,4 @@
-FROM eu.gcr.io/prod-bip/dapla-noterepo-zeppelin
+FROM eu.gcr.io/prod-bip/dapla-zeppelin-base:latest
 
 # Copy the library.
 COPY target/dapla-spark-plugin-*-shaded.jar /zeppelin/lib/dapla-spark-plugin.jar
