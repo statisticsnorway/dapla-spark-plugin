@@ -10,60 +10,69 @@
           "value": "Zeppelin dapla",
           "type": "string"
         },
-        "zeppelin.spark.ui.hidden": {
-          "name": "zeppelin.spark.ui.hidden",
-          "value": false,
-          "type": "checkbox"
-        },
-        "zeppelin.spark.useNew": {
-          "name": "zeppelin.spark.useNew",
-          "value": true,
-          "type": "checkbox"
-        },
-        "zeppelin.pyspark.useIPython": {
-          "name": "zeppelin.pyspark.useIPython",
-          "value": true,
-          "type": "checkbox"
-        },
-        "spark.ssb.gsim.ldsUrl": {
-          "value": "$LDS_GSIM_SPARK_LDS_URL",
+        "spark.files": {
+          "value": "ssb-library.zip",
           "type": "string"
         },
-        "spark.ssb.gsim.oauth.grantType": {
-          "value": "$LDS_GSIM_SPARK_OAUTH_GRANT_TYPE",
-          "type": "textarea"
-        },
-        "spark.ssb.gsim.oauth.clientId": {
-          "value": "$LDS_GSIM_SPARK_OAUTH_CLIENT_ID",
-          "type": "textarea"
-        },
-        "spark.ssb.gsim.oauth.clientSecret": {
-          "value": "$LDS_GSIM_SPARK_OAUTH_CLIENT_SECRET",
-          "type": "textarea"
-        },
-        "spark.ssb.gsim.oauth.userName": {
-          "value": "$LDS_GSIM_SPARK_OAUTH_USERNAME",
+        "spark.submit.deployMode": {
+          "value": "cluster",
           "type": "string"
         },
-        "spark.ssb.gsim.location": {
-          "value": "$LDS_GSIM_SPARK_LOCATION",
+        "spark.submit.pyFiles": {
+          "value": "/zeppelin/ssb-library.zip",
           "type": "string"
         },
-        "spark.ssb.gsim.oauth.password": {
-          "value": "$LDS_GSIM_SPARK_OAUTH_PASSWORD",
-          "type": "password"
+        "spark.ssb.dapla.gcs.storage": {
+          "value": "$DAPLA_SPARK_GCS_STORAGE",
+          "type": "string"
         },
-        "spark.ssb.gsim.oauth.tokenUrl": {
-          "value": "$LDS_GSIM_SPARK_OAUTH_TOKEN_URL",
+        "spark.ssb.dapla.metadata.writer": {
+          "value": "no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter",
+          "type": "string"
+        },
+        "spark.ssb.dapla.metadata.publisher.url": {
+          "value": "$DAPLA_SPARK_METADATA_PUBLISHER_URL",
+          "type": "string"
+        },
+        "spark.ssb.dapla.metadata.publisher.project.id": {
+          "value": "$DAPLA_SPARK_METADATA_PUBLISHER_PROJECT_ID",
+          "type": "string"
+        },
+        "spark.ssb.dapla.metadata.publisher.topic.name": {
+          "value": "$DAPLA_SPARK_METADATA_PUBLISHER_TOPIC_NAME",
           "type": "string"
         },
         "spark.hadoop.fs.gs.impl": {
-          "value": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem",
+          "value": "no.ssb.dapla.gcs.connector.GoogleHadoopFileSystemExt",
           "type": "string"
         },
         "fs.gs.impl.disable.cache": {
           "value": "true",
           "type": "string"
+        },
+        "spark.ssb.dapla.data.access.url": {
+          "value": "$DAPLA_SPARK_DATA_ACCESS_URL",
+          "type": "string"
+        },
+        "spark.ssb.dapla.oauth.credentials.file": {
+          "value": "$DAPLA_SPARK_OAUTH_CREDENTIALS_FILE",
+          "type": "string"
+        },
+        "spark.yarn.dist.files": {
+          "value": "$DAPLA_SPARK_OAUTH_CREDENTIALS_FILE",
+          "type": "string"
+        },
+        "spark.ssb.dapla.oauth.tokenUrl": {
+          "value": "$DAPLA_SPARK_OAUTH_TOKEN_URL",
+          "type": "string"
+        },
+        "spark.ssb.dapla.oauth.clientId": {
+          "value": "$DAPLA_SPARK_OAUTH_CLIENT_ID",
+          "type": "string"
+        },
+        "spark.ssb.dapla.oauth.clientSecret": {
+          "value": "$DAPLA_SPARK_OAUTH_CLIENT_SECRET",
+          "type": "password"
         },
         "spark.hadoop.fs.gs.delegation.token.binding": {
           "value": "no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding",
@@ -72,6 +81,10 @@
         "spark.hadoop.google.cloud.auth.service.account.enable": {
           "value": true,
           "type": "checkbox"
+        },
+        "spark.jars": {
+          "value": "/zeppelin/dapla-spark-plugin.jar,/zeppelin/lib/gcs-connector-hadoop.jar",
+          "type": "string"
         }
       },
       "interpreterGroup": [
@@ -140,26 +153,7 @@
           }
         }
       ],
-      "dependencies": [
-        {
-          "groupArtifactVersion": "/zeppelin/lib/dapla-spark-plugin.jar",
-          "local": false
-        },
-        {
-          "groupArtifactVersion": "/zeppelin/lib/gcs-connector-hadoop.jar",
-          "local": false
-        }
-      ],
-      "option": {
-        "remote": true,
-        "port": -1,
-        "perNote": "shared",
-        "perUser": "shared",
-        "isExistingProcess": false,
-        "setPermission": false,
-        "owners": [],
-        "isUserImpersonate": false
-      }
+      "dependencies": []
     },
     "md": {
       "id": "md",
