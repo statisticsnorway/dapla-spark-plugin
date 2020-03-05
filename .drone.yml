@@ -27,19 +27,19 @@ steps:
     - authenticate
     - restore-cache
 
-- name: publish-docker-zeppelin
+- name: dapla-zeppelin-base
   image: plugins/gcr
   settings:
-    dockerfile: docker/zeppelin/Dockerfile
-    repo: eu.gcr.io/prod-bip/ssb/lds-zeppelin
+    dockerfile: docker/Dockerfile
+    repo: eu.gcr.io/prod-bip/dapla-zeppelin
     registry: eu.gcr.io
-    auto_tag: true
+    tags:
+      - latest
+      - ${DRONE_BRANCH//\//-}-${DRONE_COMMIT_SHA:0:8}
     json_key:
       from_secret: gcr_credentials
   when:
-    ref:
-      - refs/heads/develop
-      - refs/tags/*
+    event: push
   depends_on:
     - publish-maven
 
@@ -47,15 +47,15 @@ steps:
   image: plugins/gcr
   settings:
     dockerfile: docker/polynote/Dockerfile
-    repo: eu.gcr.io/prod-bip/ssb/lds-polynote
+    repo: eu.gcr.io/prod-bip/dapla-polynote
     registry: eu.gcr.io
-    auto_tag: true
+    tags:
+      - latest
+      - ${DRONE_BRANCH//\//-}-${DRONE_COMMIT_SHA:0:8}
     json_key:
       from_secret: gcr_credentials
   when:
-    ref:
-      - refs/heads/develop
-      - refs/tags/*
+    event: push
   depends_on:
     - publish-maven
 
