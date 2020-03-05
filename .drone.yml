@@ -30,7 +30,7 @@ steps:
 - name: docker-dapla-zeppelin
   image: plugins/gcr
   settings:
-    dockerfile: docker/Dockerfile
+    dockerfile: docker/zeppelin/Dockerfile
     repo: eu.gcr.io/prod-bip/dapla-zeppelin
     registry: eu.gcr.io
     tags:
