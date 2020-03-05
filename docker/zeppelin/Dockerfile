@@ -16,8 +16,8 @@ RUN apk --no-cache add --virtual jq-dependencies jq && \
     mv /zeppelin/conf/interpreter.json /zeppelin/conf/interpreter-original.json && \
     jq -n 'reduce inputs as $i ({}; . * $i)' /zeppelin/conf/interpreter-original.json \
                                              /zeppelin/conf/interpreter-new.json > \
-                                             zeppelin/interpreter-template.json && \
-  && apk del jq-dependencies
+                                             /zeppelin/interpreter-template.json && \
+    apk del jq-dependencies
 
 COPY docker/zeppelin/env.sh /env.sh
 
