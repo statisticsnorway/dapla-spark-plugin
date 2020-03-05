@@ -21,8 +21,9 @@ RUN apk --no-cache add --virtual jq-dependencies jq && \
                                              /zeppelin/conf/interpreter-template.json && \
     apk del jq-dependencies
 
-COPY docker/zeppelin/env.sh /zeppelin/env.sh
+COPY docker/zeppelin/env.sh /zeppelin/bin/env.sh
+RUN apk --no-cache add gettext
 
 RUN chown -R zeppelin:zeppelin /zeppelin
 USER zeppelin:zeppelin
-CMD ["/zeppelin/env.sh"]
+CMD ["/zeppelin/bin/env.sh"]
