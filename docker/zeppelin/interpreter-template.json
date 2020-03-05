@@ -83,7 +83,7 @@
           "type": "checkbox"
         },
         "spark.jars": {
-          "value": "/zeppelin/dapla-spark-plugin.jar,/zeppelin/lib/gcs-connector-hadoop.jar",
+          "value": "/zeppelin/lib/dapla-spark-plugin.jar,/zeppelin/lib/gcs-connector-hadoop.jar",
           "type": "string"
         }
       },
