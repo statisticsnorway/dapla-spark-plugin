@@ -1,8 +1,5 @@
 FROM eu.gcr.io/prod-bip/dapla-zeppelin-base:latest
 
-# Copy the library.
-COPY target/dapla-spark-plugin-*-shaded.jar /zeppelin/lib/dapla-spark-plugin.jar
-
 # Add the GCS connector.
 # https://github.com/GoogleCloudPlatform/bigdata-interop/blob/master/gcs/INSTALL.md#configure-spark
 # https://github.com/GoogleCloudPlatform/bigdata-interop/issues/188
@@ -23,6 +20,9 @@ RUN apk --no-cache add --virtual jq-dependencies jq && \
 
 COPY docker/zeppelin/env.sh /zeppelin/bin/env.sh
 RUN apk --no-cache add gettext
+
+# Copy the library.
+COPY target/dapla-spark-plugin-*-shaded.jar /zeppelin/lib/dapla-spark-plugin.jar
 
 RUN chown -R zeppelin:zeppelin /zeppelin
 USER zeppelin:zeppelin
