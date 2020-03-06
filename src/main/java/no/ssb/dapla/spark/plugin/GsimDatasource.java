@@ -30,8 +30,8 @@ import scala.collection.immutable.Map;
 import java.io.IOException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import static java.util.Optional.ofNullable;
 
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
     private static final String SHORT_NAME = "gsim";
@@ -45,11 +45,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         SparkOptions options = new SparkOptions(parameters);
         final String localPath = options.getPath();
         System.out.println("Leser datasett fra: " + localPath);
-        String userId = getUserId(sqlContext.sparkContext());
+
+        String userId = sqlContext.sparkContext().getConf().get(DaplaSparkConfig.SPARK_SSB_USERNAME);
 
         DataAccessClient dataAccessClient = new DataAccessClient(sqlContext.sparkContext().getConf());
 
-        LocationResponse locationResponse = dataAccessClient.getReadLocationWithLatestVersion(userId, localPath);
+        LocationResponse locationResponse = dataAccessClient.getReadLocationWithLatestVersion(localPath);
 
         if (!locationResponse.getAccessAllowed()) {
             throw new RuntimeException("Permission denied");
@@ -58,7 +59,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String fullPath = DatasetUri.of(locationResponse.getParentUri(), localPath, locationResponse.getVersion()).toString();
 
         System.out.println("Path til dataset: " + fullPath);
-        SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, userId);
+        SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, userId, null, null);
         return new GsimRelation(isolatedSqlContext, fullPath);
     }
 
@@ -74,11 +75,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         SparkContext sparkContext = sqlContext.sparkContext();
         SparkConf conf = sparkContext.getConf();
 
-        String userId = getUserId(sparkContext);
+        String userId = sqlContext.sparkContext().getConf().get(DaplaSparkConfig.SPARK_SSB_USERNAME);
 
         DataAccessClient dataAccessClient = new DataAccessClient(conf);
 
-        LocationResponse locationResponse = dataAccessClient.getWriteLocation(userId, localPath, writeOptions);
+        LocationResponse locationResponse = dataAccessClient.getWriteLocation(localPath, writeOptions);
 
         if (!locationResponse.getAccessAllowed()) {
             throw new RuntimeException("Permission denied");
@@ -94,7 +95,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             System.out.println("Skriver datasett til: " + pathToNewDataSet);
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
             SparkSession sparkSession = sqlContext.sparkSession();
-            setUserContext(sparkSession, Privilege.WRITE, pathToNewDataSet.getPath(), userId);
+            setUserContext(sparkSession, Privilege.WRITE, pathToNewDataSet.getPath(), userId, valuation, state);
             // Write to GCS before writing metadata
             data.coalesce(1).write().parquet(pathToNewDataSet.toString());
 
@@ -126,22 +127,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             unsetUserContext(sqlContext.sparkSession());
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
         }
-        return new GsimRelation(isolatedContext(sqlContext, pathToNewDataSet.getPath(), userId), pathToNewDataSet.toString());
-    }
-
-    /**
-     * Until we have a proper way to intercept the spark interpreter in Zeppelin and add userId explicitly,
-     * we need to extract the userId from job group id (see org.apache.zeppelin.spark.NewSparkInterpreter#interpret)
-     */
-    String getUserId(SparkContext sparkContext) {
-        String jobDescr = sparkContext.getLocalProperty("spark.jobGroup.id");
-        Matcher matcher = Pattern.compile("zeppelin-((?:[^-]+)|(?:[^@]+@[^-]+))-[^@]*-[^-]{8}-[^_]{6}_[0-9]+").matcher(jobDescr);
-        if (matcher.matches()) {
-            return matcher.group(1);
-        } else {
-            // Fallback when running locally
-            return sparkContext.getConf().get("spark.ssb.user");
-        }
+        return new GsimRelation(isolatedContext(sqlContext, pathToNewDataSet.getPath(), userId, valuation, state), pathToNewDataSet.toString(), data.schema());
     }
 
     /**
@@ -152,20 +138,21 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
      * @param userId     the userId
      * @return the new SQLContext
      */
-    private SQLContext isolatedContext(SQLContext sqlContext, String namespace, String userId) {
+    private SQLContext isolatedContext(SQLContext sqlContext, String namespace, String userId, Valuation valuation, DatasetState state) {
         // Temporary enable file system cache during execution. This aviods re-creating the GoogleHadoopFileSystem
         // during multiple job executions within the spark session.
         // For this to work, we must create an isolated configuration inside a new spark session
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
         sparkSession.conf().set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
-        setUserContext(sparkSession, Privilege.READ, namespace, userId);
+        setUserContext(sparkSession, Privilege.READ, namespace, userId, valuation, state);
         return sparkSession.sqlContext();
     }
 
     // TODO: This should only be set when the user has access to the current operation and namespace
     private void setUserContext(SparkSession sparkSession, Privilege privilege,
-                                String namespace, String userId) {
+                                String namespace, String userId,
+                                Valuation valuation, DatasetState state) {
         if (sparkSession.conf().contains(SparkOptions.CURRENT_NAMESPACE) ||
                 sparkSession.conf().contains(SparkOptions.CURRENT_OPERATION)) {
             System.out.println("Current namespace and/or operation already exists");
@@ -173,12 +160,16 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         sparkSession.conf().set(SparkOptions.CURRENT_NAMESPACE, namespace);
         sparkSession.conf().set(SparkOptions.CURRENT_OPERATION, privilege.name());
         sparkSession.conf().set(SparkOptions.CURRENT_USER, userId);
+        sparkSession.conf().set(SparkOptions.CURRENT_DATASET_VALUATION, ofNullable(valuation).map(Valuation::name).orElse(""));
+        sparkSession.conf().set(SparkOptions.CURRENT_DATASET_STATE, ofNullable(state).map(DatasetState::name).orElse(""));
     }
 
     private void unsetUserContext(SparkSession sparkSession) {
         sparkSession.conf().unset(SparkOptions.CURRENT_NAMESPACE);
         sparkSession.conf().unset(SparkOptions.CURRENT_OPERATION);
         sparkSession.conf().unset(SparkOptions.CURRENT_USER);
+        sparkSession.conf().unset(SparkOptions.CURRENT_DATASET_VALUATION);
+        sparkSession.conf().unset(SparkOptions.CURRENT_DATASET_STATE);
     }
 
     @Override
