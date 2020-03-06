@@ -46,12 +46,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         final String localPath = options.getPath();
         System.out.println("Leser datasett fra: " + localPath);
 
-        String userId = sqlContext.sparkContext().getConf().get("spark.ssb.username");
-        String userAccessToken = sqlContext.sparkContext().getConf().get("spark.ssb.access");
+        String userId = sqlContext.sparkContext().getConf().get(DaplaSparkConfig.SPARK_SSB_USERNAME);
 
         DataAccessClient dataAccessClient = new DataAccessClient(sqlContext.sparkContext().getConf());
 
-        LocationResponse locationResponse = dataAccessClient.getReadLocationWithLatestVersion(userAccessToken, localPath);
+        LocationResponse locationResponse = dataAccessClient.getReadLocationWithLatestVersion(localPath);
 
         if (!locationResponse.getAccessAllowed()) {
             throw new RuntimeException("Permission denied");
@@ -76,12 +75,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         SparkContext sparkContext = sqlContext.sparkContext();
         SparkConf conf = sparkContext.getConf();
 
-        String userId = sqlContext.sparkContext().getConf().get("spark.ssb.username");
-        String userAccessToken = sqlContext.sparkContext().getConf().get("spark.ssb.access");
+        String userId = sqlContext.sparkContext().getConf().get(DaplaSparkConfig.SPARK_SSB_USERNAME);
 
         DataAccessClient dataAccessClient = new DataAccessClient(conf);
 
-        LocationResponse locationResponse = dataAccessClient.getWriteLocation(userAccessToken, localPath, writeOptions);
+        LocationResponse locationResponse = dataAccessClient.getWriteLocation(localPath, writeOptions);
 
         if (!locationResponse.getAccessAllowed()) {
             throw new RuntimeException("Permission denied");
@@ -119,7 +117,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
             // Publish that new data has arrived
             MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf);
-            metadataPublisherClient.dataChanged(userAccessToken, pathToNewDataSet);
+            metadataPublisherClient.dataChanged(pathToNewDataSet);
 
         } catch (IOException e) {
             log.error("Could not write meta-data to bucket", e);

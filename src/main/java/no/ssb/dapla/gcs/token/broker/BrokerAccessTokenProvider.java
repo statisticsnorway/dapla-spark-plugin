@@ -52,7 +52,6 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
                 accessToken = new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
             } else {
                 DataAccessClient dataAccessClient = new DataAccessClient(this.config);
-                String userAccessToken = config.get("spark.ssb.access");
                 Privilege privilege = Privilege.valueOf(config.get(SparkOptions.CURRENT_OPERATION));
                 String path = config.get(SparkOptions.CURRENT_NAMESPACE);
                 Valuation valuation = ofNullable(config.get(SparkOptions.CURRENT_DATASET_VALUATION))
@@ -63,7 +62,7 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
                         .filter(v -> !v.trim().isEmpty())
                         .map(DatasetState::valueOf)
                         .orElse(null);
-                accessToken = dataAccessClient.getAccessToken(userAccessToken, path, 0, privilege, valuation, state);
+                accessToken = dataAccessClient.getAccessToken(path, 0, privilege, valuation, state);
             }
         } catch (Exception e) {
             throw new RuntimeException("Issuing access token failed for service: " + this.service, e);

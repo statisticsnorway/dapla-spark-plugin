@@ -40,7 +40,7 @@ public class DataAccessClientTest {
         server.enqueue(new MockResponse().setBody(mockResult).setResponseCode(200));
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
 
-        AccessTokenProvider.AccessToken accessToken = dataAccessClient.getAccessToken("user1", "myBucket",
+        AccessTokenProvider.AccessToken accessToken = dataAccessClient.getAccessToken("myBucket",
                 0, Privilege.READ, null, null);
         assertThat(accessToken.getToken()).isEqualTo("myToken");
         assertThat(accessToken.getExpirationTimeMilliSeconds()).isEqualTo(1580828806046L);
@@ -56,7 +56,7 @@ public class DataAccessClientTest {
         server.enqueue(new MockResponse().setResponseCode(403));
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
         thrown.expectMessage("Din bruker har ikke READ tilgang til myBucket");
-        dataAccessClient.getAccessToken("user1", "myBucket", 0, Privilege.READ, null, null);
+        dataAccessClient.getAccessToken("myBucket", 0, Privilege.READ, null, null);
     }
 
     @Test
@@ -64,7 +64,7 @@ public class DataAccessClientTest {
         server.enqueue(new MockResponse().setResponseCode(404));
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
         thrown.expectMessage("Fant ingen location myBucket");
-        dataAccessClient.getAccessToken("user1", "myBucket", 0, Privilege.READ, null, null);
+        dataAccessClient.getAccessToken("myBucket", 0, Privilege.READ, null, null);
     }
 
     @Test
@@ -75,6 +75,6 @@ public class DataAccessClientTest {
         thrown.expectMessage("En feil har oppstått:");
         thrown.expectMessage("Message from server");
 
-        dataAccessClient.getAccessToken("user1", "myBucket", 0, Privilege.READ, null, null);
+        dataAccessClient.getAccessToken("myBucket", 0, Privilege.READ, null, null);
     }
 }

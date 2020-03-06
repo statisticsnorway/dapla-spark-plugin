@@ -9,6 +9,7 @@ import no.ssb.dapla.data.access.protobuf.LocationResponse;
 import no.ssb.dapla.data.access.protobuf.Privilege;
 import no.ssb.dapla.data.access.protobuf.Valuation;
 import no.ssb.dapla.data.access.protobuf.WriteOptions;
+import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -42,7 +43,9 @@ public class DataAccessClient {
     }
 
     public void init(final SparkConf conf) {
-        this.client = new okhttp3.OkHttpClient.Builder().build();
+        okhttp3.OkHttpClient.Builder builder = new okhttp3.OkHttpClient.Builder();
+        OAuth2Interceptor.createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
+        this.client = builder.build();
         this.baseURL = conf.get(CONFIG_DATA_ACCESS_URL);
         if (!this.baseURL.endsWith("/")) {
             this.baseURL = this.baseURL + "/";
@@ -63,7 +66,7 @@ public class DataAccessClient {
         return this.baseURL + String.format(format, args);
     }
 
-    public AccessTokenProvider.AccessToken getAccessToken(String userAccessToken, String path, long snapshot, Privilege privilege, Valuation valuation, DatasetState state) {
+    public AccessTokenProvider.AccessToken getAccessToken(String path, long snapshot, Privilege privilege, Valuation valuation, DatasetState state) {
         AccessTokenRequest.Builder builder = AccessTokenRequest.newBuilder()
                 .setPath(path)
                 .setPrivilege(privilege)
@@ -80,7 +83,6 @@ public class DataAccessClient {
 
         Request request = new Request.Builder()
                 .url(buildUrl("rpc/DataAccessService/getAccessToken"))
-                .header("Authorization", String.format("Bearer %s", userAccessToken))
                 .post(RequestBody.create(body, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
                 .build();
         try (Response response = client.newCall(request).execute()) {
@@ -96,19 +98,19 @@ public class DataAccessClient {
         }
     }
 
-    public LocationResponse getReadLocation(String userAccessToken, String path, int snapshot) {
-        return getLocation(userAccessToken, Privilege.READ, path, snapshot, null);
+    public LocationResponse getReadLocation(String path, int snapshot) {
+        return getLocation(Privilege.READ, path, snapshot, null);
     }
 
-    public LocationResponse getReadLocationWithLatestVersion(String userAccessToken, String path) {
-        return getLocation(userAccessToken, Privilege.READ, path, 0, null);
+    public LocationResponse getReadLocationWithLatestVersion(String path) {
+        return getLocation(Privilege.READ, path, 0, null);
     }
 
-    public LocationResponse getWriteLocation(String userAccessToken, String path, WriteOptions writeOptions) {
-        return getLocation(userAccessToken, Privilege.WRITE, path, 0, writeOptions);
+    public LocationResponse getWriteLocation(String path, WriteOptions writeOptions) {
+        return getLocation(Privilege.WRITE, path, 0, writeOptions);
     }
 
-    public LocationResponse getLocation(String userAccessToken, Privilege privilege, String path, long snapshot, WriteOptions writeOptions) {
+    public LocationResponse getLocation(Privilege privilege, String path, long snapshot, WriteOptions writeOptions) {
         LocationRequest.Builder builder = LocationRequest.newBuilder()
                 .setPrivilege(privilege)
                 .setPath(path)
@@ -123,7 +125,6 @@ public class DataAccessClient {
         Request request = new Request.Builder()
                 .url(buildUrl("rpc/DataAccessService/getLocation"))
                 .post(RequestBody.create(body, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
-                .header("Authorization", String.format("Bearer %s", userAccessToken))
                 .build();
         try (Response response = client.newCall(request).execute()) {
             String json = getJson(response);
