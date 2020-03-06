@@ -10,16 +10,13 @@
           "value": "Zeppelin dapla",
           "type": "string"
         },
-        "spark.files": {
-          "value": "ssb-library.zip",
+        "master": {
+          "name": "master",
+          "value": "$SPARK_MASTER",
           "type": "string"
         },
         "spark.submit.deployMode": {
-          "value": "cluster",
-          "type": "string"
-        },
-        "spark.submit.pyFiles": {
-          "value": "/zeppelin/ssb-library.zip",
+          "value": "$SPARK_SUBMIT_DEPLOYMODE",
           "type": "string"
         },
         "spark.ssb.dapla.gcs.storage": {
