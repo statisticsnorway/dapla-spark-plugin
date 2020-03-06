@@ -101,7 +101,7 @@ public class OAuth2Interceptor implements Interceptor {
     }
 
     private String getToken() {
-        return conf.get(SPARK_SSB_ACCESS_TOKEN);
+        return conf.get(SPARK_SSB_ACCESS_TOKEN, null);
     }
 
     private String getRenewToken() {
