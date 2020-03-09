@@ -317,6 +317,6 @@ public class GsimDatasourceGCSTest {
                 "  \"parentUri\": \"gs://" + blobId.getBucket() + "\",\n" +
                 "  \"createdBy\": \"junit\"\n" +
                 "}");
-        assertThat(writeAccessTokenRequest.getMetadataSignature().toStringUtf8()).isEqualTo("c29tZS1qdW5pdC1zaWduYXR1cmU=");
+        assertThat(writeAccessTokenRequest.getMetadataSignature()).isEqualTo(ByteString.copyFromUtf8("some-junit-signature"));
     }
 }

@@ -14,6 +14,8 @@ import org.apache.hadoop.io.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Base64;
+
 /**
  * An AccessTokenProvider implementation that requires a "session token" represented by a BrokerTokenIdentifier.
  */
@@ -60,12 +62,13 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
             } else if ("WRITE".equals(operation)) {
 
                 String datasetMetaJson = config.get(SparkOptions.CURRENT_DATASET_META_JSON);
-                String datasetMetaJsonSignature = config.get(SparkOptions.CURRENT_DATASET_META_JSON_SIGNATURE);
-                WriteAccessTokenResponse readAccessTokenResponse = dataAccessClient.writeAccessToken(WriteAccessTokenRequest.newBuilder()
+                String datasetMetaSignatureBase64 = config.get(SparkOptions.CURRENT_DATASET_META_JSON_SIGNATURE);
+                byte[] datasetMetaSignatureBytes = Base64.getDecoder().decode(datasetMetaSignatureBase64);
+                WriteAccessTokenResponse writeAccessTokenResponse = dataAccessClient.writeAccessToken(WriteAccessTokenRequest.newBuilder()
                         .setMetadataJson(ByteString.copyFromUtf8(datasetMetaJson))
-                        .setMetadataSignature(ByteString.copyFromUtf8(datasetMetaJsonSignature)) // TODO
+                        .setMetadataSignature(ByteString.copyFrom(datasetMetaSignatureBytes))
                         .build());
-                accessToken = new AccessToken(readAccessTokenResponse.getAccessToken(), readAccessTokenResponse.getExpirationTime());
+                accessToken = new AccessToken(writeAccessTokenResponse.getAccessToken(), writeAccessTokenResponse.getExpirationTime());
             }
         } catch (Exception e) {
             throw new RuntimeException("Issuing access token failed for service: " + this.service, e);
