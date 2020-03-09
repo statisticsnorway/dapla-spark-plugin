@@ -86,6 +86,15 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                 .map(Long::valueOf)
                 .orElse(System.currentTimeMillis());
 
+        if (options.getValuation() == null) {
+            throw new RuntimeException("valuation is missing in options");
+        }
+        DatasetMeta.Valuation valuation = DatasetMeta.Valuation.valueOf(options.getValuation());
+        if (options.getState() == null) {
+            throw new RuntimeException("state is missing in options");
+        }
+        DatasetMeta.DatasetState state = DatasetMeta.DatasetState.valueOf(options.getState());
+
         WriteLocationResponse writeLocationResponse = dataAccessClient.writeLocation(WriteLocationRequest.newBuilder()
                 .setMetadataJson(ProtobufJsonUtils.toString(DatasetMeta.newBuilder()
                         .setId(DatasetId.newBuilder()
@@ -93,8 +102,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                                 .setVersion(version)
                                 .build())
                         .setType(DatasetMeta.Type.BOUNDED)
-                        .setValuation(DatasetMeta.Valuation.valueOf(options.getValuation()))
-                        .setState(DatasetMeta.DatasetState.valueOf(options.getState()))
+                        .setValuation(valuation)
+                        .setState(state)
                         .build()))
                 .build());
 
@@ -118,15 +127,15 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             String metadataSignatureBase64 = new String(Base64.getEncoder().encode(writeLocationResponse.getMetadataSignature().toByteArray()), StandardCharsets.UTF_8);
             setUserContext(sparkSession, pathToNewDataSet.getPath(), pathToNewDataSet.getVersion(), userId, "WRITE", metadataJson, metadataSignatureBase64);
 
+            // Write to GCS before writing metadata
+            data.coalesce(1).write().parquet(pathToNewDataSet.toString());
+
             // Write metadata file
             MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeMetadataFile(datasetMeta, writeLocationResponse.getValidMetadataJson());
 
             // Publish metadata file created event
             MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf);
             metadataPublisherClient.dataChanged(pathToNewDataSet, FilesystemMetaDataWriter.DATASET_META_FILE_NAME);
-
-            // Write to GCS before writing metadata
-            data.coalesce(1).write().parquet(pathToNewDataSet.toString());
 
             // Write metadata signature file
             MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeSignatureFile(datasetMeta, writeLocationResponse.getMetadataSignature());
@@ -158,7 +167,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
         sparkSession.conf().set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
-        setUserContext(sparkSession, metadataJson, metadataSignature, "READ", namespace, version, userId);
+        setUserContext(sparkSession, namespace, version, userId, "READ", metadataJson, metadataSignature);
         return sparkSession.sqlContext();
     }
 
