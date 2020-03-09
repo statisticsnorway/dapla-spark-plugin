@@ -127,6 +127,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             String metadataSignatureBase64 = new String(Base64.getEncoder().encode(writeLocationResponse.getMetadataSignature().toByteArray()), StandardCharsets.UTF_8);
             setUserContext(sparkSession, pathToNewDataSet.getPath(), pathToNewDataSet.getVersion(), userId, "WRITE", metadataJson, metadataSignatureBase64);
 
+            // TODO Write first metadata file, then parquet file, then signature file. Currently this fails when running against GCS.
+
             // Write to GCS before writing metadata
             data.coalesce(1).write().parquet(pathToNewDataSet.toString());
 
