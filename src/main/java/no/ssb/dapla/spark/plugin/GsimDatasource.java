@@ -31,8 +31,6 @@ import scala.collection.immutable.Map;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Optional;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
     private static final String SHORT_NAME = "gsim";
@@ -111,8 +109,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             throw new RuntimeException("Permission denied");
         }
 
-        Lock datasetLock = new ReentrantLock();
-        datasetLock.lock();
         RuntimeConfig runtimeConfig = data.sparkSession().conf();
         try {
             String metadataJson = writeLocationResponse.getValidMetadataJson().toStringUtf8();
@@ -144,7 +140,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             return new GsimRelation(sqlContext, pathToNewDataSet.toString(), data.schema());
 
         } finally {
-            datasetLock.unlock();
             unsetUserContext(sqlContext.sparkSession());
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
         }
