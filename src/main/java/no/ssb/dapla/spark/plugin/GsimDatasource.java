@@ -131,6 +131,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeMetadataFile(datasetMeta, writeLocationResponse.getValidMetadataJson());
 
             // Publish metadata file created event
+
             MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf);
             metadataPublisherClient.dataChanged(pathToNewDataSet, FilesystemMetaDataWriter.DATASET_META_FILE_NAME);
 

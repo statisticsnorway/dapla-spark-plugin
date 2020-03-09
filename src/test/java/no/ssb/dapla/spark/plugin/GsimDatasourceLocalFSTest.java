@@ -159,6 +159,7 @@ public class GsimDatasourceLocalFSTest {
                 "  \"valuation\": \"INTERNAL\",\n" +
                 "  \"state\": \"INPUT\"\n" +
                 "}");
+
     }
 
     @Test

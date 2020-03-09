@@ -79,7 +79,7 @@ public class OAuth2Interceptor implements Interceptor {
 
     private static HttpUrl validateTokenUrl(String tokenUrl) {
         HttpUrl tokenHttpUrl = HttpUrl.get(Objects.requireNonNull(tokenUrl, "token url is required"));
-        if (!tokenHttpUrl.isHttps()) {
+        if (!tokenHttpUrl.url().getAuthority().startsWith("localhost") && !tokenHttpUrl.isHttps()) {
             throw new IllegalArgumentException("token url must be https");
         }
         return tokenHttpUrl;
@@ -101,7 +101,7 @@ public class OAuth2Interceptor implements Interceptor {
     }
 
     private String getToken() {
-        return conf.get(SPARK_SSB_ACCESS_TOKEN);
+        return conf.get(SPARK_SSB_ACCESS_TOKEN, null);
     }
 
     private String getRenewToken() {
@@ -125,13 +125,14 @@ public class OAuth2Interceptor implements Interceptor {
         if (clientSecret != null) formBodyBuilder.add(CLIENT_SECRET, clientSecret);
 
         if (renewToken != null) {
-            formBodyBuilder.add(REFRESH_TOKEN, renewToken);
             formBodyBuilder.add(GRANT_TYPE, GRANT_TYPE_REFRESH);
+            formBodyBuilder.add(REFRESH_TOKEN, renewToken);
         } else {
             formBodyBuilder.add(GRANT_TYPE, DEFAULT_GRANT_TYPE);
+            formBodyBuilder.add("scope", "openid profile email");
         }
 
-        FormBody formBody = formBodyBuilder.add("scope", "openid profile email").build();
+        FormBody formBody = formBodyBuilder.build();
 
         Request request = new Request.Builder()
                 .url(tokenUrl)
@@ -141,7 +142,7 @@ public class OAuth2Interceptor implements Interceptor {
         OkHttpClient client = new OkHttpClient();
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                throw new IOException("authentication failed" + response);
+                throw new IOException("authentication failed " + response);
             }
             ResponseBody body = response.body();
             if (body == null) {

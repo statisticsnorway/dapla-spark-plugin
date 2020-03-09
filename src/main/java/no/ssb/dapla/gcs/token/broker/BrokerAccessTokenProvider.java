@@ -16,6 +16,8 @@ import org.apache.hadoop.io.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.util.Optional.ofNullable;
+
 /**
  * An AccessTokenProvider implementation that requires a "session token" represented by a BrokerTokenIdentifier.
  */
