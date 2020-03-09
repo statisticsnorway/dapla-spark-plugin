@@ -126,13 +126,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             SparkSession sparkSession = sqlContext.sparkSession();
             String metadataSignatureBase64 = new String(Base64.getEncoder().encode(writeLocationResponse.getMetadataSignature().toByteArray()), StandardCharsets.UTF_8);
             setUserContext(sparkSession, pathToNewDataSet.getPath(), pathToNewDataSet.getVersion(), userId, "WRITE", metadataJson, metadataSignatureBase64);
+            MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf);
 
             // Write metadata file
             MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeMetadataFile(datasetMeta, writeLocationResponse.getValidMetadataJson());
-
             // Publish metadata file created event
-
-            MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf);
             metadataPublisherClient.dataChanged(pathToNewDataSet, FilesystemMetaDataWriter.DATASET_META_FILE_NAME);
 
             // Write to GCS before writing metadata
@@ -140,7 +138,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
             // Write metadata signature file
             MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeSignatureFile(datasetMeta, writeLocationResponse.getMetadataSignature());
-
             // Publish metadata signature file created event, this will be used for validation and signals a "commit" of metadata
             metadataPublisherClient.dataChanged(pathToNewDataSet, FilesystemMetaDataWriter.DATASET_META_SIGNATURE_FILE_NAME);
 
