@@ -1,5 +1,7 @@
 package no.ssb.dapla.spark.plugin;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
 import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
@@ -45,7 +47,9 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         final String localPath = options.getPath();
         System.out.println("Leser datasett fra: " + localPath);
 
-        String userId = sqlContext.sparkContext().getConf().get(DaplaSparkConfig.SPARK_SSB_USERNAME);
+        String accessToken = sqlContext.sparkContext().getConf().get(DaplaSparkConfig.SPARK_SSB_ACCESS_TOKEN);
+        DecodedJWT decodedJWT = JWT.decode(accessToken);
+        String userId = decodedJWT.getClaim("preferred_username").asString();
 
         DataAccessClient dataAccessClient = new DataAccessClient(sqlContext.sparkContext().getConf());
 
@@ -75,7 +79,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         sparkContext.hadoopConfiguration();
         SparkConf conf = sparkContext.getConf();
 
-        String userId = sqlContext.sparkContext().getConf().get(DaplaSparkConfig.SPARK_SSB_USERNAME);
+        String accessToken = sqlContext.sparkContext().getConf().get(DaplaSparkConfig.SPARK_SSB_ACCESS_TOKEN);
+        DecodedJWT decodedJWT = JWT.decode(accessToken);
+        String userId = decodedJWT.getClaim("preferred_username").asString();
+
         DataAccessClient dataAccessClient = new DataAccessClient(conf);
 
         long version = Optional.of(options)
