@@ -1,7 +1,9 @@
 package no.ssb.dapla.spark.plugin;
 
-import no.ssb.dapla.data.access.protobuf.LocationRequest;
-import no.ssb.dapla.data.access.protobuf.LocationResponse;
+import com.google.protobuf.ByteString;
+import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
+import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
+import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.NoOpMetadataWriter;
@@ -110,45 +112,61 @@ public class GsimDatasourceLocalFSTest {
     public ExpectedException thrown = ExpectedException.none();
 
     @Test
-    public void testWrite() throws InterruptedException, IOException {
-        LocationResponse locationResponse = createLocationResponse();
-        dataAccessMockServer.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(locationResponse)).setResponseCode(200));
+    public void testWrite() throws InterruptedException {
         metadataDistributorMockServer.enqueue(new MockResponse().setResponseCode(200));
+        long version = System.currentTimeMillis();
+        dataAccessMockServer.enqueue(
+                new MockResponse().setBody(ProtobufJsonUtils.toString(WriteLocationResponse.newBuilder()
+                        .setAccessAllowed(true)
+                        .setValidMetadataJson(ByteString.copyFromUtf8("{\n" +
+                                "  \"id\": {\n" +
+                                "    \"path\": \"/skatt/person/junit\",\n" +
+                                "    \"version\": \"" + version + "\"\n" +
+                                "  },\n" +
+                                "  \"valuation\": \"INTERNAL\",\n" +
+                                "  \"state\": \"INPUT\",\n" +
+                                "  \"parentUri\": \"file://" + sparkStoragePath + "\",\n" +
+                                "  \"createdBy\": \"junit\"\n" +
+                                "}"))
+                        .setMetadataSignature(ByteString.copyFromUtf8("some-junit-signature"))
+                        .build()))
+                        .setResponseCode(200)
+        );
+        dataAccessMockServer.enqueue(
+                new MockResponse().setBody(ProtobufJsonUtils.toString(WriteAccessTokenResponse.newBuilder()
+                        .setAccessToken("junit-test-token")
+                        .setExpirationTime(System.currentTimeMillis() + 1000 * 60 * 60) // +1 Hour
+                        .build()))
+                        .setResponseCode(200)
+        );
 
         Dataset<Row> dataset = sqlContext.read()
                 .load(parquetFile.toString());
+
         dataset.write()
                 .format("gsim")
                 .mode(SaveMode.Overwrite)
                 .option("valuation", "INTERNAL")
                 .option("state", "INPUT")
-                .save("/skatt/person/junit");
+                .option("version", version)
+                .save("/test/dapla/namespace");
+
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
 
-        RecordedRequest recordedRequest = dataAccessMockServer.takeRequest();
+        RecordedRequest writeLocationRecordedRequest = dataAccessMockServer.takeRequest();
+        final WriteLocationRequest writeLocationRequest = ProtobufJsonUtils.toPojo(
+                writeLocationRecordedRequest.getBody().readByteString().utf8(), WriteLocationRequest.class);
+        assertThat(writeLocationRecordedRequest.getRequestUrl().url().getPath()).isEqualTo("/data-access/rpc/DataAccessService/writeLocation");
+        assertThat(writeLocationRequest.getMetadataJson()).isEqualTo("{\n" +
+                "  \"id\": {\n" +
+                "    \"path\": \"/test/dapla/namespace\",\n" +
+                "    \"version\": \"" + version + "\"\n" +
+                "  },\n" +
+                "  \"valuation\": \"INTERNAL\",\n" +
+                "  \"state\": \"INPUT\"\n" +
+                "}");
 
-        assertThat(recordedRequest.getRequestUrl().url().getPath()).isEqualTo("/data-access/rpc/DataAccessService/getLocation");
-        String json = recordedRequest.getBody().readByteString().utf8();
-        System.out.println(json);
-        LocationRequest request = ProtobufJsonUtils.toPojo(json, LocationRequest.class);
-        assertThat(request.getPath()).isEqualTo("/skatt/person/junit");
-
-        // This does not longer work. Fix later
-        /*
-        String metaDatafileName = sparkStoragePath + "/" + DATASET_META_FILE_NAME;
-        try (Stream<String> stream = Files.lines(Paths.get(metaDatafileName))) {
-            String all = stream.collect(Collectors.joining("\n"));
-            DatasetMeta datasetMeta = ProtobufJsonUtils.toPojo(all, DatasetMeta.class);
-
-            assertThat(datasetMeta.getParentUri()).isEqualTo(sparkStoragePath);
-            assertThat(datasetMeta.getValuation().name()).isEqualTo("INTERNAL");
-            assertThat(datasetMeta.getState().name()).isEqualTo("INPUT");
-
-            assertThat(datasetMeta.getId().getPath()).isEqualTo("/rawdata/skatt/konto");
-            assertThat(datasetMeta.getId().getVersion()).isLessThan(System.currentTimeMillis() + 1);
-        }
-         */
     }
 
     @Test
@@ -168,8 +186,6 @@ public class GsimDatasourceLocalFSTest {
 
     @Test
     public void write_Missing_Valuation() {
-        LocationResponse locationResponse = createLocationResponse();
-        dataAccessMockServer.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(locationResponse)).setResponseCode(200));
         dataAccessMockServer.enqueue(new MockResponse().setResponseCode(200));
 
         thrown.expectMessage("valuation missing from parametersMap(path -> /dapla/namespace)");
@@ -180,13 +196,5 @@ public class GsimDatasourceLocalFSTest {
                 .format("gsim")
                 .mode(SaveMode.Overwrite)
                 .save("/dapla/namespace");
-    }
-
-    private LocationResponse createLocationResponse() {
-        return LocationResponse.newBuilder()
-                .setParentUri("file://" + sparkStoragePath)
-                .setVersion("1")
-                .setAccessAllowed(true)
-                .build();
     }
 }

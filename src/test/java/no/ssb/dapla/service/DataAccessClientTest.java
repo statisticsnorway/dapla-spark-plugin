@@ -1,8 +1,10 @@
 package no.ssb.dapla.service;
 
 
-import com.google.cloud.hadoop.util.AccessTokenProvider;
-import no.ssb.dapla.data.access.protobuf.Privilege;
+import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
+import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
+import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
+import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -36,18 +38,30 @@ public class DataAccessClientTest {
 
     @Test
     public void testGetAccessToken() throws InterruptedException {
-        String mockResult = "{\"accessToken\": \"myToken\", \"expirationTime\": \"1580828806046\"}";
-        server.enqueue(new MockResponse().setBody(mockResult).setResponseCode(200));
+        server.enqueue(new MockResponse()
+                .setBody("{\"accessAllowed\": \"true\", \"parentUri\": \"file:///hei\", \"version\": \"1580828806046\"}")
+                .setResponseCode(200));
+        server.enqueue(new MockResponse()
+                .setBody("{\"accessToken\": \"myToken\", \"expirationTime\": \"1580828806046\"}")
+                .setResponseCode(200));
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
 
-        AccessTokenProvider.AccessToken accessToken = dataAccessClient.getAccessToken("myBucket",
-                0, Privilege.READ, null, null);
-        assertThat(accessToken.getToken()).isEqualTo("myToken");
-        assertThat(accessToken.getExpirationTimeMilliSeconds()).isEqualTo(1580828806046L);
+        ReadLocationResponse readLocationResponse = dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
+                .setPath("/myBucket")
+                .setSnapshot(0) // 0 means resolve to latest version
+                .build());
+        assertThat(readLocationResponse.getAccessAllowed()).isTrue();
+        ReadAccessTokenResponse readAccessTokenResponse = dataAccessClient.readAccessToken(ReadAccessTokenRequest.newBuilder()
+                .setPath("/myBucket")
+                .setVersion(readLocationResponse.getVersion())
+                .build());
+
+        assertThat(readAccessTokenResponse.getAccessToken()).isEqualTo("myToken");
+        assertThat(readAccessTokenResponse.getExpirationTime()).isEqualTo(1580828806046L);
 
         RecordedRequest recordedRequest = server.takeRequest();
         assertThat(recordedRequest.getBody().readByteString().utf8()).isEqualTo("{\n" +
-                "  \"path\": \"myBucket\"\n" +
+                "  \"path\": \"/myBucket\"\n" +
                 "}");
     }
 
@@ -55,16 +69,23 @@ public class DataAccessClientTest {
     public void testHandleAccessDenied() {
         server.enqueue(new MockResponse().setResponseCode(403));
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
-        thrown.expectMessage("Din bruker har ikke READ tilgang til myBucket");
-        dataAccessClient.getAccessToken("myBucket", 0, Privilege.READ, null, null);
+        thrown.expectMessage("Din bruker har ikke tilgang");
+        ReadLocationResponse readLocationResponse = dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
+                .setPath("/myBucket")
+                .setSnapshot(0) // 0 means resolve to latest version
+                .build());
+        assertThat(readLocationResponse.getAccessAllowed()).isFalse();
     }
 
     @Test
     public void testHandleNotFound() {
         server.enqueue(new MockResponse().setResponseCode(404));
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
-        thrown.expectMessage("Fant ingen location myBucket");
-        dataAccessClient.getAccessToken("myBucket", 0, Privilege.READ, null, null);
+        thrown.expectMessage("Fant ingen location");
+        ReadLocationResponse readLocationResponse = dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
+                .setPath("/myBucket")
+                .setSnapshot(0) // 0 means resolve to latest version
+                .build());
     }
 
     @Test
@@ -75,6 +96,9 @@ public class DataAccessClientTest {
         thrown.expectMessage("En feil har oppstått:");
         thrown.expectMessage("Message from server");
 
-        dataAccessClient.getAccessToken("myBucket", 0, Privilege.READ, null, null);
+        ReadLocationResponse readLocationResponse = dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
+                .setPath("/myBucket")
+                .setSnapshot(0) // 0 means resolve to latest version
+                .build());
     }
 }

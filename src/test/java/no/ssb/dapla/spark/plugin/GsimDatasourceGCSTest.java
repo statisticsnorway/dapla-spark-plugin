@@ -8,8 +8,13 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
-import no.ssb.dapla.data.access.protobuf.LocationRequest;
-import no.ssb.dapla.data.access.protobuf.LocationResponse;
+import com.google.protobuf.ByteString;
+import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
+import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
+import no.ssb.dapla.data.access.protobuf.WriteAccessTokenRequest;
+import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
+import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
+import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.gcs.connector.GoogleHadoopFileSystemExt;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
@@ -18,10 +23,8 @@ import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.HttpUrl;
-import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
-import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -58,7 +61,7 @@ public class GsimDatasourceGCSTest {
     private static Path parquetFile;
     private static String bucket;
     private static String namespace = "test/dapla/namespace";
-    private static String version = UUID.randomUUID().toString();
+    private static long version = System.currentTimeMillis();
     private static BlobId blobId;
     private MockWebServer server;
     private MockWebServer publisher;
@@ -181,9 +184,14 @@ public class GsimDatasourceGCSTest {
 
     @Test
     public void testReadFromBucket() throws InterruptedException {
-        LocationResponse mockResponse = createMockResponse("gs://" + blobId.getBucket(), version);
+        server.enqueue(new MockResponse()
+                .setBody(ProtobufJsonUtils.toString(ReadLocationResponse.newBuilder()
+                        .setAccessAllowed(true)
+                        .setParentUri("gs://" + blobId.getBucket())
+                        .setVersion(String.valueOf(version))
+                        .build()))
+                .setResponseCode(200));
 
-        server.enqueue(new MockResponse().setBody(ProtobufJsonUtils.toString(mockResponse)).setResponseCode(200));
         Dataset<Row> dataset = sqlContext.read()
                 .format("gsim")
                 .load("test/dapla/namespace");
@@ -191,10 +199,10 @@ public class GsimDatasourceGCSTest {
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
 
-        final LocationRequest actual = ProtobufJsonUtils.toPojo(server.takeRequest().getBody().readByteString().utf8(),
-                LocationRequest.class);
-        assertThat(actual.getPath()).isEqualTo("test/dapla/namespace");
-        assertThat(actual.getSnapshot()).isEqualTo(0L);
+        final ReadLocationRequest readLocationRequest = ProtobufJsonUtils.toPojo(
+                server.takeRequest().getBody().readByteString().utf8(), ReadLocationRequest.class);
+        assertThat(readLocationRequest.getPath()).isEqualTo("test/dapla/namespace");
+        assertThat(readLocationRequest.getSnapshot()).isEqualTo(0L);
     }
 
 
@@ -212,35 +220,61 @@ public class GsimDatasourceGCSTest {
     }
 
     @Test
-    public void testWriteBucket() {
+    public void testWriteBucket() throws InterruptedException {
         publisher.enqueue(new MockResponse().setResponseCode(200));
-        server.setDispatcher(new Dispatcher() {
-            public MockResponse dispatch(RecordedRequest request) {
-                final LocationRequest body = ProtobufJsonUtils.toPojo(request.getBody().readByteString().utf8(),
-                        LocationRequest.class);
-                return new MockResponse().setBody(ProtobufJsonUtils.toString(createMockResponse(
-                        "gs://" + blobId.getBucket(), Long.toString(body.getSnapshot()))));
-            }
-        });
+        server.enqueue(
+                new MockResponse().setBody(ProtobufJsonUtils.toString(WriteLocationResponse.newBuilder()
+                        .setAccessAllowed(true)
+                        .setValidMetadataJson(ByteString.copyFromUtf8("{\n" +
+                                "  \"id\": {\n" +
+                                "    \"path\": \"/test/dapla/namespace\",\n" +
+                                "    \"version\": \"" + System.currentTimeMillis() + "\"\n" +
+                                "  },\n" +
+                                "  \"valuation\": \"INTERNAL\",\n" +
+                                "  \"state\": \"INPUT\",\n" +
+                                "  \"parentUri\": \"gs://" + blobId.getBucket() + "\",\n" +
+                                "  \"createdBy\": \"junit\"\n" +
+                                "}"))
+                        .setMetadataSignature(ByteString.copyFromUtf8("some-junit-signature"))
+                        .build()))
+                        .setResponseCode(200)
+        );
+        server.enqueue(
+                new MockResponse().setBody(ProtobufJsonUtils.toString(WriteAccessTokenResponse.newBuilder()
+                        .setAccessToken("junit-test-token")
+                        .setExpirationTime(System.currentTimeMillis() + 1000 * 60 * 60) // +1 Hour
+                        .build()))
+                        .setResponseCode(200)
+        );
 
         Dataset<Row> dataset = sqlContext.read()
                 .load(parquetFile.toString());
+
         dataset.write()
                 .format("gsim")
                 .mode(SaveMode.Overwrite)
                 .option("valuation", "INTERNAL")
                 .option("state", "INPUT")
-                .save("test/dapla/namespace");
+                .option("version", version)
+                .save("/test/dapla/namespace");
+
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
-    }
 
-    private LocationResponse createMockResponse(String parentUri, String version) {
-        return LocationResponse.newBuilder()
-                .setParentUri(parentUri)
-                .setVersion(version)
-                .setAccessAllowed(true)
-                .build();
-    }
+        final WriteLocationRequest writeLocationRequest = ProtobufJsonUtils.toPojo(
+                server.takeRequest().getBody().readByteString().utf8(), WriteLocationRequest.class);
+        assertThat(writeLocationRequest.getMetadataJson()).isEqualTo("{\n" +
+                "  \"id\": {\n" +
+                "    \"path\": \"/test/dapla/namespace\",\n" +
+                "    \"version\": \"" + version + "\"\n" +
+                "  },\n" +
+                "  \"valuation\": \"INTERNAL\",\n" +
+                "  \"state\": \"INPUT\"\n" +
+                "}");
 
+        final WriteAccessTokenRequest writeAccessTokenRequest = ProtobufJsonUtils.toPojo(
+                server.takeRequest().getBody().readByteString().utf8(), WriteAccessTokenRequest.class);
+        assertThat(writeAccessTokenRequest.getMetadataJson()).isEqualTo("{}");
+        assertThat(writeAccessTokenRequest.getMetadataSignature()).isEqualTo("some-junit-signature");
+    }
 }
