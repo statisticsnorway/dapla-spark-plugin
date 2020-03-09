@@ -122,7 +122,6 @@ public class OAuth2Interceptor implements Interceptor {
 
         if (clientId != null) formBodyBuilder.add(CLIENT_ID, clientId);
         if (clientSecret != null) formBodyBuilder.add(CLIENT_SECRET, clientSecret);
-        if (clientSecret != null) formBodyBuilder.add(CLIENT_SECRET, clientSecret);
 
         if (renewToken != null) {
             formBodyBuilder.add(GRANT_TYPE, GRANT_TYPE_REFRESH);
