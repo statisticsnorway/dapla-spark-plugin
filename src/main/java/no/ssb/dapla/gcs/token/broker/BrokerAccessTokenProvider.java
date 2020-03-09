@@ -6,8 +6,6 @@ import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
 import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.WriteAccessTokenRequest;
 import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
-import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
-import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.delegation.BrokerTokenIdentifier;
 import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.spark.plugin.SparkOptions;
@@ -45,44 +43,33 @@ public final class BrokerAccessTokenProvider implements AccessTokenProvider {
         validateTokenIdentifier();
         LOG.debug("Issuing access token for service: " + this.service);
         try {
-            if (useLocalCredentials()) {
-                System.out.println("Using local credentials file");
-                final String scope = "https://www.googleapis.com/auth/devstorage.read_write";
-                GoogleCredentialsDetails credential = GoogleCredentialsFactory.createCredentialsDetails(true, scope);
-                accessToken = new AccessToken(credential.getAccessToken(), credential.getExpirationTime());
-            } else {
-                DataAccessClient dataAccessClient = new DataAccessClient(this.config);
+            DataAccessClient dataAccessClient = new DataAccessClient(this.config);
 
-                String operation = config.get(SparkOptions.CURRENT_OPERATION);
-                String path = config.get(SparkOptions.CURRENT_NAMESPACE);
+            String operation = config.get(SparkOptions.CURRENT_OPERATION);
+            String path = config.get(SparkOptions.CURRENT_NAMESPACE);
 
-                if ("READ".equals(operation)) {
+            if ("READ".equals(operation)) {
 
-                    String version = config.get(SparkOptions.CURRENT_DATASET_VERSION);
-                    ReadAccessTokenResponse readAccessTokenResponse = dataAccessClient.readAccessToken(ReadAccessTokenRequest.newBuilder()
-                            .setPath(path)
-                            .setVersion(version)
-                            .build());
-                    accessToken = new AccessToken(readAccessTokenResponse.getAccessToken(), readAccessTokenResponse.getExpirationTime());
+                String version = config.get(SparkOptions.CURRENT_DATASET_VERSION);
+                ReadAccessTokenResponse readAccessTokenResponse = dataAccessClient.readAccessToken(ReadAccessTokenRequest.newBuilder()
+                        .setPath(path)
+                        .setVersion(version)
+                        .build());
+                accessToken = new AccessToken(readAccessTokenResponse.getAccessToken(), readAccessTokenResponse.getExpirationTime());
 
-                } else if ("WRITE".equals(operation)) {
+            } else if ("WRITE".equals(operation)) {
 
-                    String datasetMetaJson = config.get(SparkOptions.CURRENT_DATASET_META_JSON);
-                    String datasetMetaJsonSignature = config.get(SparkOptions.CURRENT_DATASET_META_JSON_SIGNATURE);
-                    WriteAccessTokenResponse readAccessTokenResponse = dataAccessClient.writeAccessToken(WriteAccessTokenRequest.newBuilder()
-                            .setMetadataJson(ByteString.copyFromUtf8(datasetMetaJson))
-                            .setMetadataSignature(ByteString.copyFromUtf8(datasetMetaJsonSignature)) // TODO
-                            .build());
-                    accessToken = new AccessToken(readAccessTokenResponse.getAccessToken(), readAccessTokenResponse.getExpirationTime());
-                }
+                String datasetMetaJson = config.get(SparkOptions.CURRENT_DATASET_META_JSON);
+                String datasetMetaJsonSignature = config.get(SparkOptions.CURRENT_DATASET_META_JSON_SIGNATURE);
+                WriteAccessTokenResponse readAccessTokenResponse = dataAccessClient.writeAccessToken(WriteAccessTokenRequest.newBuilder()
+                        .setMetadataJson(ByteString.copyFromUtf8(datasetMetaJson))
+                        .setMetadataSignature(ByteString.copyFromUtf8(datasetMetaJsonSignature)) // TODO
+                        .build());
+                accessToken = new AccessToken(readAccessTokenResponse.getAccessToken(), readAccessTokenResponse.getExpirationTime());
             }
         } catch (Exception e) {
             throw new RuntimeException("Issuing access token failed for service: " + this.service, e);
         }
-    }
-
-    private boolean useLocalCredentials() {
-        return config.getBoolean("spark.ssb.use.local.credentials", false);
     }
 
     private void validateTokenIdentifier() {
