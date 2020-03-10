@@ -84,11 +84,7 @@ public class OAuth2Interceptor implements Interceptor {
     }
 
     private static HttpUrl validateTokenUrl(String tokenUrl) {
-        HttpUrl tokenHttpUrl = HttpUrl.get(Objects.requireNonNull(tokenUrl, "token url is required"));
-        if (!tokenHttpUrl.url().getAuthority().startsWith("localhost") && !tokenHttpUrl.isHttps()) {
-            throw new IllegalArgumentException("token url must be https");
-        }
-        return tokenHttpUrl;
+        return HttpUrl.get(Objects.requireNonNull(tokenUrl, "token url is required"));
     }
 
     @Override
