@@ -68,8 +68,8 @@ steps:
 - name: sonarqube
   image: maven:3-jdk-8
   commands:
-    - echo ignored for now
-    # - mvn -Djdk.tls.client.protocols="TLSv1.2" -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_PROJECTKEY sonar:sonar -P ssb-bip,coverage -Dmaven.repo.local=/drone/src/.m2/repository -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
+    #- echo ignored for now
+     - mvn -Djdk.tls.client.protocols="TLSv1.2" -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_PROJECTKEY sonar:sonar -P ssb-bip,coverage -Dmaven.repo.local=/drone/src/.m2/repository -Dmaven.javadoc.skip=true --batch-mode --global-settings settings.xml
   environment:
     SONAR_HOST_URL: https://sonarqube.prod-bip-ci.ssb.no
     SONAR_PROJECTKEY:
