@@ -136,7 +136,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             metadataPublisherClient.dataChanged(pathToNewDataSet, FilesystemMetaDataWriter.DATASET_META_FILE_NAME);
 
             // Write to GCS before writing metadata
-            data.coalesce(1).write().mode(SaveMode.Overwrite).parquet(pathToNewDataSet.toString());
+            data.coalesce(1).write().mode(SaveMode.Append).parquet(pathToNewDataSet.toString());
 
             // Write metadata signature file
             MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeSignatureFile(datasetMeta, writeLocationResponse.getMetadataSignature());
@@ -179,8 +179,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         sparkSession.conf().set(SparkOptions.CURRENT_DATASET_VERSION, version);
         sparkSession.conf().set(SparkOptions.CURRENT_OPERATION, operation);
         sparkSession.conf().set(SparkOptions.CURRENT_USER, userId);
-        sparkSession.conf().set(SparkOptions.CURRENT_DATASET_META_JSON, metadataJson);
-        sparkSession.conf().set(SparkOptions.CURRENT_DATASET_META_JSON_SIGNATURE, metadataSignature);
+        if (metadataJson != null) {
+            sparkSession.conf().set(SparkOptions.CURRENT_DATASET_META_JSON, metadataJson);
+        }
+        if (metadataSignature != null) {
+            sparkSession.conf().set(SparkOptions.CURRENT_DATASET_META_JSON_SIGNATURE, metadataSignature);
+        }
     }
 
     private void unsetUserContext(SparkSession sparkSession) {
