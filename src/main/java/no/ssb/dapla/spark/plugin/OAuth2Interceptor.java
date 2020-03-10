@@ -22,6 +22,7 @@ import java.util.Optional;
 import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_ID;
 import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_SECRET;
 import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_TOKEN_IGNORE_EXPIRY;
 import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_TOKEN_URL;
 import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.SPARK_SSB_ACCESS_TOKEN;
 import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.SPARK_SSB_REFRESH_TOKEN;
@@ -43,25 +44,28 @@ public class OAuth2Interceptor implements Interceptor {
     private final HttpUrl tokenUrl;
     private final String clientId;
     private final String clientSecret;
+    private final boolean ignoreExpiry;
     private final SparkConf conf;
 
     public static Optional<OAuth2Interceptor> createOAuth2Interceptor(final SparkConf conf) {
-        if (conf.contains(CONFIG_ROUTER_OAUTH_TOKEN_URL)) {
-            OAuth2Interceptor interceptor = new OAuth2Interceptor(
-                    conf.get(CONFIG_ROUTER_OAUTH_TOKEN_URL, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_ID, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, null),
-                    conf
-            );
-            return Optional.of(interceptor);
+        if (!conf.contains(CONFIG_ROUTER_OAUTH_TOKEN_URL)) {
+            throw new IllegalArgumentException(String.format("Missing configuration: %s", CONFIG_ROUTER_OAUTH_TOKEN_URL));
         }
-        return Optional.empty();
+        OAuth2Interceptor interceptor = new OAuth2Interceptor(
+                conf.get(CONFIG_ROUTER_OAUTH_TOKEN_URL, null),
+                conf.get(CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE, null),
+                conf.get(CONFIG_ROUTER_OAUTH_CLIENT_ID, null),
+                conf.get(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, null),
+                Boolean.parseBoolean(conf.get(CONFIG_ROUTER_OAUTH_TOKEN_IGNORE_EXPIRY, "false")),
+                conf
+        );
+        return Optional.of(interceptor);
     }
 
     // Used in tests. This constructor skips token url validation.
-    OAuth2Interceptor(HttpUrl tokenUrl, String credentialsFile, String clientId, String clientSecret, SparkConf conf) {
+    OAuth2Interceptor(HttpUrl tokenUrl, String credentialsFile, String clientId, String clientSecret, boolean ignoreExpiry, SparkConf conf) {
         this.tokenUrl = tokenUrl;
+        this.ignoreExpiry = ignoreExpiry;
         this.conf = conf;
         try {
             if (credentialsFile != null) {
@@ -79,8 +83,8 @@ public class OAuth2Interceptor implements Interceptor {
         }
     }
 
-    public OAuth2Interceptor(String tokenUrl, String credentialsFile, String clientId, String clientSecret, SparkConf conf) {
-        this(validateTokenUrl(tokenUrl), credentialsFile, clientId, clientSecret, conf);
+    public OAuth2Interceptor(String tokenUrl, String credentialsFile, String clientId, String clientSecret, boolean ignoreExpiry, SparkConf conf) {
+        this(validateTokenUrl(tokenUrl), credentialsFile, clientId, clientSecret, ignoreExpiry, conf);
     }
 
     private static HttpUrl validateTokenUrl(String tokenUrl) {
@@ -93,7 +97,7 @@ public class OAuth2Interceptor implements Interceptor {
         if (token == null) {
             token = fetchToken(null);
             setToken(token);
-        } else if (tokenExpired(token)) {
+        } else if (!ignoreExpiry && tokenExpired(token)) {
             token = fetchToken(getRenewToken());
             setToken(token);
         }

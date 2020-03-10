@@ -9,6 +9,7 @@ public class DaplaSparkConfig {
     public static final String SPARK_SSB_DAPLA_OUTPUT_PREFIX = "spark.ssb.dapla.output.prefix";
     public static final String SPARK_SSB_ACCESS_TOKEN = "spark.ssb.access";
     public static final String SPARK_SSB_REFRESH_TOKEN = "spark.ssb.refresh";
+    public static final String CONFIG_ROUTER_OAUTH_TOKEN_IGNORE_EXPIRY = CONFIG + "oauth.ignoreExpiry";
     public static final String CONFIG_ROUTER_OAUTH_TOKEN_URL = CONFIG + "oauth.tokenUrl";
     public static final String CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE = CONFIG + "oauth.credentials.file";
     public static final String CONFIG_ROUTER_OAUTH_CLIENT_ID = CONFIG + "oauth.clientId";
