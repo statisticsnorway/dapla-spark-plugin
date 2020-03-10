@@ -65,7 +65,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String uriString = DatasetUri.of(locationResponse.getParentUri(), localPath, locationResponse.getVersion()).toString();
 
         System.out.println("Path til dataset: " + uriString);
-        SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, locationResponse.getVersion(), userId, "", "");
+        SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, locationResponse.getVersion(), userId, null, null);
         return new GsimRelation(isolatedSqlContext, uriString);
     }
 
@@ -76,7 +76,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         final String localPath = options.getPath();
 
         SparkContext sparkContext = sqlContext.sparkContext();
-        sparkContext.hadoopConfiguration();
         SparkConf conf = sparkContext.getConf();
 
         String accessToken = sqlContext.sparkContext().getConf().get(DaplaSparkConfig.SPARK_SSB_ACCESS_TOKEN);
