@@ -71,6 +71,14 @@
           "value": "$DAPLA_SPARK_OAUTH_CLIENT_SECRET",
           "type": "password"
         },
+        "spark.dynamicAllocation.enabled": {
+          "value": "$SPARK_DYNAMICALLOCATION_ENABLED",
+          "type": "checkbox"
+        },
+        "spark.shuffle.service.enabled": {
+          "value": "$SPARK_SHUFFLE_SERVICE_ENABLED",
+          "type": "checkbox"
+        },
         "spark.hadoop.fs.gs.delegation.token.binding": {
           "value": "no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding",
           "type": "string"
