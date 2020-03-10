@@ -4,7 +4,13 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import okhttp3.*;
+import okhttp3.FormBody;
+import okhttp3.HttpUrl;
+import okhttp3.Interceptor;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 import org.apache.spark.SparkConf;
 
 import java.io.IOException;
@@ -13,12 +19,12 @@ import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
 
-import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_TOKEN_URL;
-import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE;
 import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_ID;
 import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_SECRET;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_TOKEN_URL;
 import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.SPARK_SSB_ACCESS_TOKEN;
-import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.SPARK_SSB_RENEW_TOKEN;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.SPARK_SSB_REFRESH_TOKEN;
 
 /**
  * OAuth 2 interceptor that ensures that a user token exists in spark session.
@@ -78,11 +84,7 @@ public class OAuth2Interceptor implements Interceptor {
     }
 
     private static HttpUrl validateTokenUrl(String tokenUrl) {
-        HttpUrl tokenHttpUrl = HttpUrl.get(Objects.requireNonNull(tokenUrl, "token url is required"));
-        if (!tokenHttpUrl.url().getAuthority().startsWith("localhost") && !tokenHttpUrl.isHttps()) {
-            throw new IllegalArgumentException("token url must be https");
-        }
-        return tokenHttpUrl;
+        return HttpUrl.get(Objects.requireNonNull(tokenUrl, "token url is required"));
     }
 
     @Override
@@ -105,7 +107,7 @@ public class OAuth2Interceptor implements Interceptor {
     }
 
     private String getRenewToken() {
-        return conf.get(SPARK_SSB_RENEW_TOKEN);
+        return conf.get(SPARK_SSB_REFRESH_TOKEN);
     }
 
     private void setToken(String token) {

@@ -1,8 +1,9 @@
 package no.ssb.dapla.service;
 
-import com.google.cloud.hadoop.util.AccessTokenProvider;
-import no.ssb.dapla.data.access.protobuf.LocationResponse;
-import no.ssb.dapla.data.access.protobuf.Privilege;
+import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
+import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
+import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
+import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
 import org.apache.spark.SparkConf;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -27,19 +28,26 @@ public class DataAccessClientStagingTest {
 
     @Test
     @Ignore
-    public void testGetAccessToken() {
+    public void testGetLocation() {
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
-        AccessTokenProvider.AccessToken accessToken = dataAccessClient.getAccessToken("/skatt/person/rawdata-2019",
-                0, Privilege.READ, null, null);
-        System.out.println(accessToken);
+        ReadLocationResponse readLocationResponse = dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
+                .setPath("/skatt/person/rawdata-2019")
+                .setSnapshot(0) // 0 means resolve to latest version
+                .build());
     }
 
     @Test
     @Ignore
-    public void testGetLocation() {
+    public void testGetAccessToken() {
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
-        LocationResponse location = dataAccessClient.getReadLocationWithLatestVersion("/skatt/person/rawdata-2019");
-        System.out.println(location);
+        ReadLocationResponse readLocationResponse = dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
+                .setPath("/skatt/person/rawdata-2019")
+                .setSnapshot(0) // 0 means resolve to latest version
+                .build());
+        ReadAccessTokenResponse readAccessTokenResponse = dataAccessClient.readAccessToken(ReadAccessTokenRequest.newBuilder()
+                .setPath("/skatt/person/rawdata-2019")
+                .setVersion(readLocationResponse.getVersion())
+                .build());
+        System.out.println(readAccessTokenResponse.getAccessToken());
     }
-
 }

@@ -1,14 +1,13 @@
 package no.ssb.dapla.service;
 
-import com.google.cloud.hadoop.util.AccessTokenProvider;
-import no.ssb.dapla.data.access.protobuf.AccessTokenRequest;
-import no.ssb.dapla.data.access.protobuf.AccessTokenResponse;
-import no.ssb.dapla.data.access.protobuf.DatasetState;
-import no.ssb.dapla.data.access.protobuf.LocationRequest;
-import no.ssb.dapla.data.access.protobuf.LocationResponse;
-import no.ssb.dapla.data.access.protobuf.Privilege;
-import no.ssb.dapla.data.access.protobuf.Valuation;
-import no.ssb.dapla.data.access.protobuf.WriteOptions;
+import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
+import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
+import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
+import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
+import no.ssb.dapla.data.access.protobuf.WriteAccessTokenRequest;
+import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
+import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
+import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
@@ -66,76 +65,71 @@ public class DataAccessClient {
         return this.baseURL + String.format(format, args);
     }
 
-    public AccessTokenProvider.AccessToken getAccessToken(String path, long snapshot, Privilege privilege, Valuation valuation, DatasetState state) {
-        AccessTokenRequest.Builder builder = AccessTokenRequest.newBuilder()
-                .setPath(path)
-                .setPrivilege(privilege)
-                .setSnapshot(snapshot);
-        if (valuation != null) {
-            builder.setWriteOptions(WriteOptions.newBuilder()
-                    .setValuation(valuation)
-                    .setState(state)
-                    .build());
-        }
-        AccessTokenRequest tokenRequest = builder.build();
-
-        String body = ProtobufJsonUtils.toString(tokenRequest);
-
+    public ReadLocationResponse readLocation(ReadLocationRequest readLocationRequest) {
         Request request = new Request.Builder()
-                .url(buildUrl("rpc/DataAccessService/getAccessToken"))
-                .post(RequestBody.create(body, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .url(buildUrl("rpc/DataAccessService/readLocation"))
+                .post(RequestBody.create(ProtobufJsonUtils.toString(readLocationRequest), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
                 .build();
+
         try (Response response = client.newCall(request).execute()) {
             String json = getJson(response);
-            handleErrorCodes(path, privilege, response, json);
-            return toAccessToken(json);
+            handleErrorCodes(response, json);
+            ReadLocationResponse readLocationResponse = ProtobufJsonUtils.toPojo(json, ReadLocationResponse.class);
+            return readLocationResponse;
         } catch (IOException e) {
-            log.error("getAccessToken failed", e);
+            log.error("readLocation failed", e);
             throw new DataAccessServiceException(e);
-        } catch (Exception e) {
-            log.error("getAccessToken failed", e);
-            throw e;
         }
     }
 
-    public LocationResponse getReadLocation(String path, int snapshot) {
-        return getLocation(Privilege.READ, path, snapshot, null);
-    }
-
-    public LocationResponse getReadLocationWithLatestVersion(String path) {
-        return getLocation(Privilege.READ, path, 0, null);
-    }
-
-    public LocationResponse getWriteLocation(String path, WriteOptions writeOptions) {
-        return getLocation(Privilege.WRITE, path, 0, writeOptions);
-    }
-
-    public LocationResponse getLocation(Privilege privilege, String path, long snapshot, WriteOptions writeOptions) {
-        LocationRequest.Builder builder = LocationRequest.newBuilder()
-                .setPrivilege(privilege)
-                .setPath(path)
-                .setSnapshot(snapshot);
-        if (writeOptions != null) {
-            builder.setWriteOptions(writeOptions);
-        }
-        LocationRequest locationRequest = builder.build();
-
-        String body = ProtobufJsonUtils.toString(locationRequest);
-
+    public ReadAccessTokenResponse readAccessToken(ReadAccessTokenRequest readAccessTokenRequest) {
         Request request = new Request.Builder()
-                .url(buildUrl("rpc/DataAccessService/getLocation"))
-                .post(RequestBody.create(body, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .url(buildUrl("rpc/DataAccessService/readAccessToken"))
+                .post(RequestBody.create(ProtobufJsonUtils.toString(readAccessTokenRequest), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
                 .build();
+
         try (Response response = client.newCall(request).execute()) {
             String json = getJson(response);
-            handleErrorCodes(path, response, json);
-            return ProtobufJsonUtils.toPojo(json, LocationResponse.class);
+            handleErrorCodes(response, json);
+            ReadAccessTokenResponse readAccessTokenResponse = ProtobufJsonUtils.toPojo(json, ReadAccessTokenResponse.class);
+            return readAccessTokenResponse;
         } catch (IOException e) {
-            log.error("getLocation failed", e);
+            log.error("readAccessToken failed", e);
             throw new DataAccessServiceException(e);
-        } catch (Exception e) {
-            log.error("getLocation failed", e);
-            throw e;
+        }
+    }
+
+    public WriteLocationResponse writeLocation(WriteLocationRequest writeLocationRequest) {
+        Request request = new Request.Builder()
+                .url(buildUrl("rpc/DataAccessService/writeLocation"))
+                .post(RequestBody.create(ProtobufJsonUtils.toString(writeLocationRequest), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            String json = getJson(response);
+            handleErrorCodes(response, json);
+            WriteLocationResponse writeLocationResponse = ProtobufJsonUtils.toPojo(json, WriteLocationResponse.class);
+            return writeLocationResponse;
+        } catch (IOException e) {
+            log.error("writeLocation failed", e);
+            throw new DataAccessServiceException(e);
+        }
+    }
+
+    public WriteAccessTokenResponse writeAccessToken(WriteAccessTokenRequest writeAccessTokenRequest) {
+        Request request = new Request.Builder()
+                .url(buildUrl("rpc/DataAccessService/writeAccessToken"))
+                .post(RequestBody.create(ProtobufJsonUtils.toString(writeAccessTokenRequest), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            String json = getJson(response);
+            handleErrorCodes(response, json);
+            WriteAccessTokenResponse writeAccessTokenResponse = ProtobufJsonUtils.toPojo(json, WriteAccessTokenResponse.class);
+            return writeAccessTokenResponse;
+        } catch (IOException e) {
+            log.error("writeAccessToken failed", e);
+            throw new DataAccessServiceException(e);
         }
     }
 
@@ -145,29 +139,11 @@ public class DataAccessClient {
         return body.string();
     }
 
-    private AccessTokenProvider.AccessToken toAccessToken(String json) {
-        AccessTokenResponse response = ProtobufJsonUtils.toPojo(json, AccessTokenResponse.class);
-        return new AccessTokenProvider.AccessToken(response.getAccessToken(), response.getExpirationTime());
-    }
-
-
-    private void handleErrorCodes(String location, Privilege privilege,
-                                  Response response, String body) {
+    private void handleErrorCodes(Response response, String body) {
         if (response.code() == HttpURLConnection.HTTP_UNAUTHORIZED || response.code() == HttpURLConnection.HTTP_FORBIDDEN) {
-            throw new DataAccessServiceException(String.format("Din bruker har ikke %s tilgang til %s",
-                    privilege.name(), location), body);
+            throw new DataAccessServiceException("Din bruker har ikke tilgang", body);
         } else if (response.code() == HttpURLConnection.HTTP_NOT_FOUND) {
-            throw new DataAccessServiceException(String.format("Fant ingen location %s", location), body);
-        } else if (response.code() < 200 || response.code() >= 400) {
-            throw new DataAccessServiceException("En feil har oppstått: " + response.toString(), body);
-        }
-    }
-
-    private void handleErrorCodes(String namespace, Response response, String body) {
-        if (response.code() == HttpURLConnection.HTTP_UNAUTHORIZED || response.code() == HttpURLConnection.HTTP_FORBIDDEN) {
-            throw new DataAccessServiceException(String.format("Din bruker har ikke tilgang til %s", namespace), body);
-        } else if (response.code() == HttpURLConnection.HTTP_NOT_FOUND) {
-            throw new DataAccessServiceException(String.format("Fant ingen datasett for %s", namespace), body);
+            throw new DataAccessServiceException("Fant ikke datasett", body);
         } else if (response.code() < 200 || response.code() >= 400) {
             throw new DataAccessServiceException("En feil har oppstått: " + response.toString(), body);
         }
