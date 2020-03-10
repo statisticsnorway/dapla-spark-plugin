@@ -143,7 +143,7 @@ public class DataAccessClient {
         if (response.code() == HttpURLConnection.HTTP_UNAUTHORIZED || response.code() == HttpURLConnection.HTTP_FORBIDDEN) {
             throw new DataAccessServiceException("Din bruker har ikke tilgang", body);
         } else if (response.code() == HttpURLConnection.HTTP_NOT_FOUND) {
-            throw new DataAccessServiceException("Fant ikke dataset", body);
+            throw new DataAccessServiceException("Fant ikke datasett", body);
         } else if (response.code() < 200 || response.code() >= 400) {
             throw new DataAccessServiceException("En feil har oppstått: " + response.toString(), body);
         }

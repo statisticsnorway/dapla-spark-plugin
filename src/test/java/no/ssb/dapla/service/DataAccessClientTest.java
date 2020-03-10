@@ -81,7 +81,7 @@ public class DataAccessClientTest {
     public void testHandleNotFound() {
         server.enqueue(new MockResponse().setResponseCode(404));
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
-        thrown.expectMessage("Fant ingen location");
+        thrown.expectMessage("Fant ikke datasett");
         ReadLocationResponse readLocationResponse = dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
                 .setPath("/myBucket")
                 .setSnapshot(0) // 0 means resolve to latest version
