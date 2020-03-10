@@ -22,7 +22,7 @@ steps:
 - name: publish-maven
   image: maven:3-jdk-8
   commands:
-    - mvn clean deploy -P ssb-bip -Dmaven.repo.local=/drone/src/.m2/repository -DskipTests=true -Djdk.tls.client.protocols="TLSv1.2" --batch-mode --global-settings settings.xml
+    - mvn clean deploy -P ssb-bip -Dmaven.repo.local=/drone/src/.m2/repository -Djdk.tls.client.protocols="TLSv1.2" --batch-mode --global-settings settings.xml
   depends_on:
     - authenticate
     - restore-cache
