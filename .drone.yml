@@ -31,9 +31,9 @@ steps:
   image: maven:3-jdk-8
   commands:
     # Create a service account keyfile to be used by GCS tests
-    #- mkdir secret
-    #- printf "%s" "$GAC" > secret/gcs_sa_test.json
-    #- mvn verify test -P ssb-bip,coverage -Dmaven.repo.local=/drone/src/.m2/repository --batch-mode --global-settings settings.xml
+    - mkdir secret
+    - printf "%s" "$GAC" > secret/gcs_sa_test.json
+    - mvn verify test -P ssb-bip,coverage -Dmaven.repo.local=/drone/src/.m2/repository --batch-mode --global-settings settings.xml
   environment:
     DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE: secret/gcs_sa_test.json
     DAPLA_SPARK_TEST_BUCKET: bip-drone-dependency-cache
