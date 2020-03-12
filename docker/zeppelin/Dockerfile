@@ -4,8 +4,8 @@ FROM eu.gcr.io/prod-bip/dapla-zeppelin-base:latest
 # https://github.com/GoogleCloudPlatform/bigdata-interop/blob/master/gcs/INSTALL.md#configure-spark
 # https://github.com/GoogleCloudPlatform/bigdata-interop/issues/188
 # https://github.com/GoogleCloudPlatform/bigdata-interop/pull/180/files
-RUN wget -P /tmp https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-latest.jar && \
-    mv /tmp/gcs-connector-hadoop2-latest.jar /zeppelin/lib/gcs-connector-hadoop.jar
+RUN wget -P /tmp https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-2.0.1.jar && \
+    mv /tmp/gcs-connector-hadoop2-2.0.1.jar /zeppelin/lib/gcs-connector-hadoop.jar
 
 # Merge the content of the interpreter settings.
 COPY docker/zeppelin/interpreter-template.json /zeppelin/conf/interpreter-new.json

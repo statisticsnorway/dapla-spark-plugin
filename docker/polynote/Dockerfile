@@ -4,8 +4,8 @@ RUN wget https://github.com/polynote/polynote/releases/download/0.2.13/polynote-
 RUN tar xzf polynote-dist.tar.gz
 RUN rm polynote-dist.tar.gz
 
-RUN wget https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-latest.jar
-RUN mv gcs-connector-hadoop2-latest.jar /polynote/gcs-connector-hadoop.jar
+RUN wget https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-2.0.1.jar
+RUN mv gcs-connector-hadoop2-2.0.1.jar /polynote/gcs-connector-hadoop.jar
 
 RUN apk update && apk add gettext && rm -rf /var/cache/apk/*
 
