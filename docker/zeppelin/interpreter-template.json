@@ -7,12 +7,16 @@
       "properties": {
         "spark.app.name": {
           "name": "spark.app.name",
-          "value": "Zeppelin dapla",
+          "value": "Zeppelin dapla (#{user})",
           "type": "string"
         },
         "master": {
           "name": "master",
           "value": "$SPARK_MASTER",
+          "type": "string"
+        },
+        "spark.yarn.queue": {
+          "value": "#{user}",
           "type": "string"
         },
         "spark.submit.deployMode": {
