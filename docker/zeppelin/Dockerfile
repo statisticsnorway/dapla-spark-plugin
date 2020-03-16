@@ -24,11 +24,9 @@ RUN apk --no-cache add gettext
 # Copy the library.
 COPY target/dapla-spark-plugin-*-shaded.jar /zeppelin/lib/dapla-spark-plugin.jar
 
-# Install the markdown interpreter. The maven resolution so we need to
-# download the file manually.
-RUN wget https://repo1.maven.org/maven2/org/apache/zeppelin/zeppelin-markdown/0.8.2/zeppelin-markdown-0.8.2.jar && \
-    /zeppelin/bin/install-interpreter.sh --name md --artifact zeppelin-markdown-0.8.2.jar && \
-    rm zeppelin-markdown-0.8.2.jar
+# Install the markdown interpreter.
+RUN ZEPPELIN_INTERPRETER_DEP_MVNREPO=https://repo1.maven.org/maven2 \
+    /zeppelin/bin/install-interpreter.sh --name md --artifact org.apache.zeppelin:zeppelin-markdown:0.8.2
 
 RUN chown -R zeppelin:zeppelin /zeppelin
 USER zeppelin:zeppelin
