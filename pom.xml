@@ -91,11 +91,18 @@
             <version>0.7</version>
             <scope>compile</scope>
         </dependency>
+
         <dependency>
             <groupId>no.ssb.dapla.dlp.pseudo.func</groupId>
             <artifactId>dapla-dlp-pseudo-func</artifactId>
             <version>0.1.2</version>
             <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
