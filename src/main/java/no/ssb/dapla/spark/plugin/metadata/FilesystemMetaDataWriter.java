@@ -65,6 +65,7 @@ public class FilesystemMetaDataWriter implements MetaDataWriter {
                 IOUtils.write(content.toByteArray(), outputStream);
             }
         } catch (IOException e) {
+            e.printStackTrace();
             throw new RuntimeException("Error writing metadata file", e);
         } finally {
             for (String addedProperty : addedProperties) {
