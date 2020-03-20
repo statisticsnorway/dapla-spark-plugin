@@ -57,15 +57,11 @@ public class FilesystemMetaDataWriter implements MetaDataWriter {
                     hadoopConfiguration.set(e.getKey(), e.getValue());
                 });
         try (FileSystem fs = FileSystem.get(storagePath, hadoopConfiguration)) {
-            if (storagePath.getScheme().equals("file")) {
-                fs.mkdirs(metadataPath.getParent());
-            }
-            System.out.println("Write file path: " + metadataPath);
+            fs.mkdirs(metadataPath.getParent());
             try (FSDataOutputStream outputStream = fs.create(metadataPath, false)) {
                 IOUtils.write(content.toByteArray(), outputStream);
             }
         } catch (IOException e) {
-            e.printStackTrace();
             throw new RuntimeException("Error writing metadata file", e);
         } finally {
             for (String addedProperty : addedProperties) {
