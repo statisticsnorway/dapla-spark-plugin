@@ -22,7 +22,7 @@ public class SparkConfStore implements TokenStore {
 
     @Override
     public String getRefreshToken() {
-        return Objects.requireNonNull(conf.get(SPARK_SSB_REFRESH_TOKEN, null), "missing access token");
+        return Objects.requireNonNull(conf.get(SPARK_SSB_REFRESH_TOKEN, null), "missing refresh token");
     }
 
     @Override
@@ -32,6 +32,6 @@ public class SparkConfStore implements TokenStore {
 
     @Override
     public void putRefreshToken(String refresh) {
-        conf.get(SPARK_SSB_REFRESH_TOKEN, Objects.requireNonNull(refresh, "refresh token cannot be null"));
+        conf.set(SPARK_SSB_REFRESH_TOKEN, Objects.requireNonNull(refresh, "refresh token cannot be null"));
     }
 }

@@ -32,11 +32,12 @@ public class TokenRefresher implements Runnable {
 
     private static final String GRANT_TYPE_REFRESH = "refresh_token";
 
-    private final HttpUrl tokenUrl;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-    private Optional<String> clientId;
-    private Optional<String> clientSecret;
     private ScheduledFuture<?> nextUpdate;
+
+    private final HttpUrl tokenUrl;
+    private Optional<String> clientId = Optional.empty();
+    private Optional<String> clientSecret = Optional.empty();
     private TokenStore tokenStore;
 
     public TokenRefresher(HttpUrl tokenUrl) {
@@ -60,12 +61,12 @@ public class TokenRefresher implements Runnable {
             // TODO: Save and propagate
             log.error("Could not refresh token", e);
         } finally {
-            scheduler.schedule(this::scheduleNextRefresh, 1, TimeUnit.SECONDS);
+            scheduler.schedule(this::scheduleNextRefresh, 0, TimeUnit.SECONDS);
         }
     }
 
     private void scheduleNextRefresh() {
-        if (!nextUpdate.isDone()) {
+        if (nextUpdate != null && !nextUpdate.isDone()) {
             log.debug("Refresh already scheduled");
             return;
         }
