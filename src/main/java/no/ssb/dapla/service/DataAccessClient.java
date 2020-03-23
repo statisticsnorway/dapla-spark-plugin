@@ -15,7 +15,6 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.spark.SparkConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.util.Map;
 
 public class DataAccessClient {
 
@@ -32,10 +30,6 @@ public class DataAccessClient {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
     private OkHttpClient client;
     private String baseURL;
-
-    public DataAccessClient(final Configuration conf) {
-        init(getSparkConf(conf));
-    }
 
     public DataAccessClient(final SparkConf conf) {
         init(conf);
@@ -49,16 +43,6 @@ public class DataAccessClient {
         if (!this.baseURL.endsWith("/")) {
             this.baseURL = this.baseURL + "/";
         }
-    }
-
-    private SparkConf getSparkConf(Configuration conf) {
-        SparkConf sparkConf = new SparkConf();
-        for (Map.Entry<String, String> entry : conf) {
-            if (entry.getKey().startsWith("spark.")) {
-                sparkConf.set(entry.getKey(), entry.getValue());
-            }
-        }
-        return sparkConf;
     }
 
     private String buildUrl(String format, Object... args) {

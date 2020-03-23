@@ -70,7 +70,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String uriString = DatasetUri.of(locationResponse.getParentUri(), localPath, locationResponse.getVersion()).toString();
 
         System.out.println("Path til dataset: " + uriString);
-        SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, locationResponse.getVersion(), userId, null, null);
+        SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, locationResponse.getVersion(), null, null);
         return new GsimRelation(isolatedSqlContext, uriString);
     }
 
@@ -132,7 +132,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
             SparkSession sparkSession = sqlContext.sparkSession();
             String metadataSignatureBase64 = new String(Base64.getEncoder().encode(writeLocationResponse.getMetadataSignature().toByteArray()), StandardCharsets.UTF_8);
-            setUserContext(sparkSession, pathToNewDataSet.getPath(), pathToNewDataSet.getVersion(), userId, "WRITE", metadataJson, metadataSignatureBase64);
+            setUserContext(sparkSession, pathToNewDataSet.getPath(), pathToNewDataSet.getVersion(), "WRITE", metadataJson, metadataSignatureBase64);
             MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf);
 
             // Write metadata file
@@ -161,21 +161,20 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
      *
      * @param sqlContext the original SQLContext (which will be the parent context)
      * @param namespace  namespace info that will be added to the isolated context
-     * @param userId     the userId
      * @return the new SQLContext
      */
-    private SQLContext isolatedContext(SQLContext sqlContext, String namespace, String version, String userId, String metadataJson, String metadataSignature) {
+    private SQLContext isolatedContext(SQLContext sqlContext, String namespace, String version, String metadataJson, String metadataSignature) {
         // Temporary enable file system cache during execution. This aviods re-creating the GoogleHadoopFileSystem
         // during multiple job executions within the spark session.
         // For this to work, we must create an isolated configuration inside a new spark session
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
         sparkSession.conf().set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
-        setUserContext(sparkSession, namespace, version, userId, "READ", metadataJson, metadataSignature);
+        setUserContext(sparkSession, namespace, version, "READ", metadataJson, metadataSignature);
         return sparkSession.sqlContext();
     }
 
-    private void setUserContext(SparkSession sparkSession, String namespace, String version, String userId, String operation, String metadataJson, String metadataSignature) {
+    private void setUserContext(SparkSession sparkSession, String namespace, String version, String operation, String metadataJson, String metadataSignature) {
         if (sparkSession.conf().contains(SparkOptions.ACCESS_TOKEN)) {
             System.out.println("Access token already exists");
         }
