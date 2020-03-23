@@ -2,8 +2,13 @@ package no.ssb.dapla.spark.plugin;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.google.protobuf.ByteString;
+import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
+import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
 import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
+import no.ssb.dapla.data.access.protobuf.WriteAccessTokenRequest;
+import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.dataset.api.DatasetId;
@@ -65,7 +70,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         String uriString = DatasetUri.of(locationResponse.getParentUri(), localPath, locationResponse.getVersion()).toString();
 
         System.out.println("Path til dataset: " + uriString);
-        SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, locationResponse.getVersion(), userId, null, null);
+        SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, locationResponse.getVersion(), null, null);
         return new GsimRelation(isolatedSqlContext, uriString);
     }
 
@@ -127,7 +132,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
             SparkSession sparkSession = sqlContext.sparkSession();
             String metadataSignatureBase64 = new String(Base64.getEncoder().encode(writeLocationResponse.getMetadataSignature().toByteArray()), StandardCharsets.UTF_8);
-            setUserContext(sparkSession, pathToNewDataSet.getPath(), pathToNewDataSet.getVersion(), userId, "WRITE", metadataJson, metadataSignatureBase64);
+            setUserContext(sparkSession, pathToNewDataSet.getPath(), pathToNewDataSet.getVersion(), "WRITE", metadataJson, metadataSignatureBase64);
             MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf);
 
             // Write metadata file
@@ -156,44 +161,50 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
      *
      * @param sqlContext the original SQLContext (which will be the parent context)
      * @param namespace  namespace info that will be added to the isolated context
-     * @param userId     the userId
      * @return the new SQLContext
      */
-    private SQLContext isolatedContext(SQLContext sqlContext, String namespace, String version, String userId, String metadataJson, String metadataSignature) {
+    private SQLContext isolatedContext(SQLContext sqlContext, String namespace, String version, String metadataJson, String metadataSignature) {
         // Temporary enable file system cache during execution. This aviods re-creating the GoogleHadoopFileSystem
         // during multiple job executions within the spark session.
         // For this to work, we must create an isolated configuration inside a new spark session
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
         sparkSession.conf().set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
-        setUserContext(sparkSession, namespace, version, userId, "READ", metadataJson, metadataSignature);
+        setUserContext(sparkSession, namespace, version, "READ", metadataJson, metadataSignature);
         return sparkSession.sqlContext();
     }
 
-    private void setUserContext(SparkSession sparkSession, String namespace, String version, String userId, String operation, String metadataJson, String metadataSignature) {
-        if (sparkSession.conf().contains(SparkOptions.CURRENT_NAMESPACE) ||
-                sparkSession.conf().contains(SparkOptions.CURRENT_OPERATION)) {
-            System.out.println("Current namespace and/or operation already exists");
+    private void setUserContext(SparkSession sparkSession, String namespace, String version, String operation, String metadataJson, String metadataSignature) {
+        if (sparkSession.conf().contains(SparkOptions.ACCESS_TOKEN)) {
+            System.out.println("Access token already exists");
         }
-        sparkSession.conf().set(SparkOptions.CURRENT_NAMESPACE, namespace);
-        sparkSession.conf().set(SparkOptions.CURRENT_DATASET_VERSION, version);
-        sparkSession.conf().set(SparkOptions.CURRENT_OPERATION, operation);
-        sparkSession.conf().set(SparkOptions.CURRENT_USER, userId);
-        if (metadataJson != null) {
-            sparkSession.conf().set(SparkOptions.CURRENT_DATASET_META_JSON, metadataJson);
+
+        DataAccessClient dataAccessClient = new DataAccessClient(sparkSession.sparkContext().getConf());
+        if ("READ".equals(operation)) {
+
+            ReadAccessTokenResponse readAccessTokenResponse = dataAccessClient.readAccessToken(ReadAccessTokenRequest.newBuilder()
+                    .setPath(namespace)
+                    .setVersion(version)
+                    .build());
+            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, readAccessTokenResponse.getAccessToken());
+            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, readAccessTokenResponse.getExpirationTime());
+
+        } else if ("WRITE".equals(operation)) {
+
+            byte[] datasetMetaSignatureBytes = Base64.getDecoder().decode(metadataSignature);
+            WriteAccessTokenResponse writeAccessTokenResponse = dataAccessClient.writeAccessToken(WriteAccessTokenRequest.newBuilder()
+                    .setMetadataJson(ByteString.copyFromUtf8(metadataJson))
+                    .setMetadataSignature(ByteString.copyFrom(datasetMetaSignatureBytes))
+                    .build());
+            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, writeAccessTokenResponse.getAccessToken());
+            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, writeAccessTokenResponse.getExpirationTime());
         }
-        if (metadataSignature != null) {
-            sparkSession.conf().set(SparkOptions.CURRENT_DATASET_META_JSON_SIGNATURE, metadataSignature);
-        }
+
     }
 
     private void unsetUserContext(SparkSession sparkSession) {
-        sparkSession.conf().unset(SparkOptions.CURRENT_NAMESPACE);
-        sparkSession.conf().unset(SparkOptions.CURRENT_DATASET_VERSION);
-        sparkSession.conf().unset(SparkOptions.CURRENT_OPERATION);
-        sparkSession.conf().unset(SparkOptions.CURRENT_USER);
-        sparkSession.conf().unset(SparkOptions.CURRENT_DATASET_META_JSON);
-        sparkSession.conf().unset(SparkOptions.CURRENT_DATASET_META_JSON_SIGNATURE);
+        sparkSession.conf().unset(SparkOptions.ACCESS_TOKEN);
+        sparkSession.conf().unset(SparkOptions.ACCESS_TOKEN_EXP);
     }
 
     @Override
