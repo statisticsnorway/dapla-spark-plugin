@@ -9,16 +9,19 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.spark.SparkConf;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.charset.Charset;
 import java.sql.Date;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class TokenRefresherTest {
 
@@ -32,7 +35,77 @@ public class TokenRefresherTest {
         server = new MockWebServer();
         server.start();
         keycloakUrl = server.url("/keycloak");
+    }
 
+    @Test
+    public void testSettingClientCredentials() throws InterruptedException, JsonProcessingException {
+        SparkConfStore store = new SparkConfStore(new SparkConf());
+        TokenRefresher refresher = new TokenRefresher(keycloakUrl);
+
+        refresher.setClientId("client-id");
+        refresher.setClientSecret("client-secret");
+
+        // Fake access token
+        String accessToken = JWT.create()
+                .withExpiresAt(Date.from(Instant.now()))
+                .sign(Algorithm.HMAC256("secret"));
+
+        // Fake refresh token
+        String refreshToken = JWT.create()
+                .withExpiresAt(Date.from(Instant.now()))
+                .sign(Algorithm.HMAC256("secret"));
+
+        // Set the first token.
+        store.putAccessToken(accessToken);
+        store.putRefreshToken(refreshToken);
+
+        refresher.setTokenStore(store);
+
+        ObjectNode response = mapper.createObjectNode();
+        response.put("access_token", "access-token");
+        response.put("refresh_token", "refresh-token");
+
+        server.enqueue(new MockResponse().setBody(mapper.writeValueAsString(response)));
+
+        // Wait for the token to refresh.
+        Thread.sleep(TimeUnit.MILLISECONDS.convert(1, TimeUnit.SECONDS));
+
+        RecordedRequest recordedRequest = server.takeRequest();
+        String body = recordedRequest.getBody().readString(Charset.defaultCharset());
+        assertThat(body).contains(
+                "client_id=client-id",
+                "client_secret=client-secret",
+                "grant_type=refresh_token"
+        );
+
+    }
+
+    @Test
+    public void testExceptionIsPropagated() throws InterruptedException, JsonProcessingException {
+        SparkConfStore store = new SparkConfStore(new SparkConf());
+        TokenRefresher refresher = new TokenRefresher(keycloakUrl);
+
+        // Fake access token
+        String accessToken = JWT.create()
+                .withExpiresAt(Date.from(Instant.now()))
+                .sign(Algorithm.HMAC256("secret"));
+
+        // Fake refresh token
+        String refreshToken = JWT.create()
+                .withExpiresAt(Date.from(Instant.now()))
+                .sign(Algorithm.HMAC256("secret"));
+
+        // Set the first token.
+        store.putAccessToken(accessToken);
+        store.putRefreshToken(refreshToken);
+
+        refresher.setTokenStore(store);
+        server.enqueue(new MockResponse().setResponseCode(500));
+
+        // Wait for the token to refresh.
+        Thread.sleep(TimeUnit.MILLISECONDS.convert(1, TimeUnit.SECONDS));
+
+        assertThatThrownBy(refresher::getAccessToken);
 
     }
 
@@ -80,6 +153,7 @@ public class TokenRefresherTest {
         // Wait for the token to refresh.
         Thread.sleep(TimeUnit.MILLISECONDS.convert(1, TimeUnit.SECONDS));
 
+        assertThat(refresher.getAccessToken()).isEqualTo(newAccessToken);
         assertThat(store.getAccessToken()).isEqualTo(newAccessToken);
         assertThat(store.getRefreshToken()).isEqualTo(newRefreshToken);
 
