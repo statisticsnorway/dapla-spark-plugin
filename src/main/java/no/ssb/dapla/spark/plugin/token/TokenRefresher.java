@@ -1,32 +1,67 @@
 package no.ssb.dapla.spark.plugin.token;
 
 import com.auth0.jwt.JWT;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 
 /**
- * Utility class to ensure token renewal.
+ * Class that ensures token refresh.
  */
-public class TokenRefresher implements Runnable, Supplier<String> {
+public class TokenRefresher implements Runnable {
 
     private static final Logger log = LoggerFactory.getLogger(TokenRefresher.class);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    private static final String CLIENT_ID = "client_id";
+    private static final String CLIENT_SECRET = "client_secret";
+    private static final String GRANT_TYPE = "grant_type";
+    private static final String REFRESH_TOKEN = "refresh_token";
+
+    private static final String GRANT_TYPE_REFRESH = "refresh_token";
+
+    private final HttpUrl tokenUrl;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private Optional<String> clientId;
+    private Optional<String> clientSecret;
     private ScheduledFuture<?> nextUpdate;
     private TokenStore tokenStore;
+
+    public TokenRefresher(HttpUrl tokenUrl) {
+        this.tokenUrl = Objects.requireNonNull(tokenUrl);
+    }
 
     public void setTokenStore(TokenStore tokenStore) {
         this.tokenStore = Objects.requireNonNull(tokenStore);
         scheduleNextRefresh();
+    }
+
+    @Override
+    public void run() {
+        try {
+            String oldToken = tokenStore.getAccessToken();
+            refreshToken();
+            if (oldToken.equals(tokenStore.getAccessToken())) {
+                throw new IllegalArgumentException("token was not updated");
+            }
+        } catch (Exception e) {
+            // TODO: Save and propagate
+            log.error("Could not refresh token", e);
+        } finally {
+            scheduler.schedule(this::scheduleNextRefresh, 1, TimeUnit.SECONDS);
+        }
     }
 
     private void scheduleNextRefresh() {
@@ -41,14 +76,48 @@ public class TokenRefresher implements Runnable, Supplier<String> {
         nextUpdate = scheduler.schedule(this, timeBeforeExpiration.getSeconds(), TimeUnit.SECONDS);
     }
 
-    @Override
-    public void run() {
+    private void refreshToken() throws IOException {
+        FormBody.Builder formBodyBuilder = new FormBody.Builder();
 
+        clientId.ifPresent(id -> formBodyBuilder.add(CLIENT_ID, id));
+        clientSecret.ifPresent(secret -> formBodyBuilder.add(CLIENT_SECRET, secret));
+
+        formBodyBuilder.add(GRANT_TYPE, GRANT_TYPE_REFRESH);
+        formBodyBuilder.add(REFRESH_TOKEN, tokenStore.getRefreshToken());
+
+        FormBody formBody = formBodyBuilder.build();
+
+        Request request = new Request.Builder()
+                .url(tokenUrl)
+                .post(formBody)
+                .build();
+
+        OkHttpClient client = new OkHttpClient();
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new IOException("authentication failed " + response);
+            }
+            ResponseBody body = response.body();
+            if (body == null) {
+                throw new IOException("empty response");
+            }
+            JsonNode bodyContent = MAPPER.readTree(body.bytes());
+
+            tokenStore.putAccessToken(bodyContent.get("access_token").asText());
+            tokenStore.putRefreshToken(bodyContent.get("refresh_token").asText());
+
+        }
     }
 
-    @Override
-    public String get() {
+    public String getAccessToken() {
+        return tokenStore.getAccessToken();
+    }
 
-        return null;
+    public void setClientId(String clientId) {
+        this.clientId = Optional.of(clientId);
+    }
+
+    public void setClientSecret(String clientSecret) {
+        this.clientSecret = Optional.of(clientSecret);
     }
 }
