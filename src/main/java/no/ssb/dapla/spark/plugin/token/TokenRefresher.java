@@ -30,8 +30,6 @@ public class TokenRefresher implements Runnable {
     private static final String GRANT_TYPE = "grant_type";
     private static final String REFRESH_TOKEN = "refresh_token";
 
-    private static final String GRANT_TYPE_REFRESH = "refresh_token";
-
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private ScheduledFuture<?> nextUpdate;
 
@@ -39,6 +37,7 @@ public class TokenRefresher implements Runnable {
     private Optional<String> clientId = Optional.empty();
     private Optional<String> clientSecret = Optional.empty();
     private TokenStore tokenStore;
+    private Exception exception;
 
     public TokenRefresher(HttpUrl tokenUrl) {
         this.tokenUrl = Objects.requireNonNull(tokenUrl);
@@ -52,13 +51,9 @@ public class TokenRefresher implements Runnable {
     @Override
     public void run() {
         try {
-            String oldToken = tokenStore.getAccessToken();
             refreshToken();
-            if (oldToken.equals(tokenStore.getAccessToken())) {
-                throw new IllegalArgumentException("token was not updated");
-            }
         } catch (Exception e) {
-            // TODO: Save and propagate
+            exception = e;
             log.error("Could not refresh token", e);
         } finally {
             scheduler.schedule(this::scheduleNextRefresh, 0, TimeUnit.SECONDS);
@@ -73,17 +68,20 @@ public class TokenRefresher implements Runnable {
         String token = tokenStore.getAccessToken();
         Instant expiresAt = JWT.decode(token).getExpiresAt().toInstant();
         Duration timeBeforeExpiration = Duration.between(Instant.now(), expiresAt);
-        log.info("scheduling token refresh in {}", timeBeforeExpiration);
+        log.info("Scheduling token refresh in {}", timeBeforeExpiration);
         nextUpdate = scheduler.schedule(this, timeBeforeExpiration.getSeconds(), TimeUnit.SECONDS);
     }
 
+    /**
+     * Run by the executor.
+     */
     private void refreshToken() throws IOException {
         FormBody.Builder formBodyBuilder = new FormBody.Builder();
 
         clientId.ifPresent(id -> formBodyBuilder.add(CLIENT_ID, id));
         clientSecret.ifPresent(secret -> formBodyBuilder.add(CLIENT_SECRET, secret));
 
-        formBodyBuilder.add(GRANT_TYPE, GRANT_TYPE_REFRESH);
+        formBodyBuilder.add(GRANT_TYPE, REFRESH_TOKEN);
         formBodyBuilder.add(REFRESH_TOKEN, tokenStore.getRefreshToken());
 
         FormBody formBody = formBodyBuilder.build();
@@ -111,6 +109,15 @@ public class TokenRefresher implements Runnable {
     }
 
     public String getAccessToken() {
+        if (exception != null) {
+            Exception toThrow = exception;
+            exception = null;
+            if (toThrow instanceof RuntimeException) {
+                throw (RuntimeException) toThrow;
+            } else {
+                throw new RuntimeException(toThrow);
+            }
+        }
         return tokenStore.getAccessToken();
     }
 
