@@ -2,8 +2,13 @@ package no.ssb.dapla.spark.plugin;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.google.protobuf.ByteString;
+import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
+import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
 import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
+import no.ssb.dapla.data.access.protobuf.WriteAccessTokenRequest;
+import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.dataset.api.DatasetId;
@@ -171,29 +176,36 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     }
 
     private void setUserContext(SparkSession sparkSession, String namespace, String version, String userId, String operation, String metadataJson, String metadataSignature) {
-        if (sparkSession.conf().contains(SparkOptions.CURRENT_NAMESPACE) ||
-                sparkSession.conf().contains(SparkOptions.CURRENT_OPERATION)) {
-            System.out.println("Current namespace and/or operation already exists");
+        if (sparkSession.conf().contains(SparkOptions.ACCESS_TOKEN)) {
+            System.out.println("Access token already exists");
         }
-        sparkSession.conf().set(SparkOptions.CURRENT_NAMESPACE, namespace);
-        sparkSession.conf().set(SparkOptions.CURRENT_DATASET_VERSION, version);
-        sparkSession.conf().set(SparkOptions.CURRENT_OPERATION, operation);
-        sparkSession.conf().set(SparkOptions.CURRENT_USER, userId);
-        if (metadataJson != null) {
-            sparkSession.conf().set(SparkOptions.CURRENT_DATASET_META_JSON, metadataJson);
+
+        DataAccessClient dataAccessClient = new DataAccessClient(sparkSession.sparkContext().getConf());
+        if ("READ".equals(operation)) {
+
+            ReadAccessTokenResponse readAccessTokenResponse = dataAccessClient.readAccessToken(ReadAccessTokenRequest.newBuilder()
+                    .setPath(namespace)
+                    .setVersion(version)
+                    .build());
+            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, readAccessTokenResponse.getAccessToken());
+            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, readAccessTokenResponse.getExpirationTime());
+
+        } else if ("WRITE".equals(operation)) {
+
+            byte[] datasetMetaSignatureBytes = Base64.getDecoder().decode(metadataSignature);
+            WriteAccessTokenResponse writeAccessTokenResponse = dataAccessClient.writeAccessToken(WriteAccessTokenRequest.newBuilder()
+                    .setMetadataJson(ByteString.copyFromUtf8(metadataJson))
+                    .setMetadataSignature(ByteString.copyFrom(datasetMetaSignatureBytes))
+                    .build());
+            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, writeAccessTokenResponse.getAccessToken());
+            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, writeAccessTokenResponse.getExpirationTime());
         }
-        if (metadataSignature != null) {
-            sparkSession.conf().set(SparkOptions.CURRENT_DATASET_META_JSON_SIGNATURE, metadataSignature);
-        }
+
     }
 
     private void unsetUserContext(SparkSession sparkSession) {
-        sparkSession.conf().unset(SparkOptions.CURRENT_NAMESPACE);
-        sparkSession.conf().unset(SparkOptions.CURRENT_DATASET_VERSION);
-        sparkSession.conf().unset(SparkOptions.CURRENT_OPERATION);
-        sparkSession.conf().unset(SparkOptions.CURRENT_USER);
-        sparkSession.conf().unset(SparkOptions.CURRENT_DATASET_META_JSON);
-        sparkSession.conf().unset(SparkOptions.CURRENT_DATASET_META_JSON_SIGNATURE);
+        sparkSession.conf().unset(SparkOptions.ACCESS_TOKEN);
+        sparkSession.conf().unset(SparkOptions.ACCESS_TOKEN_EXP);
     }
 
     @Override
