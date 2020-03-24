@@ -68,6 +68,9 @@ public class TokenRefresher implements Runnable {
         String token = tokenStore.getAccessToken();
         Instant expiresAt = JWT.decode(token).getExpiresAt().toInstant();
         Duration timeBeforeExpiration = Duration.between(Instant.now(), expiresAt);
+        if (timeBeforeExpiration.isNegative()) {
+            throw new IllegalArgumentException("expiration was in the past: " + expiresAt);
+        }
         log.info("Scheduling token refresh in {}", timeBeforeExpiration);
         nextUpdate = scheduler.schedule(this, timeBeforeExpiration.getSeconds(), TimeUnit.SECONDS);
     }

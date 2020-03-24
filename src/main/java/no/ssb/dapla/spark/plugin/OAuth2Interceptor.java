@@ -35,31 +35,6 @@ public class OAuth2Interceptor implements Interceptor {
     private final SparkConf conf;
     private final TokenRefresher tokenRefresher;
 
-    // TODO: Consider removal.
-    public static Optional<OAuth2Interceptor> createOAuth2Interceptor(final SparkConf conf) {
-        if (!conf.contains(CONFIG_ROUTER_OAUTH_TOKEN_URL)) {
-            throw new IllegalArgumentException(String.format("Missing configuration: %s", CONFIG_ROUTER_OAUTH_TOKEN_URL));
-        }
-
-        String credentialFile = conf.get(CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE, "");
-        if (credentialFile.isEmpty()) {
-            return Optional.of(new OAuth2Interceptor(
-                conf.get(CONFIG_ROUTER_OAUTH_TOKEN_URL, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_ID, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, null),
-                    Boolean.parseBoolean(conf.get(CONFIG_ROUTER_OAUTH_TOKEN_IGNORE_EXPIRY, "false")),
-                    conf
-            ));
-        } else {
-            return Optional.of(new OAuth2Interceptor(
-                    conf.get(CONFIG_ROUTER_OAUTH_TOKEN_URL, null),
-                    credentialFile,
-                    Boolean.parseBoolean(conf.get(CONFIG_ROUTER_OAUTH_TOKEN_IGNORE_EXPIRY, "false")),
-                    conf
-            ));
-        }
-    }
-
     private static String extractClientSecret(String credentialsFile) {
         try {
             JsonNode credentialsJson = MAPPER.readTree(Paths.get(credentialsFile).toFile());

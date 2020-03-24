@@ -47,12 +47,12 @@ public class TokenRefresherTest {
 
         // Fake access token
         String accessToken = JWT.create()
-                .withExpiresAt(Date.from(Instant.now()))
+                .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.SECONDS)))
                 .sign(Algorithm.HMAC256("secret"));
 
         // Fake refresh token
         String refreshToken = JWT.create()
-                .withExpiresAt(Date.from(Instant.now()))
+                .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.SECONDS)))
                 .sign(Algorithm.HMAC256("secret"));
 
         // Set the first token.
@@ -87,22 +87,23 @@ public class TokenRefresherTest {
 
         // Fake access token
         String accessToken = JWT.create()
-                .withExpiresAt(Date.from(Instant.now()))
+                .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.SECONDS)))
                 .sign(Algorithm.HMAC256("secret"));
 
         // Fake refresh token
         String refreshToken = JWT.create()
-                .withExpiresAt(Date.from(Instant.now()))
+                .withExpiresAt(Date.from(Instant.now().plus(2, ChronoUnit.SECONDS)))
                 .sign(Algorithm.HMAC256("secret"));
 
         // Set the first token.
         store.putAccessToken(accessToken);
         store.putRefreshToken(refreshToken);
 
-        refresher.setTokenStore(store);
         server.enqueue(new MockResponse().setResponseCode(500));
+        refresher.setTokenStore(store);
 
         // Wait for the token to refresh.
+        // TODO: Rewrite, this will fail sometimes.
         Thread.sleep(TimeUnit.MILLISECONDS.convert(1, TimeUnit.SECONDS));
 
         assertThatThrownBy(refresher::getAccessToken);

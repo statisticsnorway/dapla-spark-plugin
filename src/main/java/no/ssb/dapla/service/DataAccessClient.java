@@ -8,6 +8,7 @@ import no.ssb.dapla.data.access.protobuf.WriteAccessTokenRequest;
 import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
+import no.ssb.dapla.spark.plugin.GsimDatasource;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
@@ -43,7 +44,7 @@ public class DataAccessClient {
 
     public void init(final SparkConf conf) {
         okhttp3.OkHttpClient.Builder builder = new okhttp3.OkHttpClient.Builder();
-        OAuth2Interceptor.createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
+        GsimDatasource.getOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
         this.client = builder.build();
         this.baseURL = conf.get(CONFIG_DATA_ACCESS_URL);
         if (!this.baseURL.endsWith("/")) {
