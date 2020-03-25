@@ -28,8 +28,6 @@ public final class SparkAccessTokenProvider implements AccessTokenProvider {
 
     @Override
     public void refresh() {
-        LOG.debug("Getting access token");
-        System.out.println("Getting access token");
         accessToken = new AccessToken(config.get(SparkOptions.ACCESS_TOKEN), Long.valueOf(config.get(SparkOptions.ACCESS_TOKEN_EXP)));
     }
 

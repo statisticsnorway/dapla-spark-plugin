@@ -120,7 +120,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             throw new RuntimeException("Permission denied");
         }
 
-        RuntimeConfig runtimeConfig = data.sparkSession().conf();
         try {
             String metadataJson = writeLocationResponse.getValidMetadataJson().toStringUtf8();
 
@@ -129,7 +128,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
             log.info("writing file(s) to: {}", pathToNewDataSet);
             System.out.println("Skriver datasett til: " + pathToNewDataSet);
-            runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
             SparkSession sparkSession = sqlContext.sparkSession();
             String metadataSignatureBase64 = new String(Base64.getEncoder().encode(writeLocationResponse.getMetadataSignature().toByteArray()), StandardCharsets.UTF_8);
             setUserContext(sparkSession, pathToNewDataSet.getPath(), pathToNewDataSet.getVersion(), "WRITE", metadataJson, metadataSignatureBase64);
@@ -152,7 +150,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
         } finally {
             unsetUserContext(sqlContext.sparkSession());
-            runtimeConfig.set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true); // are we sure this was true before?
         }
     }
 
@@ -169,7 +166,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         // For this to work, we must create an isolated configuration inside a new spark session
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
-        sparkSession.conf().set(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, false);
         setUserContext(sparkSession, namespace, version, "READ", metadataJson, metadataSignature);
         return sparkSession.sqlContext();
     }
@@ -182,6 +178,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         DataAccessClient dataAccessClient = new DataAccessClient(sparkSession.sparkContext().getConf());
         if ("READ".equals(operation)) {
 
+            log.debug("Getting read access token");
+            System.out.println("Getting read access token");
             ReadAccessTokenResponse readAccessTokenResponse = dataAccessClient.readAccessToken(ReadAccessTokenRequest.newBuilder()
                     .setPath(namespace)
                     .setVersion(version)
@@ -192,6 +190,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } else if ("WRITE".equals(operation)) {
 
             byte[] datasetMetaSignatureBytes = Base64.getDecoder().decode(metadataSignature);
+            log.debug("Getting write access token");
+            System.out.println("Getting write access token");
             WriteAccessTokenResponse writeAccessTokenResponse = dataAccessClient.writeAccessToken(WriteAccessTokenRequest.newBuilder()
                     .setMetadataJson(ByteString.copyFromUtf8(metadataJson))
                     .setMetadataSignature(ByteString.copyFrom(datasetMetaSignatureBytes))
