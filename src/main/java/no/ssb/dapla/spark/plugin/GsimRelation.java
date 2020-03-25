@@ -1,6 +1,5 @@
 package no.ssb.dapla.spark.plugin;
 
-import org.apache.spark.SparkContext;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
@@ -24,7 +23,6 @@ import org.apache.spark.sql.sources.StringEndsWith;
 import org.apache.spark.sql.sources.StringStartsWith;
 import org.apache.spark.sql.sources.TableScan;
 import org.apache.spark.sql.types.StructType;
-import scala.Option;
 
 import java.util.Optional;
 import java.util.stream.Stream;
