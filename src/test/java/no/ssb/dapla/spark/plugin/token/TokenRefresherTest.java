@@ -87,12 +87,12 @@ public class TokenRefresherTest {
 
         // Fake access token
         String accessToken = JWT.create()
-                .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.SECONDS)))
+                .withExpiresAt(Date.from(Instant.now().plus(5, ChronoUnit.SECONDS)))
                 .sign(Algorithm.HMAC256("secret"));
 
         // Fake refresh token
         String refreshToken = JWT.create()
-                .withExpiresAt(Date.from(Instant.now().plus(2, ChronoUnit.SECONDS)))
+                .withExpiresAt(Date.from(Instant.now().plus(5, ChronoUnit.SECONDS)))
                 .sign(Algorithm.HMAC256("secret"));
 
         // Set the first token.
@@ -104,7 +104,7 @@ public class TokenRefresherTest {
 
         // Wait for the token to refresh.
         // TODO: Rewrite, this will fail sometimes.
-        Thread.sleep(TimeUnit.MILLISECONDS.convert(1, TimeUnit.SECONDS));
+        Thread.sleep(TimeUnit.MILLISECONDS.convert(5, TimeUnit.SECONDS));
 
         assertThatThrownBy(refresher::getAccessToken);
 
@@ -114,7 +114,7 @@ public class TokenRefresherTest {
     public void testRefreshHappens() throws InterruptedException, JsonProcessingException {
         SparkConfStore store = new SparkConfStore(new SparkConf());
 
-        Instant now = Instant.now().plus(1, ChronoUnit.SECONDS);
+        Instant now = Instant.now().plus(2, ChronoUnit.SECONDS);
 
         // Fake access token
         String accessToken = JWT.create()
@@ -130,7 +130,7 @@ public class TokenRefresherTest {
         store.putAccessToken(accessToken);
         store.putRefreshToken(refreshToken);
 
-        now = now.plus(1, ChronoUnit.SECONDS);
+        now = now.plus(2, ChronoUnit.SECONDS);
         // Fake access token
         String newAccessToken = JWT.create()
                 .withExpiresAt(Date.from(now))
@@ -138,7 +138,7 @@ public class TokenRefresherTest {
 
         // Fake refresh token
         String newRefreshToken = JWT.create()
-                .withExpiresAt(Date.from(now.plus(1, ChronoUnit.HOURS)))
+                .withExpiresAt(Date.from(now))
                 .sign(Algorithm.HMAC256("secret"));
 
         ObjectNode response = mapper.createObjectNode();
@@ -152,7 +152,7 @@ public class TokenRefresherTest {
         refresher.setTokenStore(store);
 
         // Wait for the token to refresh.
-        Thread.sleep(TimeUnit.MILLISECONDS.convert(1, TimeUnit.SECONDS));
+        Thread.sleep(TimeUnit.MILLISECONDS.convert(5, TimeUnit.SECONDS));
 
         assertThat(refresher.getAccessToken()).isEqualTo(newAccessToken);
         assertThat(store.getAccessToken()).isEqualTo(newAccessToken);
