@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Executors;
@@ -24,6 +26,7 @@ public class TokenRefresher implements Runnable {
 
     private static final Logger log = LoggerFactory.getLogger(TokenRefresher.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Integer REFRESH_RUSH_SECONDS = 10;
 
     private static final String CLIENT_ID = "client_id";
     private static final String CLIENT_SECRET = "client_secret";
@@ -68,9 +71,16 @@ public class TokenRefresher implements Runnable {
         String token = tokenStore.getAccessToken();
         Instant expiresAt = JWT.decode(token).getExpiresAt().toInstant();
         Duration timeBeforeExpiration = Duration.between(Instant.now(), expiresAt);
+
         if (timeBeforeExpiration.isNegative()) {
             throw new IllegalArgumentException("expiration was in the past: " + expiresAt);
         }
+
+        // Account for network delays etc.
+        if (!timeBeforeExpiration.minus(REFRESH_RUSH_SECONDS, ChronoUnit.SECONDS).isNegative()) {
+            timeBeforeExpiration = timeBeforeExpiration.minus(REFRESH_RUSH_SECONDS, ChronoUnit.SECONDS);
+        }
+
         log.info("Scheduling token refresh in {}", timeBeforeExpiration);
         nextUpdate = scheduler.schedule(this, timeBeforeExpiration.getSeconds(), TimeUnit.SECONDS);
     }
