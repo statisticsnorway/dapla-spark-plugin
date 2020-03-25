@@ -49,16 +49,16 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     //  https://issues.apache.org/jira/browse/SPARK-24918
     //  https://spark.apache.org/docs/2.4.5/api/java/org/apache/spark/scheduler/SparkListener.html
     public static synchronized Optional<OAuth2Interceptor> getOAuth2Interceptor(final SparkConf conf) {
-        if (conf != null) {
-            return Optional.of(createOAuth2Interceptor(conf));
-        } else {
-            return Optional.of(interceptor);
+        // Can happen if the static block fails.
+        if (interceptor == null) {
+            interceptor = createOAuth2Interceptor(conf);
         }
+        return Optional.ofNullable(interceptor);
     }
 
     public static OAuth2Interceptor createOAuth2Interceptor(final SparkConf conf) {
         if (!conf.contains(CONFIG_ROUTER_OAUTH_TOKEN_URL)) {
-            throw new IllegalArgumentException(String.format("Missing configuration: %s", CONFIG_ROUTER_OAUTH_TOKEN_URL));
+            return null;
         }
         String credentialFile = conf.get(CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE, "");
         if (credentialFile.isEmpty()) {
