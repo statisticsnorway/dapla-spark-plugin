@@ -14,13 +14,6 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Objects;
-import java.util.Optional;
-
-import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_ID;
-import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_SECRET;
-import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE;
-import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_TOKEN_IGNORE_EXPIRY;
-import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_TOKEN_URL;
 
 /**
  * OAuth 2 interceptor that ensures that a user token exists in spark session.
@@ -31,8 +24,6 @@ public class OAuth2Interceptor implements Interceptor {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final boolean ignoreExpiry;
-    private final SparkConf conf;
     private final TokenRefresher tokenRefresher;
 
     private static String extractClientSecret(String credentialsFile) {
@@ -45,7 +36,7 @@ public class OAuth2Interceptor implements Interceptor {
         }
     }
 
-    private static String extractClientIt(String credentialsFile) {
+    private static String extractClientId(String credentialsFile) {
         try {
             JsonNode credentialsJson = MAPPER.readTree(Paths.get(credentialsFile).toFile());
             return Objects.requireNonNull(credentialsJson.get("client_id"),
@@ -57,20 +48,15 @@ public class OAuth2Interceptor implements Interceptor {
 
     // Used in tests. This constructor skips token url validation.
     OAuth2Interceptor(HttpUrl tokenUrl, String clientId, String clientSecret, boolean ignoreExpiry, SparkConf conf) {
-
         // TODO: Move all the way down to the refresher.
         tokenRefresher = new TokenRefresher(tokenUrl);
         tokenRefresher.setTokenStore(new SparkConfStore(conf));
         tokenRefresher.setClientId(clientId);
         tokenRefresher.setClientSecret(clientSecret);
-
-        // TODO: Find where this is used.
-        this.ignoreExpiry = ignoreExpiry;
-        this.conf = conf;
     }
 
     public OAuth2Interceptor(String tokenUrl, String credentialsFile, boolean ignoreExpiry, SparkConf conf) {
-        this(tokenUrl, extractClientIt(credentialsFile), extractClientSecret(credentialsFile), ignoreExpiry, conf);
+        this(tokenUrl, extractClientId(credentialsFile), extractClientSecret(credentialsFile), ignoreExpiry, conf);
     }
 
     public OAuth2Interceptor(String tokenUrl, String clientId, String clientSecret, boolean ignoreExpiry, SparkConf conf) {
