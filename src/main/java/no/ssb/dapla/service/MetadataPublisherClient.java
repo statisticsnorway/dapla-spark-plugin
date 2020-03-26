@@ -1,5 +1,8 @@
 package no.ssb.dapla.service;
 
+import io.opentracing.Span;
+import io.opentracing.contrib.okhttp3.TracingInterceptor;
+import io.opentracing.util.GlobalTracer;
 import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.metadata.distributor.protobuf.DataChangedRequest;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
@@ -27,11 +30,12 @@ public class MetadataPublisherClient {
     private final String baseURL;
     private final String projectId;
     private final String topicName;
+    private final Span span;
 
-    public MetadataPublisherClient(final SparkConf conf) {
+    public MetadataPublisherClient(final SparkConf conf, Span span) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
         OAuth2Interceptor.createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
-        this.client = builder.build();
+        this.client = TracingInterceptor.addTracing(builder, GlobalTracer.get());
         String url = conf.get(CONFIG_METADATA_PUBLISHER_URL);
         if (!url.endsWith("/")) {
             this.baseURL = url + "/";
@@ -40,6 +44,7 @@ public class MetadataPublisherClient {
         }
         this.projectId = conf.get(CONFIG_METADATA_PUBLISHER_PROJECT_ID);
         this.topicName = conf.get(CONFIG_METADATA_PUBLISHER_TOPIC_NAME);
+        this.span = span;
     }
 
     private String buildUrl(String format, Object... args) {
@@ -57,6 +62,7 @@ public class MetadataPublisherClient {
                 .build();
 
         String body = ProtobufJsonUtils.toString(dataChangedRequest);
+        span.log("DataChangedRequest" + body);
 
         Request request = new Request.Builder()
                 .url(buildUrl("rpc/MetadataDistributorService/dataChanged"))

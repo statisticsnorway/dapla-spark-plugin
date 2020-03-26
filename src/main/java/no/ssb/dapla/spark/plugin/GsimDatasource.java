@@ -2,7 +2,10 @@ package no.ssb.dapla.spark.plugin;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
+import io.opentracing.Span;
+import io.opentracing.util.GlobalTracer;
 import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
 import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
@@ -23,7 +26,6 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.RuntimeConfig;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.SparkSession;
@@ -35,6 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.immutable.Map;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Optional;
@@ -47,91 +51,98 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
-        log.info("CreateRelation via read {}", parameters);
-        SparkOptions options = new SparkOptions(parameters);
-        final String localPath = options.getPath();
-        System.out.println("Leser datasett fra: " + localPath);
+        Span span = getSpan(sqlContext, "spark-read");
+        try {
+            span.log("CreateRelation via read ");
+            SparkOptions options = new SparkOptions(parameters);
+            final String localPath = options.getPath();
+            span.setTag("namespace", localPath);
+            System.out.println("Leser datasett fra: " + localPath);
 
-        String accessToken = sqlContext.sparkContext().getConf().get(DaplaSparkConfig.SPARK_SSB_ACCESS_TOKEN);
-        DecodedJWT decodedJWT = JWT.decode(accessToken);
-        String userId = decodedJWT.getClaim("preferred_username").asString();
+            DataAccessClient dataAccessClient = new DataAccessClient(sqlContext.sparkContext().getConf(), span);
 
-        DataAccessClient dataAccessClient = new DataAccessClient(sqlContext.sparkContext().getConf());
+            ReadLocationResponse locationResponse = dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
+                    .setPath(localPath)
+                    .setSnapshot(0) // 0 means latest
+                    .build());
 
-        ReadLocationResponse locationResponse = dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
-                .setPath(localPath)
-                .setSnapshot(0) // 0 means latest
-                .build());
+            if (!locationResponse.getAccessAllowed()) {
+                span.log("User got permission denied");
+                throw new RuntimeException("Permission denied");
+            }
 
-        if (!locationResponse.getAccessAllowed()) {
-            throw new RuntimeException("Permission denied");
+            String uriString = DatasetUri.of(locationResponse.getParentUri(), localPath, locationResponse.getVersion()).toString();
+
+            span.log("Path to dataset: " + uriString);
+            System.out.println("Path til dataset: " + uriString);
+            SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, locationResponse.getVersion(), null, null, span);
+            return new GsimRelation(isolatedSqlContext, uriString);
+        } catch (Exception e) {
+            logError(span, e);
+            throw e;
+        } finally {
+            span.finish();
         }
-
-        String uriString = DatasetUri.of(locationResponse.getParentUri(), localPath, locationResponse.getVersion()).toString();
-
-        System.out.println("Path til dataset: " + uriString);
-        SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, locationResponse.getVersion(), null, null);
-        return new GsimRelation(isolatedSqlContext, uriString);
     }
 
     @Override
     public BaseRelation createRelation(SQLContext sqlContext, SaveMode mode, Map<String, String> parameters, Dataset<Row> data) {
-        log.info("CreateRelation via write {}", parameters);
-        SparkOptions options = new SparkOptions(parameters);
-        final String localPath = options.getPath();
-
-        SparkContext sparkContext = sqlContext.sparkContext();
-        SparkConf conf = sparkContext.getConf();
-
-        String accessToken = sqlContext.sparkContext().getConf().get(DaplaSparkConfig.SPARK_SSB_ACCESS_TOKEN);
-        DecodedJWT decodedJWT = JWT.decode(accessToken);
-        String userId = decodedJWT.getClaim("preferred_username").asString();
-
-        DataAccessClient dataAccessClient = new DataAccessClient(conf);
-
-        long version = Optional.of(options)
-                .map(SparkOptions::getVersion)
-                .filter(s -> !s.isEmpty())
-                .map(Long::valueOf)
-                .orElse(System.currentTimeMillis());
-
-        if (options.getValuation() == null) {
-            throw new RuntimeException("valuation is missing in options");
-        }
-        DatasetMeta.Valuation valuation = DatasetMeta.Valuation.valueOf(options.getValuation());
-        if (options.getState() == null) {
-            throw new RuntimeException("state is missing in options");
-        }
-        DatasetMeta.DatasetState state = DatasetMeta.DatasetState.valueOf(options.getState());
-
-        WriteLocationResponse writeLocationResponse = dataAccessClient.writeLocation(WriteLocationRequest.newBuilder()
-                .setMetadataJson(ProtobufJsonUtils.toString(DatasetMeta.newBuilder()
-                        .setId(DatasetId.newBuilder()
-                                .setPath(localPath)
-                                .setVersion(version)
-                                .build())
-                        .setType(DatasetMeta.Type.BOUNDED)
-                        .setValuation(valuation)
-                        .setState(state)
-                        .build()))
-                .build());
-
-        if (!writeLocationResponse.getAccessAllowed()) {
-            throw new RuntimeException("Permission denied");
-        }
-
+        Span span = getSpan(sqlContext, "spark-write");
         try {
+            span.log("CreateRelation via write");
+            SparkOptions options = new SparkOptions(parameters);
+            final String localPath = options.getPath();
+            span.setTag("namespace", localPath);
+            span.setTag("valuation", options.getValuation());
+            span.setTag("state", options.getState());
+
+            SparkContext sparkContext = sqlContext.sparkContext();
+            SparkConf conf = sparkContext.getConf();
+
+            DataAccessClient dataAccessClient = new DataAccessClient(conf, span);
+
+            long version = Optional.of(options)
+                    .map(SparkOptions::getVersion)
+                    .filter(s -> !s.isEmpty())
+                    .map(Long::valueOf)
+                    .orElse(System.currentTimeMillis());
+
+            if (options.getValuation() == null) {
+                throw new RuntimeException("valuation is missing in options");
+            }
+            DatasetMeta.Valuation valuation = DatasetMeta.Valuation.valueOf(options.getValuation());
+            if (options.getState() == null) {
+                throw new RuntimeException("state is missing in options");
+            }
+            DatasetMeta.DatasetState state = DatasetMeta.DatasetState.valueOf(options.getState());
+
+            WriteLocationResponse writeLocationResponse = dataAccessClient.writeLocation(WriteLocationRequest.newBuilder()
+                    .setMetadataJson(ProtobufJsonUtils.toString(DatasetMeta.newBuilder()
+                            .setId(DatasetId.newBuilder()
+                                    .setPath(localPath)
+                                    .setVersion(version)
+                                    .build())
+                            .setType(DatasetMeta.Type.BOUNDED)
+                            .setValuation(valuation)
+                            .setState(state)
+                            .build()))
+                    .build());
+
+            if (!writeLocationResponse.getAccessAllowed()) {
+                throw new RuntimeException("Permission denied");
+            }
+
             String metadataJson = writeLocationResponse.getValidMetadataJson().toStringUtf8();
 
             DatasetMeta datasetMeta = ProtobufJsonUtils.toPojo(metadataJson, DatasetMeta.class);
             DatasetUri pathToNewDataSet = DatasetUri.of(datasetMeta.getParentUri(), datasetMeta.getId().getPath(), datasetMeta.getId().getVersion());
 
-            log.info("writing file(s) to: {}", pathToNewDataSet);
+            span.log("writing file(s) to: " + pathToNewDataSet);
             System.out.println("Skriver datasett til: " + pathToNewDataSet);
             SparkSession sparkSession = sqlContext.sparkSession();
             String metadataSignatureBase64 = new String(Base64.getEncoder().encode(writeLocationResponse.getMetadataSignature().toByteArray()), StandardCharsets.UTF_8);
-            setUserContext(sparkSession, pathToNewDataSet.getPath(), pathToNewDataSet.getVersion(), "WRITE", metadataJson, metadataSignatureBase64);
-            MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf);
+            setUserContext(sparkSession, pathToNewDataSet.getPath(), pathToNewDataSet.getVersion(), "WRITE", metadataJson, metadataSignatureBase64, span);
+            MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf, span);
 
             // Write metadata file
             MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeMetadataFile(datasetMeta, writeLocationResponse.getValidMetadataJson());
@@ -148,10 +159,34 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
             return new GsimRelation(sqlContext, pathToNewDataSet.toString(), data.schema());
 
+        } catch (Exception e) {
+            logError(span, e);
+            throw e;
         } finally {
             unsetUserContext(sqlContext.sparkSession());
+            span.finish();
         }
     }
+
+    private Span getSpan(SQLContext sqlContext, String operationName) {
+        TracerFactory.createTracer(sqlContext.sparkContext().getConf()).ifPresent(GlobalTracer::registerIfAbsent);
+        Span span = GlobalTracer.get().buildSpan(operationName).start();
+        GlobalTracer.get().activateSpan(span);
+        String accessToken = sqlContext.sparkContext().getConf().get(DaplaSparkConfig.SPARK_SSB_ACCESS_TOKEN);
+        DecodedJWT decodedJWT = JWT.decode(accessToken);
+        String userId = decodedJWT.getClaim("preferred_username").asString();
+        span.setTag("user", userId);
+        span.setTag("spark-job-id", sqlContext.sparkContext().getLocalProperty("spark.jobGroup.id"));
+        return span;
+    }
+
+    private static void logError(Span span, Throwable e) {
+        StringWriter stringWriter = new StringWriter();
+        e.printStackTrace(new PrintWriter(stringWriter));
+        span.log(new ImmutableMap.Builder().put("event", "error")
+                .put("message", e.getMessage()).put("stacktrace", stringWriter.toString()).build());
+    }
+
 
     /**
      * Creates a new SQLContext with an isolated spark session.
@@ -160,22 +195,24 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
      * @param namespace  namespace info that will be added to the isolated context
      * @return the new SQLContext
      */
-    private SQLContext isolatedContext(SQLContext sqlContext, String namespace, String version, String metadataJson, String metadataSignature) {
+    private SQLContext isolatedContext(SQLContext sqlContext, String namespace, String version,
+                                       String metadataJson, String metadataSignature, Span span) {
         // Temporary enable file system cache during execution. This aviods re-creating the GoogleHadoopFileSystem
         // during multiple job executions within the spark session.
         // For this to work, we must create an isolated configuration inside a new spark session
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
-        setUserContext(sparkSession, namespace, version, "READ", metadataJson, metadataSignature);
+        setUserContext(sparkSession, namespace, version, "READ", metadataJson, metadataSignature, span);
         return sparkSession.sqlContext();
     }
 
-    private void setUserContext(SparkSession sparkSession, String namespace, String version, String operation, String metadataJson, String metadataSignature) {
+    private void setUserContext(SparkSession sparkSession, String namespace, String version, String operation,
+                                String metadataJson, String metadataSignature, Span span) {
         if (sparkSession.conf().contains(SparkOptions.ACCESS_TOKEN)) {
             System.out.println("Access token already exists");
         }
 
-        DataAccessClient dataAccessClient = new DataAccessClient(sparkSession.sparkContext().getConf());
+        DataAccessClient dataAccessClient = new DataAccessClient(sparkSession.sparkContext().getConf(), span);
         if ("READ".equals(operation)) {
 
             log.debug("Getting read access token");

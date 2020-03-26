@@ -63,6 +63,10 @@
           "value": "$DAPLA_SPARK_OAUTH_TOKEN_URL",
           "type": "string"
         },
+        "spark.ssb.dapla.oauth.tracingUrl": {
+          "value": "$DAPLA_SPARK_OAUTH_TRACING_URL",
+          "type": "string"
+        },
         "spark.ssb.dapla.oauth.clientId": {
           "value": "$DAPLA_SPARK_OAUTH_CLIENT_ID",
           "type": "string"
