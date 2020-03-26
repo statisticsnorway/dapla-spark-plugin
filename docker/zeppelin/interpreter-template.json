@@ -47,6 +47,11 @@
           "value": "true",
           "type": "string"
         },
+        "zeppelin.pyspark.python": {
+          "name": "zeppelin.pyspark.python",
+          "value": "$PYSPARK_PYTHON",
+          "type": "string"
+        },
         "spark.ssb.dapla.data.access.url": {
           "value": "$DAPLA_SPARK_DATA_ACCESS_URL",
           "type": "string"
@@ -78,6 +83,26 @@
         "spark.dynamicAllocation.enabled": {
           "value": "$SPARK_DYNAMICALLOCATION_ENABLED",
           "type": "checkbox"
+        },
+        "spark.driver.memory": {
+          "value": "$SPARK_DRIVER_MEMORY",
+          "type": "string"
+        },
+        "spark.executor.memory": {
+          "value": "$SPARK_EXECUTOR_MEMORY",
+          "type": "string"
+        },
+        "spark.dynamicAllocation.maxExecutors": {
+          "value": "$SPARK_DYNAMICALLOCATION_MAXEXECUTORS",
+          "type": "number"
+        },
+        "spark.dynamicAllocation.minExecutors": {
+          "value": "$SPARK_DYNAMICALLOCATION_MINEXECUTORS",
+          "type": "number"
+        },
+        "spark.dynamicAllocation.executorAllocationRatio": {
+          "value": "$SPARK_DYNAMICALLOCATION_EXECUTORALLOCATIONRATIO",
+          "type": "number"
         },
         "spark.shuffle.service.enabled": {
           "value": "$SPARK_SHUFFLE_SERVICE_ENABLED",
