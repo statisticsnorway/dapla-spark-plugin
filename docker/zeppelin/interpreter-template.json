@@ -47,6 +47,11 @@
           "value": "true",
           "type": "string"
         },
+        "zeppelin.pyspark.python": {
+          "name": "zeppelin.pyspark.python",
+          "value": "$PYSPARK_PYTHON",
+          "type": "string"
+        },
         "spark.ssb.dapla.data.access.url": {
           "value": "$DAPLA_SPARK_DATA_ACCESS_URL",
           "type": "string"
