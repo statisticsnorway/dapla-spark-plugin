@@ -233,7 +233,6 @@ public class GsimDatasourceGCSTest {
             RecordedRequest recordedRequest = server.takeRequest();
             final ReadLocationRequest readLocationRequest = ProtobufJsonUtils.toPojo(
                     recordedRequest.getBody().readByteString().utf8(), ReadLocationRequest.class);
-            assertThat(recordedRequest.getHeader("Authorization")).isEqualTo("Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJvN3BfZU5GT0RWdGlzSmZ1MlE1WnBnaVRGd1ZUUlBWRktFZjFWSlFiUEpZIn0.eyJqdGkiOiI2NTAxZDIxMC03YzVhLTQyMzktYmU3Yi1jOTg3MDE3YTBmMzkiLCJleHAiOjE1ODMzOTMwNTMsIm5iZiI6MCwiaWF0IjoxNTgzMzkyNzUzLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjI4MDgxL2F1dGgvcmVhbG1zL3NzYiIsImF1ZCI6ImFjY291bnQiLCJzdWIiOiI5NGRjNWI2MS0xNDM0LTRjYjItYWI1NC1mNTU0NmNmNTY2MWUiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJ6ZXBwZWxpbiIsIm5vbmNlIjoiM050NjBJNkpuTzhTWngwdWhTR2d4OHZncEw0Q1BFSW9kNzFHMzhhaDdoWSIsImF1dGhfdGltZSI6MTU4MzM5Mjc1Mywic2Vzc2lvbl9zdGF0ZSI6ImIzYzkxNjNiLTIxNDUtNGY0NS04OTRmLTY3OTEwOTY0OGU0NiIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiaHR0cDovL2xvY2FsaG9zdDoyODAxMCJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJLaW0iLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJraW0iLCJnaXZlbl9uYW1lIjoiS2ltIiwiZW1haWwiOiJkYXBsYS1raW1Ac3NiLm5vIn0.fQZGvvjCsvipcp5MLZTDCu4qseraVxW2PMIwfCpi7aEiCRP3NLsnumKshyrzYrq4lNw0hACGnRd9__aEBG7cgF8QFi2r8me3eG3Q3syxd_UEmxDYwSnSTeune745R2mBIIKWq5fpd9ZYUSnUyEzGhvvyGYWn84LDZphUTrryok-yRRfb-XzhpYTCizYesOtpa2WMwh_b1qtVo1nd3rC2MFR1rl7RvkokNAcB6clRs23AbPPYJvDnXZjmKujbWdzDuWJOnVX0OYzExoe7zUGm693P9EF9JceOI1PhiURiKStVxlYqhNPo8BwR6TxkcJ2BF5I3XeXYd3nvpwFEjzNTLw");
             assertThat(readLocationRequest.getPath()).isEqualTo("test/dapla/namespace");
             assertThat(readLocationRequest.getSnapshot()).isEqualTo(0L);
         }
@@ -241,7 +240,6 @@ public class GsimDatasourceGCSTest {
             RecordedRequest recordedRequest = server.takeRequest();
             final ReadAccessTokenRequest readAccessTokenRequest = ProtobufJsonUtils.toPojo(
                     recordedRequest.getBody().readByteString().utf8(), ReadAccessTokenRequest.class);
-            assertThat(recordedRequest.getHeader("Authorization")).isEqualTo("Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJvN3BfZU5GT0RWdGlzSmZ1MlE1WnBnaVRGd1ZUUlBWRktFZjFWSlFiUEpZIn0.eyJqdGkiOiI2NTAxZDIxMC03YzVhLTQyMzktYmU3Yi1jOTg3MDE3YTBmMzkiLCJleHAiOjE1ODMzOTMwNTMsIm5iZiI6MCwiaWF0IjoxNTgzMzkyNzUzLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjI4MDgxL2F1dGgvcmVhbG1zL3NzYiIsImF1ZCI6ImFjY291bnQiLCJzdWIiOiI5NGRjNWI2MS0xNDM0LTRjYjItYWI1NC1mNTU0NmNmNTY2MWUiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJ6ZXBwZWxpbiIsIm5vbmNlIjoiM050NjBJNkpuTzhTWngwdWhTR2d4OHZncEw0Q1BFSW9kNzFHMzhhaDdoWSIsImF1dGhfdGltZSI6MTU4MzM5Mjc1Mywic2Vzc2lvbl9zdGF0ZSI6ImIzYzkxNjNiLTIxNDUtNGY0NS04OTRmLTY3OTEwOTY0OGU0NiIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiaHR0cDovL2xvY2FsaG9zdDoyODAxMCJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJLaW0iLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJraW0iLCJnaXZlbl9uYW1lIjoiS2ltIiwiZW1haWwiOiJkYXBsYS1raW1Ac3NiLm5vIn0.fQZGvvjCsvipcp5MLZTDCu4qseraVxW2PMIwfCpi7aEiCRP3NLsnumKshyrzYrq4lNw0hACGnRd9__aEBG7cgF8QFi2r8me3eG3Q3syxd_UEmxDYwSnSTeune745R2mBIIKWq5fpd9ZYUSnUyEzGhvvyGYWn84LDZphUTrryok-yRRfb-XzhpYTCizYesOtpa2WMwh_b1qtVo1nd3rC2MFR1rl7RvkokNAcB6clRs23AbPPYJvDnXZjmKujbWdzDuWJOnVX0OYzExoe7zUGm693P9EF9JceOI1PhiURiKStVxlYqhNPo8BwR6TxkcJ2BF5I3XeXYd3nvpwFEjzNTLw");
             assertThat(readAccessTokenRequest.getPath()).isEqualTo("test/dapla/namespace");
             assertThat(readAccessTokenRequest.getVersion()).isEqualTo(String.valueOf(version));
         }
@@ -255,7 +253,7 @@ public class GsimDatasourceGCSTest {
     @Ignore("Fails from Maven")
     public void testUnauthorizedReadShouldFail() {
         server.enqueue(new MockResponse().setResponseCode(403));
-        thrown.expectMessage("Din bruker dapla_test har ikke tilgang til test/dapla/namespace");
+        thrown.expectMessage("Din bruker har ikke tilgang");
         sqlContext.read()
                 .format("gsim")
                 .load("test/dapla/namespace");
