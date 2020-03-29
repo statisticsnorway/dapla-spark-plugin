@@ -59,7 +59,7 @@ public class TokenRefresher implements Runnable {
             exception = e;
             log.error("Could not refresh token", e);
         } finally {
-            scheduler.schedule(this::scheduleNextRefresh, 0, TimeUnit.SECONDS);
+            scheduleNextRefresh();
         }
     }
 
