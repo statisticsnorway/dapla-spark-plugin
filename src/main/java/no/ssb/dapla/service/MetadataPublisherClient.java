@@ -7,6 +7,8 @@ import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.metadata.distributor.protobuf.DataChangedRequest;
 import no.ssb.dapla.spark.plugin.GsimDatasource;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
+import no.ssb.dapla.spark.plugin.token.SparkConfStore;
+import no.ssb.dapla.spark.plugin.token.TokenRefresher;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -35,7 +37,15 @@ public class MetadataPublisherClient {
 
     public MetadataPublisherClient(final SparkConf conf, Span span) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        GsimDatasource.getOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
+
+        SparkConfStore store;
+        if (conf != null) {
+            store = new SparkConfStore(conf);
+        } else {
+            store = SparkConfStore.get();
+        }
+        builder.addInterceptor(new OAuth2Interceptor(new TokenRefresher(store)));
+
         this.client = TracingInterceptor.addTracing(builder, GlobalTracer.get());
         String url = conf.get(CONFIG_METADATA_PUBLISHER_URL);
         if (!url.endsWith("/")) {

@@ -6,7 +6,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -16,10 +15,11 @@ import org.junit.Test;
 
 import java.nio.charset.Charset;
 import java.sql.Date;
+import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Semaphore;
 
+import static java.time.temporal.ChronoUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -28,38 +28,18 @@ public class TokenRefresherTest {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private MockWebServer server;
-    private HttpUrl keycloakUrl;
+    private TokenGeneratorStore store;
 
     @Before
     public void setUp() throws Exception {
+        store = new TokenGeneratorStore(new SparkConf());
         server = new MockWebServer();
         server.start();
-        keycloakUrl = server.url("/keycloak");
+        store.setTokenUrl(server.url("/keycloak"));
     }
 
     @Test
     public void testSettingClientCredentials() throws InterruptedException, JsonProcessingException {
-        SparkConfStore store = new SparkConfStore(new SparkConf());
-        TokenRefresher refresher = new TokenRefresher(keycloakUrl);
-
-        refresher.setClientId("client-id");
-        refresher.setClientSecret("client-secret");
-
-        // Fake access token
-        String accessToken = JWT.create()
-                .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.SECONDS)))
-                .sign(Algorithm.HMAC256("secret"));
-
-        // Fake refresh token
-        String refreshToken = JWT.create()
-                .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.SECONDS)))
-                .sign(Algorithm.HMAC256("secret"));
-
-        // Set the first token.
-        store.putAccessToken(accessToken);
-        store.putRefreshToken(refreshToken);
-
-        refresher.setTokenStore(store);
 
         ObjectNode response = mapper.createObjectNode();
         response.put("access_token", "access-token");
@@ -67,8 +47,15 @@ public class TokenRefresherTest {
 
         server.enqueue(new MockResponse().setBody(mapper.writeValueAsString(response)));
 
+        store.setDelay(Duration.of(1, SECONDS));
+        store.setClientId("client-id");
+        store.setClientSecret("client-secret");
+
+        new TokenRefresher(store);
+
         // Wait for the token to refresh.
-        Thread.sleep(TimeUnit.MILLISECONDS.convert(1, TimeUnit.SECONDS));
+        store.awaitAccessToken();
+        store.awaitRefreshToken();
 
         RecordedRequest recordedRequest = server.takeRequest();
         String body = recordedRequest.getBody().readString(Charset.defaultCharset());
@@ -81,82 +68,94 @@ public class TokenRefresherTest {
     }
 
     @Test
-    public void testExceptionIsPropagated() throws InterruptedException, JsonProcessingException {
-        SparkConfStore store = new SparkConfStore(new SparkConf());
-        TokenRefresher refresher = new TokenRefresher(keycloakUrl);
-
-        // Fake access token
-        String accessToken = JWT.create()
-                .withExpiresAt(Date.from(Instant.now().plus(5, ChronoUnit.SECONDS)))
-                .sign(Algorithm.HMAC256("secret"));
-
-        // Fake refresh token
-        String refreshToken = JWT.create()
-                .withExpiresAt(Date.from(Instant.now().plus(5, ChronoUnit.SECONDS)))
-                .sign(Algorithm.HMAC256("secret"));
-
-        // Set the first token.
-        store.putAccessToken(accessToken);
-        store.putRefreshToken(refreshToken);
-
+    public void testExceptionIsPropagated() throws InterruptedException {
         server.enqueue(new MockResponse().setResponseCode(500));
-        refresher.setTokenStore(store);
 
-        // Wait for the token to refresh.
-        // TODO: Rewrite, this will fail sometimes.
-        Thread.sleep(TimeUnit.MILLISECONDS.convert(5, TimeUnit.SECONDS));
+        store.setDelay(Duration.of(1, SECONDS));
+        TokenRefresher refresher = new TokenRefresher(store);
 
-        assertThatThrownBy(refresher::getAccessToken);
+        // Harder to use semaphore here.
+        Thread.sleep(1500);
 
+        assertThatThrownBy(refresher::get);
     }
 
     @Test
     public void testRefreshHappens() throws InterruptedException, JsonProcessingException {
-        SparkConfStore store = new SparkConfStore(new SparkConf());
-
-        Instant now = Instant.now().plus(2, ChronoUnit.SECONDS);
-
-        // Fake access token
-        String accessToken = JWT.create()
-                .withExpiresAt(Date.from(now))
-                .sign(Algorithm.HMAC256("secret"));
-
-        // Fake refresh token
-        String refreshToken = JWT.create()
-                .withExpiresAt(Date.from(now))
-                .sign(Algorithm.HMAC256("secret"));
-
-        // Set the first token.
-        store.putAccessToken(accessToken);
-        store.putRefreshToken(refreshToken);
-
-        now = now.plus(2, ChronoUnit.SECONDS);
-        // Fake access token
-        String newAccessToken = JWT.create()
-                .withExpiresAt(Date.from(now))
-                .sign(Algorithm.HMAC256("secret"));
-
-        // Fake refresh token
-        String newRefreshToken = JWT.create()
-                .withExpiresAt(Date.from(now))
-                .sign(Algorithm.HMAC256("secret"));
 
         ObjectNode response = mapper.createObjectNode();
-        response.put("access_token", newAccessToken);
-        response.put("refresh_token", newRefreshToken);
+        response.put("access_token", "newAccessToken");
+        response.put("refresh_token", "newRefreshToken");
 
         server.enqueue(new MockResponse().setBody(mapper.writeValueAsString(response)));
 
-
-        TokenRefresher refresher = new TokenRefresher(keycloakUrl);
-        refresher.setTokenStore(store);
+        store.setDelay(Duration.of(1, SECONDS));
+        TokenRefresher refresher = new TokenRefresher(store);
 
         // Wait for the token to refresh.
-        Thread.sleep(TimeUnit.MILLISECONDS.convert(5, TimeUnit.SECONDS));
+        store.awaitRefreshToken();
 
-        assertThat(refresher.getAccessToken()).isEqualTo(newAccessToken);
-        assertThat(store.getAccessToken()).isEqualTo(newAccessToken);
-        assertThat(store.getRefreshToken()).isEqualTo(newRefreshToken);
+        RecordedRequest recordedRequest = server.takeRequest();
+        String body = recordedRequest.getBody().readString(Charset.defaultCharset());
 
+        assertThat(body).contains(
+                "refresh_token=" + store.lastRefreshToken,
+                "grant_type=refresh_token"
+        );
+        assertThat(refresher.get()).isEqualTo(store.lastAccessToken);
+        assertThat(store.getAccessToken()).isEqualTo(store.lastAccessToken);
+        assertThat(store.getRefreshToken()).isEqualTo(store.lastRefreshToken);
+
+    }
+
+    private static class TokenGeneratorStore extends SparkConfStore {
+
+        private Duration delay;
+        private Semaphore accessSemaphore = new Semaphore(0);
+        private Semaphore refreshSemaphore = new Semaphore(0);
+        private String lastAccessToken;
+        private String lastRefreshToken;
+
+        public TokenGeneratorStore(SparkConf conf) {
+            super(conf);
+        }
+
+        public String awaitAccessToken() throws InterruptedException {
+            accessSemaphore.acquire();
+            return lastAccessToken;
+        }
+
+        public String awaitRefreshToken() throws InterruptedException {
+            refreshSemaphore.acquire();
+            return lastRefreshToken;
+        }
+
+        @Override
+        public void putAccessToken(String access) {
+            super.putAccessToken(access);
+            accessSemaphore.release();
+        }
+
+        @Override
+        public void putRefreshToken(String refresh) {
+            super.putRefreshToken(refresh);
+            refreshSemaphore.release();
+        }
+
+        @Override
+        public String getAccessToken() {
+            lastAccessToken = JWT.create().withExpiresAt(Date.from(Instant.now().plus(delay))).sign(Algorithm.HMAC256("secret"));
+            return lastAccessToken;
+        }
+
+        @Override
+        public String getRefreshToken() {
+            lastRefreshToken = JWT.create().withExpiresAt(Date.from(Instant.now().plus(delay))).sign(Algorithm.HMAC256("secret"));
+            return lastRefreshToken;
+        }
+
+        public void setDelay(Duration delay) {
+            this.delay = delay;
+        }
     }
 }

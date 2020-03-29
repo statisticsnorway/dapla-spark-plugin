@@ -21,7 +21,6 @@ import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
 import no.ssb.dapla.spark.plugin.metadata.MetaDataWriterFactory;
-import no.ssb.dapla.spark.plugin.token.TokenRefresher;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
@@ -44,60 +43,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Optional;
 
-import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.*;
-
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
     private static final String SHORT_NAME = "gsim";
 
     // TODO: Configure via spark config
     private static final Logger log = LoggerFactory.getLogger(GsimDatasource.class);
-    private static OAuth2Interceptor interceptor;
-
-    // TODO: We could do better:
-    //  https://spark.apache.org/docs/2.3.0/api/java/org/apache/spark/sql/SparkSessionExtensions.html
-    //  https://issues.apache.org/jira/browse/SPARK-24918
-    //  https://spark.apache.org/docs/2.4.5/api/java/org/apache/spark/scheduler/SparkListener.html
-    public static synchronized Optional<OAuth2Interceptor> getOAuth2Interceptor(final SparkConf conf) {
-        // Can happen if the static block fails.
-        if (interceptor == null) {
-            interceptor = createOAuth2Interceptor(conf);
-        }
-        return Optional.ofNullable(interceptor);
-    }
-
-    public static OAuth2Interceptor createOAuth2Interceptor(final SparkConf conf) {
-        if (!conf.contains(CONFIG_ROUTER_OAUTH_TOKEN_URL)) {
-            return null;
-        }
-        String credentialFile = conf.get(CONFIG_ROUTER_OAUTH_CREDENTIALS_FILE, "");
-        if (credentialFile.isEmpty()) {
-            return new OAuth2Interceptor(
-                    conf.get(CONFIG_ROUTER_OAUTH_TOKEN_URL, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_ID, null),
-                    conf.get(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, null),
-                    Boolean.parseBoolean(conf.get(CONFIG_ROUTER_OAUTH_TOKEN_IGNORE_EXPIRY, "false")),
-                    conf
-            );
-        } else {
-            return new OAuth2Interceptor(
-                    conf.get(CONFIG_ROUTER_OAUTH_TOKEN_URL, null),
-                    credentialFile,
-                    Boolean.parseBoolean(conf.get(CONFIG_ROUTER_OAUTH_TOKEN_IGNORE_EXPIRY, "false")),
-                    conf
-            );
-        }
-    }
-
-    static {
-        try {
-            SparkSession sparkSession = SparkSession.getActiveSession().get();
-            SparkContext currentContext = sparkSession.sparkContext();
-            SparkConf conf = currentContext.getConf();
-            interceptor = createOAuth2Interceptor(conf);
-        } catch (Exception ex) {
-            log.error("Could not initialize default OAuth2Interceptor", ex);
-        }
-    }
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {

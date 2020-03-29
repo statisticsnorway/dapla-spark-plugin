@@ -12,7 +12,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -21,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Class that ensures token refresh.
  */
-public class TokenRefresher implements Runnable {
+public class TokenRefresher implements Runnable, TokenSupplier {
 
     private static final Logger log = LoggerFactory.getLogger(TokenRefresher.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -33,19 +32,11 @@ public class TokenRefresher implements Runnable {
     private static final String REFRESH_TOKEN = "refresh_token";
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final TokenStore tokenStore;
     private ScheduledFuture<?> nextUpdate;
-
-    private final HttpUrl tokenUrl;
-    private String clientId;
-    private String clientSecret;
-    private TokenStore tokenStore;
     private Exception exception;
 
-    public TokenRefresher(HttpUrl tokenUrl) {
-        this.tokenUrl = Objects.requireNonNull(tokenUrl);
-    }
-
-    public void setTokenStore(TokenStore tokenStore) {
+    public TokenRefresher(TokenStore tokenStore) {
         this.tokenStore = Objects.requireNonNull(tokenStore);
         scheduleNextRefresh();
     }
@@ -90,12 +81,8 @@ public class TokenRefresher implements Runnable {
     private void refreshToken() throws IOException {
         FormBody.Builder formBodyBuilder = new FormBody.Builder();
 
-        if (clientId != null) {
-            formBodyBuilder.add(CLIENT_ID, clientId);
-        }
-        if (clientSecret != null) {
-            formBodyBuilder.add(CLIENT_SECRET, clientSecret);
-        }
+        tokenStore.getClientId().ifPresent(clientId -> formBodyBuilder.add(CLIENT_ID, clientId));
+        tokenStore.getClientSecret().ifPresent(secret -> formBodyBuilder.add(CLIENT_SECRET, secret));
 
         formBodyBuilder.add(GRANT_TYPE, REFRESH_TOKEN);
         formBodyBuilder.add(REFRESH_TOKEN, tokenStore.getRefreshToken());
@@ -103,7 +90,7 @@ public class TokenRefresher implements Runnable {
         FormBody formBody = formBodyBuilder.build();
 
         Request request = new Request.Builder()
-                .url(tokenUrl)
+                .url(tokenStore.getTokenUrl())
                 .post(formBody)
                 .build();
 
@@ -124,7 +111,8 @@ public class TokenRefresher implements Runnable {
         }
     }
 
-    public String getAccessToken() {
+    @Override
+    public String get() {
         if (exception != null) {
             Exception toThrow = exception;
             exception = null;
@@ -137,11 +125,4 @@ public class TokenRefresher implements Runnable {
         return tokenStore.getAccessToken();
     }
 
-    public void setClientId(String clientId) {
-        this.clientId = clientId;
-    }
-
-    public void setClientSecret(String clientSecret) {
-        this.clientSecret = clientSecret;
-    }
 }
