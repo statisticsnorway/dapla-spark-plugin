@@ -49,6 +49,15 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         log.info("CreateRelation via read {}", parameters);
         SparkOptions options = new SparkOptions(parameters);
+        final String path = options.getPath();
+        if (path.endsWith("*")) {
+            return new CatalogRelation(sqlContext, path.substring(0, path.indexOf("*")));
+        } else {
+            return createRelation(sqlContext, options);
+        }
+    }
+
+    private BaseRelation createRelation(final SQLContext sqlContext, SparkOptions options) {
         final String localPath = options.getPath();
         System.out.println("Leser datasett fra: " + localPath);
 
