@@ -3,6 +3,7 @@ package no.ssb.dapla.spark.plugin;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.google.protobuf.ByteString;
+import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.service.DataAccessClient;
@@ -139,6 +140,11 @@ public class GsimDatasourceLocalFSTest {
                         .setMetadataSignature(ByteString.copyFromUtf8("some-junit-signature"))
                         .build()))
                         .setResponseCode(200)
+        );
+        dataAccessMockServer.enqueue(
+                new MockResponse().setBody(ProtobufJsonUtils.toString(WriteAccessTokenResponse.newBuilder()
+                                .setAccessToken("access-token").setExpirationTime(System.currentTimeMillis()).build()))
+                .setResponseCode(200)
         );
 
         Dataset<Row> dataset = sqlContext.read()

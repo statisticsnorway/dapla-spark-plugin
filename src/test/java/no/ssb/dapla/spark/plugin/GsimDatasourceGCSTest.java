@@ -21,7 +21,7 @@ import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.gcs.connector.GoogleHadoopFileSystemExt;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
-import no.ssb.dapla.gcs.token.delegation.BrokerDelegationTokenBinding;
+import no.ssb.dapla.gcs.token.SparkAccessTokenProvider;
 import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
@@ -141,8 +141,7 @@ public class GsimDatasourceGCSTest {
                 //.config(MetadataPublisherClient.CONFIG_METADATA_PUBLISHER_URL, "http://localhost:10160/")
                 .config("spark.ssb.dapla.metadata.writer", FilesystemMetaDataWriter.class.getCanonicalName())
                 .config("spark.hadoop.fs.gs.impl", GoogleHadoopFileSystemExt.class.getCanonicalName())
-                .config("spark.hadoop.fs.gs.delegation.token.binding", BrokerDelegationTokenBinding.class.getCanonicalName())
-                //.config("spark.hadoop.fs.gs.auth.access.token.provider.impl", BrokerAccessTokenProvider.class.getCanonicalName())
+                .config("spark.hadoop.fs.gs.auth.access.token.provider.impl", SparkAccessTokenProvider.class.getCanonicalName())
                 .config("spark.ssb.dapla.metadata.publisher.project.id", "dapla")
                 .config("spark.ssb.dapla.metadata.publisher.topic.name", "file-events-1")
                 .config("spark.ssb.dapla.oauth.tokenUrl", "http://localhost:28081/auth/realms/ssb/protocol/openid-connect/token")

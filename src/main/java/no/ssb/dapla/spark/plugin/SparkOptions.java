@@ -4,12 +4,9 @@ import scala.Option;
 import scala.collection.immutable.Map;
 
 public class SparkOptions {
-    public static final String CURRENT_OPERATION = "spark.ssb.session.operation";
-    public static final String CURRENT_NAMESPACE = "spark.ssb.session.namespace";
-    public static final String CURRENT_USER = "spark.ssb.session.userId";
-    public static final String CURRENT_DATASET_VERSION = "spark.ssb.session.dataset_version";
-    public static final String CURRENT_DATASET_META_JSON = "spark.ssb.session.dataset.json";
-    public static final String CURRENT_DATASET_META_JSON_SIGNATURE = "spark.ssb.session.dataset.signature";
+    public static final String ACCESS_TOKEN = "spark.ssb.session.token";
+    public static final String ACCESS_TOKEN_EXP = "spark.ssb.session.token.exp";
+
     static final String PATH = "PATH";
     static final String VALUATION = "valuation";
     static final String STATE = "state";
