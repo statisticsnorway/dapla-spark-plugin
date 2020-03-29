@@ -1,5 +1,9 @@
 package no.ssb.dapla.service;
 
+import io.opentracing.Span;
+import io.opentracing.contrib.okhttp3.TracingInterceptor;
+import io.opentracing.noop.NoopSpan;
+import io.opentracing.util.GlobalTracer;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixRequest;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixResponse;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
@@ -24,19 +28,21 @@ public class CatalogClient {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
     private OkHttpClient client;
     private String baseURL;
+    private final Span span;
 
     public CatalogClient(final SparkConf conf) {
-        init(conf);
+        this(conf, NoopSpan.INSTANCE);
     }
 
-    public void init(final SparkConf conf) {
+    public CatalogClient(final SparkConf conf, Span span) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
         OAuth2Interceptor.createOAuth2Interceptor(conf).ifPresent(builder::addInterceptor);
-        this.client = builder.build();
+        this.client = TracingInterceptor.addTracing(builder, GlobalTracer.get());
         this.baseURL = conf.get(CONFIG_CATALOG_URL);
         if (!this.baseURL.endsWith("/")) {
             this.baseURL = this.baseURL + "/";
         }
+        this.span = span;
     }
 
     private String buildUrl(String format, Object... args) {
@@ -44,6 +50,7 @@ public class CatalogClient {
     }
 
     public ListByPrefixResponse listByPrefix(ListByPrefixRequest listByPrefixRequest) {
+        span.log("ListByPrefixRequest" + listByPrefixRequest);
         Request request = new Request.Builder()
                 .url(buildUrl("rpc/CatalogService/listByPrefix"))
                 .post(RequestBody.create(ProtobufJsonUtils.toString(listByPrefixRequest), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))

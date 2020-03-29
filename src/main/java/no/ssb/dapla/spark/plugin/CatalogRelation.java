@@ -1,5 +1,6 @@
 package no.ssb.dapla.spark.plugin;
 
+import io.opentracing.Span;
 import no.ssb.dapla.catalog.protobuf.DatasetId;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixRequest;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixResponse;
@@ -33,10 +34,10 @@ public class CatalogRelation extends BaseRelation implements TableScan {
         }
     }
 
-    public CatalogRelation(SQLContext context, String path) {
+    public CatalogRelation(SQLContext context, String path, Span span) {
         this.context = context;
         this.path = path;
-        CatalogClient catalogClient = new CatalogClient(context.sparkContext().getConf());
+        CatalogClient catalogClient = new CatalogClient(context.sparkContext().getConf(), span);
         ListByPrefixResponse response = catalogClient.listByPrefix(ListByPrefixRequest.newBuilder().setPrefix(path).build());
 
         List<CatalogItem> catalogItems = response.getEntriesList().stream().map(CatalogItem::new).collect(Collectors.toList());

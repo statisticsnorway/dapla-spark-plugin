@@ -56,6 +56,10 @@
           "value": "$DAPLA_SPARK_DATA_ACCESS_URL",
           "type": "string"
         },
+        "spark.ssb.dapla.catalog.url": {
+          "value": "$DAPLA_SPARK_CATALOG_URL",
+          "type": "string"
+        },
         "spark.ssb.dapla.oauth.credentials.file": {
           "value": "$DAPLA_SPARK_OAUTH_CREDENTIALS_FILE",
           "type": "string"
@@ -66,6 +70,10 @@
         },
         "spark.ssb.dapla.oauth.tokenUrl": {
           "value": "$DAPLA_SPARK_OAUTH_TOKEN_URL",
+          "type": "string"
+        },
+        "spark.ssb.dapla.oauth.tracingUrl": {
+          "value": "$DAPLA_SPARK_OAUTH_TRACING_URL",
           "type": "string"
         },
         "spark.ssb.dapla.oauth.clientId": {
