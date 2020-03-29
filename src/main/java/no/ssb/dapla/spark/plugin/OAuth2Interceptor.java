@@ -21,7 +21,6 @@ import java.util.Objects;
  */
 public class OAuth2Interceptor implements Interceptor {
 
-
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final TokenRefresher tokenRefresher;

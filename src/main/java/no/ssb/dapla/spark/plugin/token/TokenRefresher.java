@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Executors;
@@ -37,8 +36,8 @@ public class TokenRefresher implements Runnable {
     private ScheduledFuture<?> nextUpdate;
 
     private final HttpUrl tokenUrl;
-    private Optional<String> clientId = Optional.empty();
-    private Optional<String> clientSecret = Optional.empty();
+    private String clientId;
+    private String clientSecret;
     private TokenStore tokenStore;
     private Exception exception;
 
@@ -91,8 +90,12 @@ public class TokenRefresher implements Runnable {
     private void refreshToken() throws IOException {
         FormBody.Builder formBodyBuilder = new FormBody.Builder();
 
-        clientId.ifPresent(id -> formBodyBuilder.add(CLIENT_ID, id));
-        clientSecret.ifPresent(secret -> formBodyBuilder.add(CLIENT_SECRET, secret));
+        if (clientId != null) {
+            formBodyBuilder.add(CLIENT_ID, clientId);
+        }
+        if (clientSecret != null) {
+            formBodyBuilder.add(CLIENT_SECRET, clientSecret);
+        }
 
         formBodyBuilder.add(GRANT_TYPE, REFRESH_TOKEN);
         formBodyBuilder.add(REFRESH_TOKEN, tokenStore.getRefreshToken());
@@ -135,10 +138,10 @@ public class TokenRefresher implements Runnable {
     }
 
     public void setClientId(String clientId) {
-        this.clientId = Optional.of(clientId);
+        this.clientId = clientId;
     }
 
     public void setClientSecret(String clientSecret) {
-        this.clientSecret = Optional.of(clientSecret);
+        this.clientSecret = clientSecret;
     }
 }
