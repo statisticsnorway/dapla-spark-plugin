@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.util.concurrent.TimeUnit;
 
 public class CatalogClient {
 
@@ -37,7 +38,7 @@ public class CatalogClient {
     }
 
     public CatalogClient(final SparkConf conf, Span span) {
-        OkHttpClient.Builder builder = new OkHttpClient.Builder();
+        OkHttpClient.Builder builder = new OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS);
 
         SparkConfStore store;
         if (conf != null) {
