@@ -1,8 +1,7 @@
 package no.ssb.dapla.spark.plugin;
 
-import no.ssb.dapla.catalog.protobuf.ListByPrefixRequest;
-import no.ssb.dapla.catalog.protobuf.ListByPrefixResponse;
-import no.ssb.dapla.service.CatalogClient;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -15,6 +14,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 
 import static no.ssb.dapla.service.CatalogClient.*;
 import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.*;
@@ -42,7 +44,9 @@ public class CatalogRelationTest {
                 .config(CONFIG_ROUTER_OAUTH_CLIENT_ID, "na")
                 .config(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, "na")
                 .config(CONFIG_ROUTER_OAUTH_TOKEN_IGNORE_EXPIRY, "true")
-                .config("spark.ssb.access", "na")
+                .config("spark.ssb.access", JWT.create().withClaim("preferred_username", "john")
+                        .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.HOURS)))
+                        .sign(Algorithm.HMAC256("secret")))
                 .getOrCreate();
 
         this.sparkContext = session.sparkContext();
