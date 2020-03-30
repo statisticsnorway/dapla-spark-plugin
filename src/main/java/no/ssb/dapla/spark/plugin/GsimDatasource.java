@@ -47,7 +47,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     private static final String SHORT_NAME = "gsim";
 
     // TODO: Configure via spark config
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
+    private static final Logger log = LoggerFactory.getLogger(GsimDatasource.class);
 
     @Override
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {

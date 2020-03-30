@@ -1,5 +1,7 @@
 package no.ssb.dapla.service;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.google.protobuf.ByteString;
 import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
 import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
@@ -18,6 +20,10 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
+
 import static no.ssb.dapla.service.DataAccessClient.CONFIG_DATA_ACCESS_URL;
 import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.*;
 
@@ -31,8 +37,8 @@ public class DataAccessClientStagingTest {
         this.sparkConf.set(CONFIG_ROUTER_OAUTH_TOKEN_URL, "https://keycloak.staging-bip-app.ssb.no/auth/realms/ssb/protocol/openid-connect/token");
         this.sparkConf.set(CONFIG_ROUTER_OAUTH_CLIENT_ID, System.getenv(CONFIG_ROUTER_OAUTH_CLIENT_ID));
         this.sparkConf.set(CONFIG_ROUTER_OAUTH_CLIENT_SECRET, System.getenv(CONFIG_ROUTER_OAUTH_CLIENT_SECRET));
-        this.sparkConf.set(SPARK_SSB_ACCESS_TOKEN, System.getenv("spark.ssb.access"));
-        this.sparkConf.set(SPARK_SSB_REFRESH_TOKEN, System.getenv("spark.ssb.refresh"));
+        this.sparkConf.set(SPARK_SSB_ACCESS_TOKEN, JWT.create().withClaim("preferred_username", "kim").withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.HOURS))).sign(Algorithm.HMAC256("secret")));
+        this.sparkConf.set(SPARK_SSB_REFRESH_TOKEN, JWT.create().withClaim("preferred_username", "kim").withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.HOURS))).sign(Algorithm.HMAC256("secret")));
     }
 
     @Test
