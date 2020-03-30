@@ -43,11 +43,6 @@ public class DataAccessClient {
     }
 
     public DataAccessClient(final SparkConf conf, Span span) {
-        this.span = span;
-        init(conf);
-    }
-
-    public void init(final SparkConf conf) {
         okhttp3.OkHttpClient.Builder builder = new okhttp3.OkHttpClient.Builder();
 
         SparkConfStore store;
@@ -63,6 +58,7 @@ public class DataAccessClient {
         if (!this.baseURL.endsWith("/")) {
             this.baseURL = this.baseURL + "/";
         }
+        this.span = span;
     }
 
     private String buildUrl(String format, Object... args) {

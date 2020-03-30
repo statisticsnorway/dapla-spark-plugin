@@ -55,6 +55,19 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         try {
             span.log("CreateRelation via read ");
             SparkOptions options = new SparkOptions(parameters);
+            final String path = options.getPath();
+            if (path.endsWith("*")) {
+                return new CatalogRelation(sqlContext, path.substring(0, path.indexOf("*")), span);
+            } else {
+                return createRelation(sqlContext, options, span);
+            }
+        } finally {
+            span.finish();
+        }
+    }
+
+    private BaseRelation createRelation(final SQLContext sqlContext, SparkOptions options, Span span) {
+        try {
             final String localPath = options.getPath();
             span.setTag("namespace", localPath);
             System.out.println("Leser datasett fra: " + localPath);
@@ -80,8 +93,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } catch (Exception e) {
             logError(span, e);
             throw e;
-        } finally {
-            span.finish();
         }
     }
 
