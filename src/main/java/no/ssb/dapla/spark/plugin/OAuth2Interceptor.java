@@ -4,7 +4,6 @@ import no.ssb.dapla.spark.plugin.token.TokenSupplier;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -19,15 +18,15 @@ public class OAuth2Interceptor implements Interceptor {
 
     /**
      * Create new instance
+     *
      * @param supplier the token supplier
      */
     public OAuth2Interceptor(TokenSupplier supplier) {
         this.supplier = Objects.requireNonNull(supplier);
     }
 
-    @NotNull
     @Override
-    public Response intercept(@NotNull Chain chain) throws IOException {
+    public Response intercept(Chain chain) throws IOException {
         Request.Builder newRequest = chain.request().newBuilder();
         newRequest.header(AUTHORIZATION_HEADER_NAME, String.format("Bearer %s", supplier.get()));
         return chain.proceed(newRequest.build());
