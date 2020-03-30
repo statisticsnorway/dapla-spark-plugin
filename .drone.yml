@@ -25,7 +25,7 @@ steps:
     # Create a service account keyfile to be used by GCS tests
     - mkdir secret
     - printf "%s" "$GAC" > secret/gcs_sa_test.json
-    - mvn verify -P ssb-bip,coverage -Djdk.tls.client.protocols="TLSv1.2" -Dmaven.repo.local=/drone/src/.m2/repository --batch-mode --global-settings settings.xml
+    - mvn verify -P ssb-bip,coverage -DskipTests -Djdk.tls.client.protocols="TLSv1.2" -Dmaven.repo.local=/drone/src/.m2/repository --batch-mode --global-settings settings.xml
   environment:
     DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE: secret/gcs_sa_test.json
     DAPLA_SPARK_TEST_BUCKET: bip-drone-dependency-cache
