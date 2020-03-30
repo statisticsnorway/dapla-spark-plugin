@@ -55,8 +55,7 @@ public class CatalogRelation extends BaseRelation implements TableScan {
     }
 
     /**
-     * The equals should return true if it is known that the two relations will return the
-     * same data. Using the set of files guaranties this.
+     * Two relations will return the same data if the path is the same.
      */
     @Override
     public boolean equals(Object o) {
