@@ -53,7 +53,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     public BaseRelation createRelation(final SQLContext sqlContext, Map<String, String> parameters) {
         Span span = getSpan(sqlContext, "spark-read");
         try {
-            log.info("CreateRelation via read {}", parameters);
+            span.log("CreateRelation via read ");
             SparkOptions options = new SparkOptions(parameters);
             final String path = options.getPath();
             if (path.endsWith("*")) {

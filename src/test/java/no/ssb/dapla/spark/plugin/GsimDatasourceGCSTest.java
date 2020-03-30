@@ -174,8 +174,6 @@ public class GsimDatasourceGCSTest {
         Dataset<Row> dataset = sqlContext.read()
                 .load(parquetFile.toString());
 
-        dataset.printSchema();
-        //dataset.show();
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
     }
