@@ -223,7 +223,7 @@ public class GsimDatasourceGCSTest {
 
         Dataset<Row> dataset = sqlContext.read()
                 .format("gsim")
-                .load("test/dapla/namespace");
+                .load("/test/dapla/namespace");
 
         assertThat(dataset).isNotNull();
         assertThat(dataset.isEmpty()).isFalse();
@@ -232,14 +232,14 @@ public class GsimDatasourceGCSTest {
             RecordedRequest recordedRequest = server.takeRequest();
             final ReadLocationRequest readLocationRequest = ProtobufJsonUtils.toPojo(
                     recordedRequest.getBody().readByteString().utf8(), ReadLocationRequest.class);
-            assertThat(readLocationRequest.getPath()).isEqualTo("test/dapla/namespace");
+            assertThat(readLocationRequest.getPath()).isEqualTo("/test/dapla/namespace");
             assertThat(readLocationRequest.getSnapshot()).isEqualTo(0L);
         }
         {
             RecordedRequest recordedRequest = server.takeRequest();
             final ReadAccessTokenRequest readAccessTokenRequest = ProtobufJsonUtils.toPojo(
                     recordedRequest.getBody().readByteString().utf8(), ReadAccessTokenRequest.class);
-            assertThat(readAccessTokenRequest.getPath()).isEqualTo("test/dapla/namespace");
+            assertThat(readAccessTokenRequest.getPath()).isEqualTo("/test/dapla/namespace");
             assertThat(readAccessTokenRequest.getVersion()).isEqualTo(String.valueOf(version));
         }
     }
@@ -255,7 +255,7 @@ public class GsimDatasourceGCSTest {
         thrown.expectMessage("Din bruker har ikke tilgang");
         sqlContext.read()
                 .format("gsim")
-                .load("test/dapla/namespace");
+                .load("/test/dapla/namespace");
     }
 
     @Test
