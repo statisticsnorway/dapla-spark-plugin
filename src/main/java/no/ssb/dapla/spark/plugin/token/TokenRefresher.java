@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
+import org.apache.spark.SparkConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,8 +37,12 @@ public class TokenRefresher implements Runnable, TokenSupplier {
     private ScheduledFuture<?> nextUpdate;
     private Exception exception;
 
-    public TokenRefresher(TokenStore tokenStore) {
-        this.tokenStore = Objects.requireNonNull(tokenStore);
+    public TokenRefresher(SparkConf conf) {
+        this(new SparkConfStore(conf));
+    }
+
+    public TokenRefresher(TokenStore store) {
+        this.tokenStore = Objects.requireNonNull(store);
         scheduleNextRefresh();
     }
 
