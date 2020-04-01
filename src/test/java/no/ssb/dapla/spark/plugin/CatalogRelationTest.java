@@ -5,11 +5,10 @@ import com.auth0.jwt.algorithms.Algorithm;
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
-import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SparkSession;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -18,15 +17,14 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
-import static no.ssb.dapla.service.CatalogClient.*;
+import static no.ssb.dapla.service.CatalogClient.CONFIG_CATALOG_URL;
 import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.*;
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class CatalogRelationTest {
 
-    private SQLContext sqlContext;
-    private SparkContext sparkContext;
     private MockWebServer catalogMockServer;
+    private SparkSession session;
 
     @Before
     public void setUp() throws IOException {
@@ -35,7 +33,7 @@ public class CatalogRelationTest {
         HttpUrl baseUrl = catalogMockServer.url("/catalog/");
 
         // Read the unit dataset json example.
-        SparkSession session = SparkSession.builder()
+        session = SparkSession.builder()
                 .appName(GsimDatasourceLocalFSTest.class.getSimpleName())
                 .master("local")
                 .config("spark.ui.enabled", false)
@@ -48,9 +46,11 @@ public class CatalogRelationTest {
                         .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.HOURS)))
                         .sign(Algorithm.HMAC256("secret")))
                 .getOrCreate();
+    }
 
-        this.sparkContext = session.sparkContext();
-        this.sqlContext = session.sqlContext();
+    @After
+    public void tearDown() throws Exception {
+        session.stop();
     }
 
     @Test
@@ -67,7 +67,7 @@ public class CatalogRelationTest {
                         "}\n")
                 .setResponseCode(200));
 
-        Dataset<Row> dataset = sqlContext.read()
+        Dataset<Row> dataset = session.sqlContext().read()
                 .format("gsim")
                 .load("/skatt/person/*");
 

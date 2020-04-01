@@ -41,14 +41,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class GsimDatasourceLocalFSTest {
 
-    private SQLContext sqlContext;
-    private SparkContext sparkContext;
     private static File tempDirectory;
     private static Path parquetFile;
     private MockWebServer dataAccessMockServer;
     private MockWebServer metadataDistributorMockServer;
     private File tempOutPutDirectory;
     private String sparkStoragePath;
+    private SparkSession session;
 
     @BeforeClass
     public static void setupTestData() throws Exception {
@@ -68,7 +67,7 @@ public class GsimDatasourceLocalFSTest {
 
     @After
     public void tearDown() {
-        sparkContext.stop();
+        session.stop();
         tempOutPutDirectory.delete();
     }
 
@@ -87,7 +86,7 @@ public class GsimDatasourceLocalFSTest {
         HttpUrl publisherUrl = metadataDistributorMockServer.url("/metadata-publisher/");
 
         // Read the unit dataset json example.
-        SparkSession session = SparkSession.builder()
+        session = SparkSession.builder()
                 .appName(GsimDatasourceLocalFSTest.class.getSimpleName())
                 .master("local")
                 .config("spark.ui.enabled", false)
@@ -110,10 +109,8 @@ public class GsimDatasourceLocalFSTest {
                 .config("spark.ssb.refresh", JWT.create().withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.HOURS))).sign(Algorithm.HMAC256("secret")))
                 .getOrCreate();
 
-        this.sparkContext = session.sparkContext();
-        this.sparkContext.setLocalProperty("spark.jobGroup.id",
+        session.sparkContext().setLocalProperty("spark.jobGroup.id",
                 "zeppelin-dapla_test-2EYA9GVV2-20200114-173727_1534086404");
-        this.sqlContext = session.sqlContext();
     }
 
     @Rule
@@ -148,8 +145,8 @@ public class GsimDatasourceLocalFSTest {
                             .setResponseCode(200)
             );
 
-            Dataset<Row> dataset = sqlContext.read()
-                    .load(parquetFile.toString());
+        Dataset<Row> dataset = session.sqlContext().read()
+                .load(parquetFile.toString());
 
             dataset.write()
                     .format("gsim")
@@ -185,7 +182,7 @@ public class GsimDatasourceLocalFSTest {
         dataAccessMockServer.enqueue(new MockResponse().setResponseCode(400));
         thrown.expectMessage("En feil har oppstått: Response{protocol=http/1.1, code=400");
 
-        Dataset<Row> dataset = sqlContext.read()
+        Dataset<Row> dataset = session.sqlContext().read()
                 .load(parquetFile.toString());
         dataset.write()
                 .format("gsim")
@@ -201,7 +198,7 @@ public class GsimDatasourceLocalFSTest {
 
         thrown.expectMessage("valuation is missing in options");
 
-        Dataset<Row> dataset = sqlContext.read()
+        Dataset<Row> dataset = session.sqlContext().read()
                 .load(parquetFile.toString());
         dataset.write()
                 .format("gsim")

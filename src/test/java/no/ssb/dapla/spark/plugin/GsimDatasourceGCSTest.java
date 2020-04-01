@@ -60,6 +60,9 @@ import java.util.stream.StreamSupport;
 
 import static java.time.temporal.ChronoUnit.HOURS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.core.Is.*;
+import static org.hamcrest.core.IsNull.*;
+import static org.junit.Assume.assumeThat;
 
 public class GsimDatasourceGCSTest {
 
@@ -77,11 +80,8 @@ public class GsimDatasourceGCSTest {
 
     @BeforeClass
     public static void setupBucketFolder() throws Exception {
-        // Verify the test environment
-        if (System.getenv().get(GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE) == null) {
-            throw new IllegalStateException(String.format("Missing environment variable: " +
-                    GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE));
-        }
+        assumeThat(System.getenv().get(GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE), notNullValue());
+
         // Setup GCS test bucket
         bucket = Optional.ofNullable(System.getenv().get("DAPLA_SPARK_TEST_BUCKET")).orElse("dev-datalager-store");
         // Create temporary folder and copy test data into it.
@@ -95,6 +95,10 @@ public class GsimDatasourceGCSTest {
 
     @AfterClass
     public static void clearBucketFolder() {
+        if (bucket == null) {
+            return;
+        }
+
         final Storage storage = getStorage();
         Page<Blob> page = storage.list(bucket, Storage.BlobListOption.prefix(namespace + "/"));
         BlobId[] blobs = StreamSupport.stream(page.iterateAll().spliterator(), false).map(BlobInfo::getBlobId).collect(Collectors.toList()).toArray(new BlobId[0]);
@@ -117,6 +121,8 @@ public class GsimDatasourceGCSTest {
 
     @Before
     public void setUp() throws IOException {
+        assumeThat(System.getenv().get(GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE), notNullValue());
+
         // Mock user read by org.apache.hadoop.security.UserGroupInformation
         System.setProperty("HADOOP_USER_NAME", "dapla_test");
 
