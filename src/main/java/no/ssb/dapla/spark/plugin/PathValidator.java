@@ -4,7 +4,7 @@ import java.util.regex.Pattern;
 
 public class PathValidator {
 
-    private static Pattern readablePath = Pattern.compile("/(\\w|-|\\*|/)+");
+    private static Pattern readablePath = Pattern.compile("/(\\w|-|/)+\\*?$");
     private static Pattern writablePath = Pattern.compile("/(\\w|-|/)+");
 
     public static void validateRead(String path) {

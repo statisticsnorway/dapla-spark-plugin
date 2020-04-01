@@ -19,6 +19,8 @@ public class PathValidatorTest {
         assertThatThrownBy(() -> PathValidator.validateRead("/")).isInstanceOf(PathValidator.ValidationException.class);
         assertThatThrownBy(() -> PathValidator.validateRead("skatt/person")).isInstanceOf(PathValidator.ValidationException.class);
         assertThatThrownBy(() -> PathValidator.validateRead("skatt/person*")).isInstanceOf(PathValidator.ValidationException.class);
+        // should only accept * at the end of string
+        assertThatThrownBy(() -> PathValidator.validateRead("/skatt/person/*/no")).isInstanceOf(PathValidator.ValidationException.class);
         assertThatThrownBy(() -> PathValidator.validateRead("/skatt/person/with space")).isInstanceOf(PathValidator.ValidationException.class);
     }
 
