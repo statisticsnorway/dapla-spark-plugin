@@ -10,7 +10,7 @@ public class PathValidatorTest {
     public void testValidReadPaths() {
         PathValidator.validateRead("/skatt/person/no_space/tabell-2020/");
         PathValidator.validateRead("/skatt/person/*");
-        PathValidator.validateRead("/raw/ske/skatt/sirius-person-generert/v0.68-v003");
+        PathValidator.validateRead("/raw/ske/skatt/rådata/sirius-person-generert/v0.68-v003");
         PathValidator.validateRead("/tmp/johnny@doe");
         PathValidator.validateRead("/skatt*");
     }
