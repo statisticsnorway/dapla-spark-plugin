@@ -11,6 +11,7 @@ import org.apache.spark.SparkContext;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.DataType;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -20,16 +21,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class PseudoUDFsTest {
 
-    private SQLContext sqlContext;
+    private SparkSession session;
 
     @Before
     public void setUp() {
-        SparkSession session = SparkSession.builder()
+        session = SparkSession.builder()
           .appName(PseudoUDFsTest.class.getSimpleName())
           .master("local")
           .getOrCreate();
+    }
 
-        this.sqlContext = session.sqlContext();
+    @After
+    public void tearDown() {
+        session.stop();
     }
 
     @Test
@@ -60,7 +64,7 @@ public class PseudoUDFsTest {
           ))
         );
 
-        assertThat(PseudoUDFs.registerUDFs(sqlContext, configs)).containsExactly(
+        assertThat(PseudoUDFs.registerUDFs(session.sqlContext(), configs)).containsExactly(
           "pseudo_fpe-bar(keyid2)_apply_double_udf",
           "pseudo_fpe-bar(keyid2)_apply_timestamp_udf",
           "pseudo_fpe-foo(keyid1)_restore_string_udf",
