@@ -118,59 +118,63 @@ public class GsimDatasourceLocalFSTest {
 
     @Test
     public void testWrite() throws InterruptedException {
-        metadataDistributorMockServer.enqueue(new MockResponse().setResponseCode(200));
-        metadataDistributorMockServer.enqueue(new MockResponse().setResponseCode(200));
-        long version = System.currentTimeMillis();
-        dataAccessMockServer.enqueue(
-                new MockResponse().setBody(ProtobufJsonUtils.toString(WriteLocationResponse.newBuilder()
-                        .setAccessAllowed(true)
-                        .setValidMetadataJson(ByteString.copyFromUtf8("{\n" +
-                                "  \"id\": {\n" +
-                                "    \"path\": \"/skatt/person/junit\",\n" +
-                                "    \"version\": \"" + version + "\"\n" +
-                                "  },\n" +
-                                "  \"valuation\": \"INTERNAL\",\n" +
-                                "  \"state\": \"INPUT\",\n" +
-                                "  \"parentUri\": \"file://" + sparkStoragePath + "\",\n" +
-                                "  \"createdBy\": \"junit\"\n" +
-                                "}"))
-                        .setMetadataSignature(ByteString.copyFromUtf8("some-junit-signature"))
-                        .build()))
-                        .setResponseCode(200)
-        );
-        dataAccessMockServer.enqueue(
-                new MockResponse().setBody(ProtobufJsonUtils.toString(WriteAccessTokenResponse.newBuilder()
-                                .setAccessToken("access-token").setExpirationTime(System.currentTimeMillis()).build()))
-                .setResponseCode(200)
-        );
+        try {
+            metadataDistributorMockServer.enqueue(new MockResponse().setResponseCode(200));
+            metadataDistributorMockServer.enqueue(new MockResponse().setResponseCode(200));
+            long version = System.currentTimeMillis();
+            dataAccessMockServer.enqueue(
+                    new MockResponse().setBody(ProtobufJsonUtils.toString(WriteLocationResponse.newBuilder()
+                            .setAccessAllowed(true)
+                            .setValidMetadataJson(ByteString.copyFromUtf8("{\n" +
+                                    "  \"id\": {\n" +
+                                    "    \"path\": \"/skatt/person/junit\",\n" +
+                                    "    \"version\": \"" + version + "\"\n" +
+                                    "  },\n" +
+                                    "  \"valuation\": \"INTERNAL\",\n" +
+                                    "  \"state\": \"INPUT\",\n" +
+                                    "  \"parentUri\": \"file://" + sparkStoragePath + "\",\n" +
+                                    "  \"createdBy\": \"junit\"\n" +
+                                    "}"))
+                            .setMetadataSignature(ByteString.copyFromUtf8("some-junit-signature"))
+                            .build()))
+                            .setResponseCode(200)
+            );
+            dataAccessMockServer.enqueue(
+                    new MockResponse().setBody(ProtobufJsonUtils.toString(WriteAccessTokenResponse.newBuilder()
+                            .setAccessToken("access-token").setExpirationTime(System.currentTimeMillis()).build()))
+                            .setResponseCode(200)
+            );
 
         Dataset<Row> dataset = session.sqlContext().read()
                 .load(parquetFile.toString());
 
-        dataset.write()
-                .format("gsim")
-                .mode(SaveMode.Overwrite)
-                .option("valuation", "INTERNAL")
-                .option("state", "INPUT")
-                .option("version", version)
-                .save("/test/dapla/namespace");
+            dataset.write()
+                    .format("gsim")
+                    .mode(SaveMode.Overwrite)
+                    .option("valuation", "INTERNAL")
+                    .option("state", "INPUT")
+                    .option("version", version)
+                    .save("/test/dapla/namespace");
 
-        assertThat(dataset).isNotNull();
-        assertThat(dataset.isEmpty()).isFalse();
+            assertThat(dataset).isNotNull();
+            assertThat(dataset.isEmpty()).isFalse();
 
-        RecordedRequest writeLocationRecordedRequest = dataAccessMockServer.takeRequest();
-        final WriteLocationRequest writeLocationRequest = ProtobufJsonUtils.toPojo(
-                writeLocationRecordedRequest.getBody().readByteString().utf8(), WriteLocationRequest.class);
-        assertThat(writeLocationRecordedRequest.getRequestUrl().url().getPath()).isEqualTo("/data-access/rpc/DataAccessService/writeLocation");
-        assertThat(writeLocationRequest.getMetadataJson()).isEqualTo("{\n" +
-                "  \"id\": {\n" +
-                "    \"path\": \"/test/dapla/namespace\",\n" +
-                "    \"version\": \"" + version + "\"\n" +
-                "  },\n" +
-                "  \"valuation\": \"INTERNAL\",\n" +
-                "  \"state\": \"INPUT\"\n" +
-                "}");
-
+            RecordedRequest writeLocationRecordedRequest = dataAccessMockServer.takeRequest();
+            final WriteLocationRequest writeLocationRequest = ProtobufJsonUtils.toPojo(
+                    writeLocationRecordedRequest.getBody().readByteString().utf8(), WriteLocationRequest.class);
+            assertThat(writeLocationRecordedRequest.getRequestUrl().url().getPath()).isEqualTo("/data-access/rpc/DataAccessService/writeLocation");
+            assertThat(writeLocationRequest.getMetadataJson()).isEqualTo("{\n" +
+                    "  \"id\": {\n" +
+                    "    \"path\": \"/test/dapla/namespace\",\n" +
+                    "    \"version\": \"" + version + "\"\n" +
+                    "  },\n" +
+                    "  \"valuation\": \"INTERNAL\",\n" +
+                    "  \"state\": \"INPUT\"\n" +
+                    "}");
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     @Test

@@ -56,6 +56,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             span.log("CreateRelation via read ");
             SparkOptions options = new SparkOptions(parameters);
             final String path = options.getPath();
+            PathValidator.validateRead(path);
             if (path.endsWith("*")) {
                 return new CatalogRelation(sqlContext, path.substring(0, path.indexOf("*")), span);
             } else {
@@ -103,6 +104,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             span.log("CreateRelation via write");
             SparkOptions options = new SparkOptions(parameters);
             final String localPath = options.getPath();
+            PathValidator.validateWrite(localPath);
             span.setTag("namespace", localPath);
             span.setTag("valuation", options.getValuation());
             span.setTag("state", options.getState());
