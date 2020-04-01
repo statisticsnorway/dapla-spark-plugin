@@ -6,6 +6,7 @@ import scala.collection.immutable.Map;
 public class SparkOptions {
     public static final String ACCESS_TOKEN = "spark.ssb.session.token";
     public static final String ACCESS_TOKEN_EXP = "spark.ssb.session.token.exp";
+    public static final String DISABLE_TOKENS = "spark.ssb.disable.tokens";
 
     static final String PATH = "PATH";
     static final String VALUATION = "valuation";
