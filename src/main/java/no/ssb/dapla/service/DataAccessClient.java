@@ -13,7 +13,7 @@ import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
-import no.ssb.dapla.spark.plugin.SparkOptions;
+import no.ssb.dapla.spark.plugin.token.SparkConfStore;
 import no.ssb.dapla.spark.plugin.token.TokenRefresher;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
@@ -45,11 +45,13 @@ public class DataAccessClient {
     public DataAccessClient(final SparkConf conf, Span span) {
         okhttp3.OkHttpClient.Builder builder = new okhttp3.OkHttpClient.Builder();
 
-        if (conf.get(SparkOptions.DISABLE_TOKENS, "false").equals("true")) {
-            builder.addInterceptor(new OAuth2Interceptor(() -> ""));
+        SparkConfStore store;
+        if (conf != null) {
+            store = new SparkConfStore(conf);
         } else {
-            builder.addInterceptor(new OAuth2Interceptor(new TokenRefresher(conf)));
+            store = SparkConfStore.get();
         }
+        builder.addInterceptor(new OAuth2Interceptor(new TokenRefresher(store)));
 
         this.client = TracingInterceptor.addTracing(builder, GlobalTracer.get());
         this.baseURL = conf.get(CONFIG_DATA_ACCESS_URL);

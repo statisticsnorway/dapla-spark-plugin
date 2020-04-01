@@ -7,6 +7,7 @@ import io.opentracing.util.GlobalTracer;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixRequest;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixResponse;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
+import no.ssb.dapla.spark.plugin.token.SparkConfStore;
 import no.ssb.dapla.spark.plugin.token.TokenRefresher;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
@@ -39,7 +40,13 @@ public class CatalogClient {
     public CatalogClient(final SparkConf conf, Span span) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS);
 
-        builder.addInterceptor(new OAuth2Interceptor(new TokenRefresher(conf)));
+        SparkConfStore store;
+        if (conf != null) {
+            store = new SparkConfStore(conf);
+        } else {
+            store = SparkConfStore.get();
+        }
+        builder.addInterceptor(new OAuth2Interceptor(new TokenRefresher(store)));
         this.client = TracingInterceptor.addTracing(builder, GlobalTracer.get());
         this.baseURL = conf.get(CONFIG_CATALOG_URL);
         if (!this.baseURL.endsWith("/")) {
