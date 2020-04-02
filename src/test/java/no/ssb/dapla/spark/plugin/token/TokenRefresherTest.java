@@ -18,6 +18,7 @@ import java.sql.Date;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 import static java.time.temporal.ChronoUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,10 +73,9 @@ public class TokenRefresherTest {
         server.enqueue(new MockResponse().setResponseCode(500));
 
         store.setDelay(Duration.of(1, SECONDS));
-        TokenRefresher refresher = new TokenRefresher(store);
+            TokenRefresher refresher = new TokenRefresher(store);
 
-        // Harder to use semaphore here.
-        Thread.sleep(1500);
+        server.takeRequest(2, TimeUnit.SECONDS);
 
         assertThatThrownBy(refresher::get);
     }
