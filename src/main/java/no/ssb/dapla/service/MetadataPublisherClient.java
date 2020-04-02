@@ -5,7 +5,6 @@ import io.opentracing.contrib.okhttp3.TracingInterceptor;
 import io.opentracing.util.GlobalTracer;
 import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.metadata.distributor.protobuf.DataChangedRequest;
-import no.ssb.dapla.spark.plugin.GsimDatasource;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
 import no.ssb.dapla.spark.plugin.token.SparkConfStore;
 import no.ssb.dapla.spark.plugin.token.TokenRefresher;
@@ -64,12 +63,9 @@ public class MetadataPublisherClient {
 
     public void dataChanged(DatasetUri datasetUri, String filename) {
         DataChangedRequest dataChangedRequest = DataChangedRequest.newBuilder()
-                .setParentUri(datasetUri.getParentUri())
-                .setPath(datasetUri.getPath())
-                .setVersion(Long.parseLong(datasetUri.getVersion()))
                 .setProjectId(projectId)
                 .setTopicName(topicName)
-                .setFilename(filename)
+                .setUri(datasetUri.getParentUri() + datasetUri.getPath() + "/" + datasetUri.getVersion() + "/" + filename)
                 .build();
 
         String body = ProtobufJsonUtils.toString(dataChangedRequest);
