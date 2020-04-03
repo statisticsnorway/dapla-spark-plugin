@@ -113,6 +113,22 @@ steps:
   depends_on:
     - publish-maven
 
+- name: docker-dapla-jupyter
+  image: plugins/gcr
+  settings:
+    dockerfile: docker/jupyter/Dockerfile
+    repo: eu.gcr.io/prod-bip/dapla-jupyter
+    registry: eu.gcr.io
+    tags:
+      - latest
+      - ${DRONE_BRANCH//\//-}-${DRONE_COMMIT_SHA:0:8}
+    json_key:
+      from_secret: gcr_credentials
+  when:
+    event: push
+  depends_on:
+    - publish-maven
+
 - name: slack
   image: plugins/slack
   settings:
@@ -125,6 +141,7 @@ steps:
     - publish-maven
     - docker-dapla-zeppelin
     - docker-dapla-polynote
+    - docker-dapla-jupyter
 
 # Rebuild cache if it has changed with this build
 - name: rebuild-cache
