@@ -26,6 +26,7 @@ RUN echo "**** install npm ****" && \
 RUN echo "**** install jupyterhub ****" && \
     apk add --virtual build-dependencies build-base python3-dev libffi-dev openssl-dev && \
     python3 -m pip install jupyterhub && \
+    npm config set unsafe-perm true && \
     npm install -g configurable-http-proxy && \
     python3 -m pip install notebook && \
     apk del build-dependencies
