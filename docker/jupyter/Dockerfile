@@ -31,12 +31,29 @@ RUN echo "**** install jupyterhub ****" && \
     python3 -m pip install notebook && \
     apk del build-dependencies
 
+RUN python3 -m pip install jupyterlab
+RUN jupyter kernelspec uninstall python3 -f
+
 RUN python3 -m pip install oauthenticator
 
+RUN python3 -m pip install toree && \
+    jupyter toree install --spark_home=${SPARK_HOME} && \
+    apk add --no-cache bash
 
 ENV JUPYTER_GROUP_ID=2100
 ENV JUPYTER_USER_ID=2100
 ENV JUPYTER_HOME="/jupyter"
+
+# Copy the library.
+COPY target/dapla-spark-plugin-*-shaded.jar /jupyter/lib/dapla-spark-plugin.jar
+
+# Add the GCS connector.
+# https://github.com/GoogleCloudPlatform/bigdata-interop/blob/master/gcs/INSTALL.md#configure-spark
+# https://github.com/GoogleCloudPlatform/bigdata-interop/issues/188
+# https://github.com/GoogleCloudPlatform/bigdata-interop/pull/180/files
+RUN wget -P /tmp https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-2.0.1.jar && \
+    mv /tmp/gcs-connector-hadoop2-2.0.1.jar /jupyter/lib/gcs-connector-hadoop.jar
+
 # JUPYTER needs a real user/group
 RUN addgroup -g $JUPYTER_GROUP_ID -S jupyter && \
     adduser  -u $JUPYTER_USER_ID --shell /bin/false --home ${JUPYTER_HOME} -D -S jupyter -G jupyter
