@@ -60,8 +60,7 @@ import java.util.stream.StreamSupport;
 
 import static java.time.temporal.ChronoUnit.HOURS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.core.Is.*;
-import static org.hamcrest.core.IsNull.*;
+import static org.hamcrest.core.IsNull.notNullValue;
 import static org.junit.Assume.assumeThat;
 
 public class GsimDatasourceGCSTest {
@@ -280,10 +279,10 @@ public class GsimDatasourceGCSTest {
                                         "  },\n" +
                                         "  \"valuation\": \"INTERNAL\",\n" +
                                         "  \"state\": \"INPUT\",\n" +
-                                        "  \"parentUri\": \"gs://" + blobId.getBucket() + "\",\n" +
                                         "  \"createdBy\": \"junit\"\n" +
                                         "}"))
                                 .setMetadataSignature(ByteString.copyFromUtf8("some-junit-signature"))
+                                .setParentUri("gs://" + blobId.getBucket())
                                 .build()))
                         .setResponseCode(200)
         );
@@ -346,7 +345,6 @@ public class GsimDatasourceGCSTest {
                 "  },\n" +
                 "  \"valuation\": \"INTERNAL\",\n" +
                 "  \"state\": \"INPUT\",\n" +
-                "  \"parentUri\": \"gs://" + blobId.getBucket() + "\",\n" +
                 "  \"createdBy\": \"junit\"\n" +
                 "}");
         assertThat(writeAccessTokenRequest.getMetadataSignature()).isEqualTo(ByteString.copyFromUtf8("some-junit-signature"));
