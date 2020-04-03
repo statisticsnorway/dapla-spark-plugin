@@ -14,10 +14,8 @@ import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
-import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.SparkSession;
 import org.junit.After;
@@ -132,10 +130,10 @@ public class GsimDatasourceLocalFSTest {
                                     "  },\n" +
                                     "  \"valuation\": \"INTERNAL\",\n" +
                                     "  \"state\": \"INPUT\",\n" +
-                                    "  \"parentUri\": \"file://" + sparkStoragePath + "\",\n" +
                                     "  \"createdBy\": \"junit\"\n" +
                                     "}"))
                             .setMetadataSignature(ByteString.copyFromUtf8("some-junit-signature"))
+                            .setParentUri("file://" + sparkStoragePath)
                             .build()))
                             .setResponseCode(200)
             );
