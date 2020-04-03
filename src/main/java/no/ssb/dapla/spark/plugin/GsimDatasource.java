@@ -16,6 +16,9 @@ import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.dataset.api.DatasetId;
 import no.ssb.dapla.dataset.api.DatasetMeta;
+import no.ssb.dapla.dataset.api.DatasetState;
+import no.ssb.dapla.dataset.api.Type;
+import no.ssb.dapla.dataset.api.Valuation;
 import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.service.MetadataPublisherClient;
@@ -114,20 +117,19 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
             DataAccessClient dataAccessClient = new DataAccessClient(conf, span);
 
-            long version = Optional.of(options)
+            String version = Optional.of(options)
                     .map(SparkOptions::getVersion)
                     .filter(s -> !s.isEmpty())
-                    .map(Long::valueOf)
-                    .orElse(System.currentTimeMillis());
+                    .orElse(String.valueOf(System.currentTimeMillis()));
 
             if (options.getValuation() == null) {
                 throw new RuntimeException("valuation is missing in options");
             }
-            DatasetMeta.Valuation valuation = DatasetMeta.Valuation.valueOf(options.getValuation());
+            Valuation valuation = Valuation.valueOf(options.getValuation());
             if (options.getState() == null) {
                 throw new RuntimeException("state is missing in options");
             }
-            DatasetMeta.DatasetState state = DatasetMeta.DatasetState.valueOf(options.getState());
+            DatasetState state = DatasetState.valueOf(options.getState());
 
             WriteLocationResponse writeLocationResponse = dataAccessClient.writeLocation(WriteLocationRequest.newBuilder()
                     .setMetadataJson(ProtobufJsonUtils.toString(DatasetMeta.newBuilder()
@@ -135,7 +137,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                                     .setPath(localPath)
                                     .setVersion(version)
                                     .build())
-                            .setType(DatasetMeta.Type.BOUNDED)
+                            .setType(Type.BOUNDED)
                             .setValuation(valuation)
                             .setState(state)
                             .build()))
@@ -147,8 +149,9 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
             String metadataJson = writeLocationResponse.getValidMetadataJson().toStringUtf8();
 
+            String parentUri = writeLocationResponse.getParentUri();
             DatasetMeta datasetMeta = ProtobufJsonUtils.toPojo(metadataJson, DatasetMeta.class);
-            DatasetUri pathToNewDataSet = DatasetUri.of(datasetMeta.getParentUri(), datasetMeta.getId().getPath(), datasetMeta.getId().getVersion());
+            DatasetUri pathToNewDataSet = DatasetUri.of(parentUri, datasetMeta.getId().getPath(), datasetMeta.getId().getVersion());
 
             span.log("writing file(s) to: " + pathToNewDataSet);
             System.out.println("Skriver datasett til: " + pathToNewDataSet);
@@ -158,7 +161,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf, span);
 
             // Write metadata file
-            MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeMetadataFile(datasetMeta, writeLocationResponse.getValidMetadataJson());
+            MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeMetadataFile(parentUri, datasetMeta, writeLocationResponse.getValidMetadataJson());
             // Publish metadata file created event
             metadataPublisherClient.dataChanged(pathToNewDataSet, FilesystemMetaDataWriter.DATASET_META_FILE_NAME);
 
@@ -166,7 +169,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             data.coalesce(1).write().mode(SaveMode.Append).parquet(pathToNewDataSet.toString());
 
             // Write metadata signature file
-            MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeSignatureFile(datasetMeta, writeLocationResponse.getMetadataSignature());
+            MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeSignatureFile(parentUri, datasetMeta, writeLocationResponse.getMetadataSignature());
             // Publish metadata signature file created event, this will be used for validation and signals a "commit" of metadata
             metadataPublisherClient.dataChanged(pathToNewDataSet, FilesystemMetaDataWriter.DATASET_META_SIGNATURE_FILE_NAME);
 
@@ -228,26 +231,26 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         DataAccessClient dataAccessClient = new DataAccessClient(sparkSession.sparkContext().getConf(), span);
         if ("READ".equals(operation)) {
 
-            log.debug("Getting read access token");
-            System.out.println("Getting read access token");
             ReadAccessTokenResponse readAccessTokenResponse = dataAccessClient.readAccessToken(ReadAccessTokenRequest.newBuilder()
                     .setPath(namespace)
                     .setVersion(version)
                     .build());
             sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, readAccessTokenResponse.getAccessToken());
             sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, readAccessTokenResponse.getExpirationTime());
+            log.debug("Got read access token");
+            System.out.println("Got read access token");
 
         } else if ("WRITE".equals(operation)) {
 
             byte[] datasetMetaSignatureBytes = Base64.getDecoder().decode(metadataSignature);
-            log.debug("Getting write access token");
-            System.out.println("Getting write access token");
             WriteAccessTokenResponse writeAccessTokenResponse = dataAccessClient.writeAccessToken(WriteAccessTokenRequest.newBuilder()
                     .setMetadataJson(ByteString.copyFromUtf8(metadataJson))
                     .setMetadataSignature(ByteString.copyFrom(datasetMetaSignatureBytes))
                     .build());
             sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, writeAccessTokenResponse.getAccessToken());
             sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, writeAccessTokenResponse.getExpirationTime());
+            log.debug("Got write access token");
+            System.out.println("Got write access token");
         }
 
     }

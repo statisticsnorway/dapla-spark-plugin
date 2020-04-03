@@ -88,7 +88,7 @@
         <dependency>
             <groupId>no.ssb.dapla.data</groupId>
             <artifactId>data-access-protobuf</artifactId>
-            <version>0.7</version>
+            <version>0.8</version>
             <scope>compile</scope>
         </dependency>
 
@@ -115,7 +115,7 @@
         <dependency>
             <groupId>no.ssb.dapla</groupId>
             <artifactId>dataset-api</artifactId>
-            <version>0.1</version>
+            <version>0.2</version>
             <scope>compile</scope>
         </dependency>
 

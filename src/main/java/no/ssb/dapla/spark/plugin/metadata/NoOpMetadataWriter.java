@@ -5,12 +5,12 @@ import no.ssb.dapla.dataset.api.DatasetMeta;
 
 public class NoOpMetadataWriter implements MetaDataWriter {
     @Override
-    public void writeMetadataFile(DatasetMeta datasetMeta, ByteString validMetaJsonBytes) {
+    public void writeMetadataFile(String parentUri, DatasetMeta datasetMeta, ByteString validMetaJsonBytes) {
         // Do nothing
     }
 
     @Override
-    public void writeSignatureFile(DatasetMeta datasetMeta, ByteString signatureBytes) {
+    public void writeSignatureFile(String parentUri, DatasetMeta datasetMeta, ByteString signatureBytes) {
         // Do nothing
     }
 }

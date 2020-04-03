@@ -13,6 +13,9 @@ import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.dataset.api.DatasetId;
 import no.ssb.dapla.dataset.api.DatasetMeta;
+import no.ssb.dapla.dataset.api.DatasetState;
+import no.ssb.dapla.dataset.api.Type;
+import no.ssb.dapla.dataset.api.Valuation;
 import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import org.apache.spark.SparkConf;
@@ -25,7 +28,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 import static no.ssb.dapla.service.DataAccessClient.CONFIG_DATA_ACCESS_URL;
-import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.*;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_ID;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_SECRET;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_TOKEN_URL;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.SPARK_SSB_ACCESS_TOKEN;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.SPARK_SSB_REFRESH_TOKEN;
 
 public class DataAccessClientStagingTest {
 
@@ -61,11 +68,11 @@ public class DataAccessClientStagingTest {
                 .setMetadataJson(ProtobufJsonUtils.toString(DatasetMeta.newBuilder()
                         .setId(DatasetId.newBuilder()
                                 .setPath("/tmp/bjorn-andre.skaar@ssbmod.net/test")
-                                .setVersion(1000)
+                                .setVersion("1000")
                                 .build())
-                        .setType(DatasetMeta.Type.BOUNDED)
-                        .setValuation(DatasetMeta.Valuation.INTERNAL)
-                        .setState(DatasetMeta.DatasetState.INPUT)
+                        .setType(Type.BOUNDED)
+                        .setValuation(Valuation.INTERNAL)
+                        .setState(DatasetState.INPUT)
                         .build()))
                 .build());
 
@@ -73,7 +80,7 @@ public class DataAccessClientStagingTest {
         String metadataJson = writeLocationResponse.getValidMetadataJson().toStringUtf8();
 
         DatasetMeta datasetMeta = ProtobufJsonUtils.toPojo(metadataJson, DatasetMeta.class);
-        DatasetUri pathToNewDataSet = DatasetUri.of(datasetMeta.getParentUri(), datasetMeta.getId().getPath(), datasetMeta.getId().getVersion());
+        DatasetUri pathToNewDataSet = DatasetUri.of(writeLocationResponse.getParentUri(), datasetMeta.getId().getPath(), datasetMeta.getId().getVersion());
         System.out.println("Path to new dataset " + pathToNewDataSet);
 
         WriteAccessTokenResponse writeAccessTokenResponse = dataAccessClient.writeAccessToken(WriteAccessTokenRequest.newBuilder()

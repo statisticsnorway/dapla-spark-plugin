@@ -4,7 +4,7 @@ import com.google.protobuf.ByteString;
 import no.ssb.dapla.dataset.api.DatasetMeta;
 
 public interface MetaDataWriter {
-    void writeMetadataFile(DatasetMeta datasetMeta, ByteString validMetaJsonBytes);
+    void writeMetadataFile(String parentUri, DatasetMeta datasetMeta, ByteString validMetaJsonBytes);
 
-    void writeSignatureFile(DatasetMeta datasetMeta, ByteString signatureBytes);
+    void writeSignatureFile(String parentUri, DatasetMeta datasetMeta, ByteString signatureBytes);
 }

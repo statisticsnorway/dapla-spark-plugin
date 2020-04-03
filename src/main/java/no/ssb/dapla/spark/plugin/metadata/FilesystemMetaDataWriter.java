@@ -29,17 +29,17 @@ public class FilesystemMetaDataWriter implements MetaDataWriter {
     }
 
     @Override
-    public void writeMetadataFile(DatasetMeta datasetMeta, ByteString validMetaJsonBytes) {
-        writeFile(datasetMeta, validMetaJsonBytes, DATASET_META_FILE_NAME);
+    public void writeMetadataFile(String parentUri, DatasetMeta datasetMeta, ByteString validMetaJsonBytes) {
+        writeFile(parentUri, datasetMeta, validMetaJsonBytes, DATASET_META_FILE_NAME);
     }
 
     @Override
-    public void writeSignatureFile(DatasetMeta datasetMeta, ByteString signatureBytes) {
-        writeFile(datasetMeta, signatureBytes, DATASET_META_SIGNATURE_FILE_NAME);
+    public void writeSignatureFile(String parentUri, DatasetMeta datasetMeta, ByteString signatureBytes) {
+        writeFile(parentUri, datasetMeta, signatureBytes, DATASET_META_SIGNATURE_FILE_NAME);
     }
 
-    private void writeFile(DatasetMeta datasetMeta, ByteString content, String filename) {
-        final URI storagePath = DatasetUri.of(datasetMeta.getParentUri(), datasetMeta.getId().getPath(),
+    private void writeFile(String parentUri, DatasetMeta datasetMeta, ByteString content, String filename) {
+        final URI storagePath = DatasetUri.of(parentUri, datasetMeta.getId().getPath(),
                 datasetMeta.getId().getVersion()).toURI();
         final Path metadataPath = new Path(storagePath + Path.SEPARATOR + filename);
         Configuration hadoopConfiguration = sparkSession.sparkContext().hadoopConfiguration();
