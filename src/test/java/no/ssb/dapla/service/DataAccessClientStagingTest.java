@@ -2,13 +2,8 @@ package no.ssb.dapla.service;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.google.protobuf.ByteString;
-import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
-import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
 import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
-import no.ssb.dapla.data.access.protobuf.WriteAccessTokenRequest;
-import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.dataset.api.DatasetId;
@@ -82,13 +77,7 @@ public class DataAccessClientStagingTest {
         DatasetMeta datasetMeta = ProtobufJsonUtils.toPojo(metadataJson, DatasetMeta.class);
         DatasetUri pathToNewDataSet = DatasetUri.of(writeLocationResponse.getParentUri(), datasetMeta.getId().getPath(), datasetMeta.getId().getVersion());
         System.out.println("Path to new dataset " + pathToNewDataSet);
-
-        WriteAccessTokenResponse writeAccessTokenResponse = dataAccessClient.writeAccessToken(WriteAccessTokenRequest.newBuilder()
-                .setMetadataJson(ByteString.copyFromUtf8(metadataJson))
-                .setMetadataSignature(writeLocationResponse.getMetadataSignature())
-                .build());
-
-        System.out.println(writeAccessTokenResponse.getAccessToken());
+        System.out.println(writeLocationResponse.getAccessToken());
     }
 
     @Test
@@ -99,10 +88,6 @@ public class DataAccessClientStagingTest {
                 .setPath("/tmp/bjorn-andre.skaar@ssbmod.net/test")
                 .setSnapshot(0) // 0 means resolve to latest version
                 .build());
-        ReadAccessTokenResponse readAccessTokenResponse = dataAccessClient.readAccessToken(ReadAccessTokenRequest.newBuilder()
-                .setPath("/tmp/bjorn-andre.skaar@ssbmod.net/test")
-                .setVersion(readLocationResponse.getVersion())
-                .build());
-        System.out.println(readAccessTokenResponse.getAccessToken());
+        System.out.println(readLocationResponse.getAccessToken());
     }
 }

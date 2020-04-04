@@ -3,15 +3,10 @@ package no.ssb.dapla.spark.plugin;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.collect.ImmutableMap;
-import com.google.protobuf.ByteString;
 import io.opentracing.Span;
 import io.opentracing.util.GlobalTracer;
-import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
-import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
 import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
-import no.ssb.dapla.data.access.protobuf.WriteAccessTokenRequest;
-import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.dataset.api.DatasetId;
@@ -92,7 +87,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
             span.log("Path to dataset: " + uriString);
             System.out.println("Path til dataset: " + uriString);
-            SQLContext isolatedSqlContext = isolatedContext(sqlContext, localPath, locationResponse.getVersion(), null, null, span);
+            SQLContext isolatedSqlContext = isolatedContext(sqlContext, locationResponse.getAccessToken(), locationResponse.getExpirationTime());
             return new GsimRelation(isolatedSqlContext, uriString);
         } catch (Exception e) {
             logError(span, e);
@@ -156,8 +151,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             span.log("writing file(s) to: " + pathToNewDataSet);
             System.out.println("Skriver datasett til: " + pathToNewDataSet);
             SparkSession sparkSession = sqlContext.sparkSession();
-            String metadataSignatureBase64 = new String(Base64.getEncoder().encode(writeLocationResponse.getMetadataSignature().toByteArray()), StandardCharsets.UTF_8);
-            setUserContext(sparkSession, pathToNewDataSet.getPath(), pathToNewDataSet.getVersion(), "WRITE", metadataJson, metadataSignatureBase64, span);
+            setUserContext(sparkSession, writeLocationResponse.getAccessToken(), writeLocationResponse.getExpirationTime());
             MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf, span);
 
             // Write metadata file
@@ -208,51 +202,26 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
      * Creates a new SQLContext with an isolated spark session.
      *
      * @param sqlContext the original SQLContext (which will be the parent context)
-     * @param namespace  namespace info that will be added to the isolated context
+     * @param accessToken  namespace info that will be added to the isolated context
+     * @param expirationTime  namespace info that will be added to the isolated context
      * @return the new SQLContext
      */
-    private SQLContext isolatedContext(SQLContext sqlContext, String namespace, String version,
-                                       String metadataJson, String metadataSignature, Span span) {
+    private SQLContext isolatedContext(SQLContext sqlContext, String accessToken, long expirationTime) {
         // Temporary enable file system cache during execution. This aviods re-creating the GoogleHadoopFileSystem
         // during multiple job executions within the spark session.
         // For this to work, we must create an isolated configuration inside a new spark session
         // Note: There is still only one spark context that is shared among sessions
         SparkSession sparkSession = sqlContext.sparkSession().newSession();
-        setUserContext(sparkSession, namespace, version, "READ", metadataJson, metadataSignature, span);
+        setUserContext(sparkSession, accessToken, expirationTime);
         return sparkSession.sqlContext();
     }
 
-    private void setUserContext(SparkSession sparkSession, String namespace, String version, String operation,
-                                String metadataJson, String metadataSignature, Span span) {
+    private void setUserContext(SparkSession sparkSession, String accessToken, long expirationTime) {
         if (sparkSession.conf().contains(SparkOptions.ACCESS_TOKEN)) {
             System.out.println("Access token already exists");
         }
-
-        DataAccessClient dataAccessClient = new DataAccessClient(sparkSession.sparkContext().getConf(), span);
-        if ("READ".equals(operation)) {
-
-            ReadAccessTokenResponse readAccessTokenResponse = dataAccessClient.readAccessToken(ReadAccessTokenRequest.newBuilder()
-                    .setPath(namespace)
-                    .setVersion(version)
-                    .build());
-            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, readAccessTokenResponse.getAccessToken());
-            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, readAccessTokenResponse.getExpirationTime());
-            log.debug("Got read access token");
-            System.out.println("Got read access token");
-
-        } else if ("WRITE".equals(operation)) {
-
-            byte[] datasetMetaSignatureBytes = Base64.getDecoder().decode(metadataSignature);
-            WriteAccessTokenResponse writeAccessTokenResponse = dataAccessClient.writeAccessToken(WriteAccessTokenRequest.newBuilder()
-                    .setMetadataJson(ByteString.copyFromUtf8(metadataJson))
-                    .setMetadataSignature(ByteString.copyFrom(datasetMetaSignatureBytes))
-                    .build());
-            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, writeAccessTokenResponse.getAccessToken());
-            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, writeAccessTokenResponse.getExpirationTime());
-            log.debug("Got write access token");
-            System.out.println("Got write access token");
-        }
-
+        sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, accessToken);
+        sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, expirationTime);
     }
 
     private void unsetUserContext(SparkSession sparkSession) {

@@ -3,8 +3,6 @@ package no.ssb.dapla.service;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
-import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
 import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
 import okhttp3.HttpUrl;
@@ -55,10 +53,10 @@ public class DataAccessClientTest {
     @Test
     public void testGetAccessToken() throws InterruptedException {
         server.enqueue(new MockResponse()
-                .setBody("{\"accessAllowed\": \"true\", \"parentUri\": \"file:///hei\", \"version\": \"1580828806046\"}")
+                .setBody("{\"accessAllowed\": \"true\", \"accessToken\": \"myToken\", \"expirationTime\": \"1580828806046\", \"parentUri\": \"file:///hei\", \"version\": \"1580828806046\"}")
                 .setResponseCode(200));
         server.enqueue(new MockResponse()
-                .setBody("{\"accessToken\": \"myToken\", \"expirationTime\": \"1580828806046\"}")
+                .setBody("{}")
                 .setResponseCode(200));
         DataAccessClient dataAccessClient = new DataAccessClient(this.sparkConf);
 
@@ -67,13 +65,8 @@ public class DataAccessClientTest {
                 .setSnapshot(0) // 0 means resolve to latest version
                 .build());
         assertThat(readLocationResponse.getAccessAllowed()).isTrue();
-        ReadAccessTokenResponse readAccessTokenResponse = dataAccessClient.readAccessToken(ReadAccessTokenRequest.newBuilder()
-                .setPath("/myBucket")
-                .setVersion(readLocationResponse.getVersion())
-                .build());
-
-        assertThat(readAccessTokenResponse.getAccessToken()).isEqualTo("myToken");
-        assertThat(readAccessTokenResponse.getExpirationTime()).isEqualTo(1580828806046L);
+        assertThat(readLocationResponse.getAccessToken()).isEqualTo("myToken");
+        assertThat(readLocationResponse.getExpirationTime()).isEqualTo(1580828806046L);
 
         RecordedRequest recordedRequest = server.takeRequest();
         assertThat(recordedRequest.getBody().readByteString().utf8()).isEqualTo("{\n" +
