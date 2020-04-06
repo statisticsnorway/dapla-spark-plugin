@@ -4,12 +4,8 @@ import io.opentracing.Span;
 import io.opentracing.contrib.okhttp3.TracingInterceptor;
 import io.opentracing.noop.NoopSpan;
 import io.opentracing.util.GlobalTracer;
-import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
-import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
 import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
-import no.ssb.dapla.data.access.protobuf.WriteAccessTokenRequest;
-import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
@@ -84,25 +80,6 @@ public class DataAccessClient {
         }
     }
 
-    public ReadAccessTokenResponse readAccessToken(ReadAccessTokenRequest readAccessTokenRequest) {
-        final String requestBody = ProtobufJsonUtils.toString(readAccessTokenRequest);
-        span.log("ReadAccessTokenRequest" + requestBody);
-        Request request = new Request.Builder()
-                .url(buildUrl("rpc/DataAccessService/readAccessToken"))
-                .post(RequestBody.create(requestBody, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            String json = getJson(response);
-            handleErrorCodes(response, json);
-            ReadAccessTokenResponse readAccessTokenResponse = ProtobufJsonUtils.toPojo(json, ReadAccessTokenResponse.class);
-            return readAccessTokenResponse;
-        } catch (IOException e) {
-            log.error("readAccessToken failed", e);
-            throw new DataAccessServiceException(e);
-        }
-    }
-
     public WriteLocationResponse writeLocation(WriteLocationRequest writeLocationRequest) {
         final String requestBody = ProtobufJsonUtils.toString(writeLocationRequest);
         Request request = new Request.Builder()
@@ -117,23 +94,6 @@ public class DataAccessClient {
             return writeLocationResponse;
         } catch (IOException e) {
             log.error("writeLocation failed", e);
-            throw new DataAccessServiceException(e);
-        }
-    }
-
-    public WriteAccessTokenResponse writeAccessToken(WriteAccessTokenRequest writeAccessTokenRequest) {
-        Request request = new Request.Builder()
-                .url(buildUrl("rpc/DataAccessService/writeAccessToken"))
-                .post(RequestBody.create(ProtobufJsonUtils.toString(writeAccessTokenRequest), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            String json = getJson(response);
-            handleErrorCodes(response, json);
-            WriteAccessTokenResponse writeAccessTokenResponse = ProtobufJsonUtils.toPojo(json, WriteAccessTokenResponse.class);
-            return writeAccessTokenResponse;
-        } catch (IOException e) {
-            log.error("writeAccessToken failed", e);
             throw new DataAccessServiceException(e);
         }
     }

@@ -10,12 +10,8 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.protobuf.ByteString;
-import no.ssb.dapla.data.access.protobuf.ReadAccessTokenRequest;
-import no.ssb.dapla.data.access.protobuf.ReadAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
 import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
-import no.ssb.dapla.data.access.protobuf.WriteAccessTokenRequest;
-import no.ssb.dapla.data.access.protobuf.WriteAccessTokenResponse;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.gcs.connector.GoogleHadoopFileSystemExt;
@@ -213,18 +209,10 @@ public class GsimDatasourceGCSTest {
                         .setAccessAllowed(true)
                         .setParentUri("gs://" + blobId.getBucket())
                         .setVersion(String.valueOf(version))
+                        .setAccessToken(credentials.getAccessToken())
+                        .setExpirationTime(System.currentTimeMillis() + 1000 * 60 * 60) // +1 Hour
                         .build()))
                 .setResponseCode(200));
-        server.enqueue(
-                new MockResponse()
-                        .setBody(ProtobufJsonUtils.toString(ReadAccessTokenResponse.newBuilder()
-                                .setAccessToken(credentials.getAccessToken())
-                                .setExpirationTime(System.currentTimeMillis() + 1000 * 60 * 60) // +1 Hour
-                                .setParentUri("gs://" + blobId.getBucket())
-                                .setVersion(String.valueOf(version))
-                                .build()))
-                        .setResponseCode(200)
-        );
 
         Dataset<Row> dataset = sqlContext.read()
                 .format("gsim")
@@ -239,13 +227,6 @@ public class GsimDatasourceGCSTest {
                     recordedRequest.getBody().readByteString().utf8(), ReadLocationRequest.class);
             assertThat(readLocationRequest.getPath()).isEqualTo("/test/dapla/namespace");
             assertThat(readLocationRequest.getSnapshot()).isEqualTo(0L);
-        }
-        {
-            RecordedRequest recordedRequest = server.takeRequest();
-            final ReadAccessTokenRequest readAccessTokenRequest = ProtobufJsonUtils.toPojo(
-                    recordedRequest.getBody().readByteString().utf8(), ReadAccessTokenRequest.class);
-            assertThat(readAccessTokenRequest.getPath()).isEqualTo("/test/dapla/namespace");
-            assertThat(readAccessTokenRequest.getVersion()).isEqualTo(String.valueOf(version));
         }
     }
 
@@ -283,28 +264,6 @@ public class GsimDatasourceGCSTest {
                                         "}"))
                                 .setMetadataSignature(ByteString.copyFromUtf8("some-junit-signature"))
                                 .setParentUri("gs://" + blobId.getBucket())
-                                .build()))
-                        .setResponseCode(200)
-        );
-        server.enqueue(
-                new MockResponse()
-                        .setBody(ProtobufJsonUtils.toString(WriteAccessTokenResponse.newBuilder()
-                                .setAccessToken(credentials.getAccessToken())
-                                .setExpirationTime(System.currentTimeMillis() + 1000 * 60 * 60) // +1 Hour
-                                .build()))
-                        .setResponseCode(200)
-        );
-        server.enqueue(
-                new MockResponse()
-                        .setBody(ProtobufJsonUtils.toString(WriteAccessTokenResponse.newBuilder()
-                                .setAccessToken(credentials.getAccessToken())
-                                .setExpirationTime(System.currentTimeMillis() + 1000 * 60 * 60) // +1 Hour
-                                .build()))
-                        .setResponseCode(200)
-        );
-        server.enqueue(
-                new MockResponse()
-                        .setBody(ProtobufJsonUtils.toString(WriteAccessTokenResponse.newBuilder()
                                 .setAccessToken(credentials.getAccessToken())
                                 .setExpirationTime(System.currentTimeMillis() + 1000 * 60 * 60) // +1 Hour
                                 .build()))
@@ -336,17 +295,5 @@ public class GsimDatasourceGCSTest {
                 "  \"state\": \"INPUT\"\n" +
                 "}");
 
-        final WriteAccessTokenRequest writeAccessTokenRequest = ProtobufJsonUtils.toPojo(
-                server.takeRequest().getBody().readByteString().utf8(), WriteAccessTokenRequest.class);
-        assertThat(writeAccessTokenRequest.getMetadataJson().toStringUtf8()).isEqualTo("{\n" +
-                "  \"id\": {\n" +
-                "    \"path\": \"/test/dapla/namespace\",\n" +
-                "    \"version\": \"" + version + "\"\n" +
-                "  },\n" +
-                "  \"valuation\": \"INTERNAL\",\n" +
-                "  \"state\": \"INPUT\",\n" +
-                "  \"createdBy\": \"junit\"\n" +
-                "}");
-        assertThat(writeAccessTokenRequest.getMetadataSignature()).isEqualTo(ByteString.copyFromUtf8("some-junit-signature"));
     }
 }
