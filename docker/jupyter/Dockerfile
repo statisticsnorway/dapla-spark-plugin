@@ -43,6 +43,7 @@ RUN python3 -m pip install toree && \
 ENV JUPYTER_GROUP_ID=2100
 ENV JUPYTER_USER_ID=2100
 ENV JUPYTER_HOME="/jupyter"
+ENV JUPYTERHUB_CRYPT_KEY=2696cc8957715d80f8166f7531555e459fe9496077e5b75ce99bbffcfc2a0d15
 
 # Copy the library.
 COPY target/dapla-spark-plugin-*-shaded.jar /jupyter/lib/dapla-spark-plugin.jar
