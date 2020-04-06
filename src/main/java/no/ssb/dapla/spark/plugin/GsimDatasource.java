@@ -37,8 +37,6 @@ import scala.collection.immutable.Map;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.Optional;
 
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
@@ -220,8 +218,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         if (sparkSession.conf().contains(SparkOptions.ACCESS_TOKEN)) {
             System.out.println("Access token already exists");
         }
-        sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, accessToken);
-        sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, expirationTime);
+        if (accessToken != null) {
+            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, accessToken);
+            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, expirationTime);
+        }
     }
 
     private void unsetUserContext(SparkSession sparkSession) {
