@@ -34,16 +34,18 @@ RUN echo "**** install jupyterhub ****" && \
 RUN python3 -m pip install jupyterlab
 RUN jupyter kernelspec uninstall python3 -f
 
-RUN python3 -m pip install oauthenticator
+RUN python3 -m pip install oauthenticator pyjwt
 
 RUN python3 -m pip install toree && \
     jupyter toree install --spark_home=${SPARK_HOME} && \
     apk add --no-cache bash
 
+RUN apk add --update openssl && \
+    rm -rf /var/cache/apk/*
+
 ENV JUPYTER_GROUP_ID=2100
 ENV JUPYTER_USER_ID=2100
 ENV JUPYTER_HOME="/jupyter"
-ENV JUPYTERHUB_CRYPT_KEY=2696cc8957715d80f8166f7531555e459fe9496077e5b75ce99bbffcfc2a0d15
 
 # Copy the library.
 COPY target/dapla-spark-plugin-*-shaded.jar /jupyter/lib/dapla-spark-plugin.jar
@@ -59,8 +61,11 @@ RUN wget -P /tmp https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-had
 RUN addgroup -g $JUPYTER_GROUP_ID -S jupyter && \
     adduser  -u $JUPYTER_USER_ID --shell /bin/false --home ${JUPYTER_HOME} -D -S jupyter -G jupyter
 
+COPY docker/jupyter/env.sh /jupyter/env.sh
+RUN chmod +x /jupyter/env.sh
+
 USER jupyter:jupyter
 
 WORKDIR ${JUPYTER_HOME}
 
-CMD ["jupyterhub"]
+CMD ["/jupyter/env.sh"]
