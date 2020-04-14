@@ -64,6 +64,8 @@ RUN addgroup -g $JUPYTER_GROUP_ID -S jupyter && \
 COPY docker/jupyter/env.sh /jupyter/env.sh
 RUN chmod +x /jupyter/env.sh
 
+COPY docker/jupyter/custom_auth /usr/lib/python3.6/site-packages/custom_auth
+
 USER jupyter:jupyter
 
 WORKDIR ${JUPYTER_HOME}
