@@ -34,7 +34,7 @@ RUN echo "**** install jupyterhub ****" && \
 RUN python3 -m pip install jupyterlab
 RUN jupyter kernelspec uninstall python3 -f
 
-RUN python3 -m pip install oauthenticator pyjwt
+RUN python3 -m pip install oauthenticator pyjwt py4j
 
 RUN python3 -m pip install toree && \
     jupyter toree install --spark_home=${SPARK_HOME} && \
@@ -46,6 +46,13 @@ RUN apk add --update openssl && \
 ENV JUPYTER_GROUP_ID=2100
 ENV JUPYTER_USER_ID=2100
 ENV JUPYTER_HOME="/jupyter"
+ENV PYTHONPATH=$SPARK_HOME/python:$PYTHONPATH
+ENV PYSPARK_DRIVER_PYTHON="jupyter"
+ENV PYSPARK_DRIVER_PYTHON_OPTS="notebook"
+ENV PYSPARK_PYTHON=python3
+# specifying the location to a python script, that will be run by python
+# before starting the python interactive mode (interpreter)
+ENV PYTHONSTARTUP=${JUPYTER_HOME}/init.py
 
 # Copy the library.
 COPY target/dapla-spark-plugin-*-shaded.jar /jupyter/lib/dapla-spark-plugin.jar
@@ -65,6 +72,7 @@ COPY docker/jupyter/env.sh /jupyter/env.sh
 RUN chmod +x /jupyter/env.sh
 
 COPY docker/jupyter/custom_auth /usr/lib/python3.6/site-packages/custom_auth
+COPY docker/jupyter/init.py /jupyter/init.py
 
 USER jupyter:jupyter
 
