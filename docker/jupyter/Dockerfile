@@ -25,6 +25,10 @@ RUN echo "**** install npm ****" && \
 RUN echo "Install a glibc dynamic loader (needed for jupyter extensions). Alpine image doesn't run with glibc" && \
     apk add --no-cache gcompat
 
+RUN echo "**** install numpy, pandas and matplotlib with dependencies ****" && \
+    apk add --no-cache py3-numpy py-numpy-dev python3-dev gcc gfortran build-base freetype-dev libpng-dev openblas-dev && \
+    python3 -m pip install numpy pandas matplotlib
+
 RUN echo "**** install jupyterhub ****" && \
     apk add --virtual build-dependencies build-base python3-dev libffi-dev openssl-dev && \
     python3 -m pip install jupyterhub && \
