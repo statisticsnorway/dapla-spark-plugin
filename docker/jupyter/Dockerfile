@@ -22,6 +22,8 @@ RUN echo "**** install pip ****" && \
 RUN echo "**** install npm ****" && \
     apk add --no-cache npm
 
+RUN echo "Install a glibc dynamic loader (needed for jupyter extensions). Alpine image doesn't run with glibc" && \
+    apk add --no-cache gcompat
 
 RUN echo "**** install jupyterhub ****" && \
     apk add --virtual build-dependencies build-base python3-dev libffi-dev openssl-dev && \
