@@ -77,6 +77,7 @@ RUN chmod +x /jupyter/env.sh
 
 COPY docker/jupyter/custom_auth /usr/lib/python3.6/site-packages/custom_auth
 COPY docker/jupyter/kernels/pyspark-local ${PYTHON_KERNELS_PATH}/pyspark-local
+COPY docker/jupyter/kernels/pyspark-cluster ${PYTHON_KERNELS_PATH}/pyspark-cluster
 
 USER jupyter:jupyter
 

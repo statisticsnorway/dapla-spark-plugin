@@ -2,6 +2,7 @@ import os
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder.appName(os.environ["JUPYTERHUB_CLIENT_ID"]) \
+    .config("spark.submit.deployMode", "client") \
     .config("spark.ssb.access", os.environ["SSB_ACCESS"]) \
     .config("spark.ssb.refresh", os.environ["SSB_REFRESH"]) \
     .config("spark.ssb.dapla.oauth.tokenUrl", os.environ["OAUTH2_TOKEN_URL"]) \
