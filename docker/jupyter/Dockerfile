@@ -56,9 +56,7 @@ ENV PYTHONPATH=$SPARK_HOME/python:$PYTHONPATH
 ENV PYSPARK_DRIVER_PYTHON="jupyter"
 ENV PYSPARK_DRIVER_PYTHON_OPTS="notebook"
 ENV PYSPARK_PYTHON=python3
-# specifying the location to a python script, that will be run by python
-# before starting the python interactive mode (interpreter)
-ENV PYTHONSTARTUP=${JUPYTER_HOME}/init.py
+ENV PYTHON_KERNELS_PATH=/usr/local/share/jupyter/kernels
 
 # Copy the library.
 COPY target/dapla-spark-plugin-*-shaded.jar /jupyter/lib/dapla-spark-plugin.jar
@@ -78,7 +76,7 @@ COPY docker/jupyter/env.sh /jupyter/env.sh
 RUN chmod +x /jupyter/env.sh
 
 COPY docker/jupyter/custom_auth /usr/lib/python3.6/site-packages/custom_auth
-COPY docker/jupyter/init.py /jupyter/init.py
+COPY docker/jupyter/kernels/pyspark-local ${PYTHON_KERNELS_PATH}/pyspark-local
 
 USER jupyter:jupyter
 

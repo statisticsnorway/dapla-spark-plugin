@@ -1,0 +1,19 @@
+{
+  "display_name": "Pyspark (local)",
+  "language": "python",
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "ipykernel_launcher",
+    "-f",
+    "{connection_file}"
+  ],
+  "env": {
+    "SPARK_HOME": "${SPARK_HOME}",
+    "PYTHONPATH": "${SPARK_HOME}/python",
+    "PYSPARK_DRIVER_PYTHON": "jupyter",
+    "PYSPARK_PYTHON": "python3",
+    "PYSPARK_SUBMIT_ARGS": "--master local[*] --driver-memory 3g --executor-memory 2g pyspark-shell",
+    "PYTHONSTARTUP": "${PYTHON_KERNELS_PATH}/pyspark-local/init.py"
+  }
+}
