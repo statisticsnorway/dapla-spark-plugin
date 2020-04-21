@@ -45,7 +45,6 @@ class EnvGenericOAuthenticator(GenericOAuthenticator):
             await handler.stop_single_user(user, user.spawner.name)
             handler.clear_cookie("jupyterhub-hub-login")
             handler.clear_cookie("jupyterhub-session-id")
-            handler.redirect('/hub/logout')
             refresh_user_return = False
         else:
             # We need to refresh access token (which will also refresh the refresh token)
