@@ -35,7 +35,8 @@ class EnvGenericOAuthenticator(GenericOAuthenticator):
         refresh_token = jwt.decode(auth_state['refresh_token'], verify=False)
         diff_access=access_token['exp']-time.time()
         diff_refresh=refresh_token['exp']-time.time()
-        if diff_access>0:
+        # Allow 20 secs before expiry
+        if diff_access>20:
             # Access token still valid, function returns True
             refresh_user_return = True
         elif diff_refresh<0:
