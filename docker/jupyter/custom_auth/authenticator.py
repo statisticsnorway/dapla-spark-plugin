@@ -8,10 +8,12 @@ from oauthenticator.generic import GenericOAuthenticator
 class EnvGenericOAuthenticator(GenericOAuthenticator):
     async def pre_spawn_start(self, user, spawner):
 
+        self.log.info('*** Calling pre_spawn_start')
         # Retrieve user authentication info from JH
         auth_state = await user.get_auth_state()
         if not auth_state:
             # user has no auth state
+            self.log.error('*** User has no auth state')
             return
 
         # update env var to pass to notebooks
@@ -28,7 +30,6 @@ class EnvGenericOAuthenticator(GenericOAuthenticator):
         from tornado.httpclient import HTTPRequest, AsyncHTTPClient
         from tornado.httputil import url_concat
         # Retrieve user authentication info, decode, and check if refresh is needed
-        self.log.info('*** Calling refresh_user')
         auth_state = await user.get_auth_state()
         access_token = jwt.decode(auth_state['access_token'], verify=False)
         refresh_token = jwt.decode(auth_state['refresh_token'], verify=False)
@@ -42,6 +43,7 @@ class EnvGenericOAuthenticator(GenericOAuthenticator):
             refresh_user_return = False
         else:
             # We need to refresh access token (which will also refresh the refresh token)
+            self.log.info('*** Try to refresh user tokens')
             refresh_token = auth_state['refresh_token']
             http_client = AsyncHTTPClient()
             url = os.environ.get('OAUTH2_TOKEN_URL')
@@ -99,6 +101,7 @@ class EnvGenericOAuthenticator(GenericOAuthenticator):
                 self.log.error("OAuth user contains no key %s: %s", self.username_key, resp_json)
                 return
 
+            self.log.info('*** Updating access and refresh token')
             refresh_user_return = {
                 'name': resp_json.get(self.username_key),
                 'auth_state': {
