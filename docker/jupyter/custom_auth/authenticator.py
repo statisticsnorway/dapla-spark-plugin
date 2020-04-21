@@ -8,21 +8,21 @@ from oauthenticator.generic import GenericOAuthenticator
 class EnvGenericOAuthenticator(GenericOAuthenticator):
     async def pre_spawn_start(self, user, spawner):
 
-        self.log.info('*** Calling pre_spawn_start')
+        self.log.info('Calling pre_spawn_start for: ' + user.name)
         # Retrieve user authentication info from JH
         auth_state = await user.get_auth_state()
         if not auth_state:
             # user has no auth state
-            self.log.error('*** User has no auth state')
+            self.log.error('User has no auth state')
             return
 
         # update env var to pass to notebooks
-        self.log.info('*** Passing credentials to notebook')
+        self.log.info('Passing credentials to notebook for: ' + user.name)
         spawner.environment['SSB_ACCESS'] = auth_state['access_token']
         spawner.environment['SSB_REFRESH'] = auth_state['refresh_token']
 
     # Refresh user access and refresh tokens (called periodically)
-    async def refresh_user(self, user, handler=None):
+    async def refresh_user(self, user, handler, force=True):
         import jwt
         import time
         import urllib
@@ -40,10 +40,16 @@ class EnvGenericOAuthenticator(GenericOAuthenticator):
             refresh_user_return = True
         elif diff_refresh<0:
             # Refresh token not valid, need to completely reauthenticate
+            self.log.info('Refresh token not valid, need to completely reauthenticate for: ' +  user.name)
+            # Fron https://discourse.jupyter.org/t/how-to-force-re-login-for-users/1998/11
+            await handler.stop_single_user(user, user.spawner.name)
+            handler.clear_cookie("jupyterhub-hub-login")
+            handler.clear_cookie("jupyterhub-session-id")
+            handler.redirect('/hub/logout')
             refresh_user_return = False
         else:
             # We need to refresh access token (which will also refresh the refresh token)
-            self.log.info('*** Try to refresh user tokens')
+            self.log.info('Try to refresh user tokens for: ' + user.name)
             refresh_token = auth_state['refresh_token']
             http_client = AsyncHTTPClient()
             url = os.environ.get('OAUTH2_TOKEN_URL')
@@ -101,7 +107,7 @@ class EnvGenericOAuthenticator(GenericOAuthenticator):
                 self.log.error("OAuth user contains no key %s: %s", self.username_key, resp_json)
                 return
 
-            self.log.info('*** Updating access and refresh token')
+            self.log.info('Updating access and refresh token for: ' + user.name)
             refresh_user_return = {
                 'name': resp_json.get(self.username_key),
                 'auth_state': {
