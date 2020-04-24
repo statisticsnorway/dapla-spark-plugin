@@ -66,6 +66,9 @@ RUN echo "**** install jupyterlab-git" && \
 RUN echo "**** install nbdime" && \
     python3 -m pip install nbdime
 
+RUN echo "**** install nbstripout" && \
+    python3 -m pip install nbstripout
+
 ENV JUPYTER_GROUP_ID=2100
 ENV JUPYTER_USER_ID=2100
 ENV JUPYTER_HOME="/jupyter"
