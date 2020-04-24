@@ -49,6 +49,23 @@ RUN python3 -m pip install toree && \
 RUN apk add --update openssl && \
     rm -rf /var/cache/apk/*
 
+RUN echo "**** install git-cli ****" && \
+    apk add --no-cache bash git openssh-client
+
+RUN echo "**** build jupyterlab-git ****" && \
+    apk add --no-cache yarn && \
+    git clone "https://github.com/jupyterlab/jupyterlab-git" && \
+    cd jupyterlab-git && \
+    sed -i 's/jlpm/yarn/g' package.json && \
+    yarn build:labextension && \
+    jupyter labextension install jupyterlab_git/labextension/jupyterlab-git-0.20.0.tgz
+
+RUN echo "**** install jupyterlab-git" && \
+    python3 -m pip install --upgrade jupyterlab-git
+
+RUN echo "**** install nbdime" && \
+    python3 -m pip install nbdime
+
 ENV JUPYTER_GROUP_ID=2100
 ENV JUPYTER_USER_ID=2100
 ENV JUPYTER_HOME="/jupyter"
@@ -72,6 +89,7 @@ RUN wget -P /tmp https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-had
 RUN addgroup -g $JUPYTER_GROUP_ID -S jupyter && \
     adduser  -u $JUPYTER_USER_ID --shell /bin/false --home ${JUPYTER_HOME} -D -S jupyter -G jupyter
 
+COPY docker/jupyter/aliases.sh /etc/profile.d/
 COPY docker/jupyter/env.sh /jupyter/env.sh
 RUN chmod +x /jupyter/env.sh
 
