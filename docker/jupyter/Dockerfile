@@ -58,7 +58,7 @@ RUN echo "**** build jupyterlab-git ****" && \
     cd jupyterlab-git && \
     sed -i 's/jlpm/yarn/g' package.json && \
     yarn build:labextension && \
-    jupyter labextension install jupyterlab_git/labextension/jupyterlab-git-0.20.0.tgz
+    jupyter labextension install jupyterlab_git/labextension/jupyterlab-git-0.20.0-rc.0.tgz
 
 RUN echo "**** install jupyterlab-git" && \
     python3 -m pip install --upgrade jupyterlab-git
