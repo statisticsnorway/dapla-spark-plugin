@@ -21,7 +21,7 @@ def get_session():
     if should_reload_token(session.sparkContext.getConf()):
         # Load new spark session
         print("Fetch new access token")
-        update_tokens(session._jsparkSession.sessionState().conf())
+        update_tokens()
     else:
         print("Reusing access token")
     return session
@@ -40,11 +40,10 @@ def should_reload_token(conf):
     else:
         return True
 
-def update_tokens(conf):
+def update_tokens():
     response = requests.get("http://127.0.0.1:8081/hub/custom-api/user",
                             headers={
                                 'Authorization': 'token %s' % os.environ["JUPYTERHUB_API_TOKEN"]
                             }).json()
-    #return conf.setConfString("spark.ssb.access", response['access_token'])
     SparkContext._active_spark_context._conf.set("spark.ssb.access", response['access_token'])
 
