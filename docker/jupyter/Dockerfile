@@ -92,9 +92,14 @@ RUN wget -P /tmp https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-had
 RUN addgroup -g $JUPYTER_GROUP_ID -S jupyter && \
     adduser  -u $JUPYTER_USER_ID --shell /bin/false --home ${JUPYTER_HOME} -D -S jupyter -G jupyter
 
-COPY docker/jupyter/aliases.sh /etc/profile.d/
+COPY docker/jupyter/aliases.bash /etc/profile.d/aliases.sh
 COPY docker/jupyter/env.sh /jupyter/env.sh
-RUN chmod +x /jupyter/env.sh
+COPY docker/jupyter/check-git-config.bash /jupyter/check-git-config.sh
+COPY docker/jupyter/git-config.bash /bin/git-config.sh
+#RUN echo "/jupyter/check-git-config.sh" >> /etc/profile
+RUN chmod +x /jupyter/env.sh && \
+    chmod +x /jupyter/check-git-config.sh && \
+    chmod +x /bin/git-config.sh
 
 COPY docker/jupyter/custom_auth /usr/lib/python3.6/site-packages/custom_auth
 COPY docker/jupyter/kernels/pyspark-local ${PYTHON_KERNELS_PATH}/pyspark-local
