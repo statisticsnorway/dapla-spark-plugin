@@ -6,6 +6,7 @@ from oauthenticator.generic import GenericOAuthenticator
 
 # Pre-Spawn custom class to retrieve user access token
 class EnvGenericOAuthenticator(GenericOAuthenticator):
+
     async def pre_spawn_start(self, user, spawner):
 
         self.log.info('Calling pre_spawn_start for: ' + user.name)
@@ -17,9 +18,7 @@ class EnvGenericOAuthenticator(GenericOAuthenticator):
             return
 
         # update env var to pass to notebooks
-        self.log.info('Passing credentials to notebook for: ' + user.name)
-        spawner.environment['SSB_ACCESS'] = auth_state['access_token']
-        spawner.environment['SSB_REFRESH'] = auth_state['refresh_token']
+        self.log.info('Starting notebook for: ' + user.name)
 
     # Refresh user access and refresh tokens (called periodically)
     async def refresh_user(self, user, handler, force=True):
@@ -42,10 +41,6 @@ class EnvGenericOAuthenticator(GenericOAuthenticator):
         elif diff_refresh<0:
             # Refresh token not valid, need to completely reauthenticate
             self.log.info('Refresh token not valid, need to completely reauthenticate for: ' +  user.name)
-            # Fron https://discourse.jupyter.org/t/how-to-force-re-login-for-users/1998/11
-            await handler.stop_single_user(user, user.spawner.name)
-            handler.clear_cookie("jupyterhub-hub-login")
-            handler.clear_cookie("jupyterhub-session-id")
             refresh_user_return = False
         else:
             # We need to refresh access token (which will also refresh the refresh token)
