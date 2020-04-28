@@ -52,14 +52,15 @@ RUN apk add --update openssl && \
 RUN echo "**** install git-cli ****" && \
     apk add --no-cache bash git openssh-client
 
-RUN echo "**** build jupyterlab-git ****" && \
+RUN echo "**** install jupyterlab-git ****" && \
     python3 -m pip install --upgrade jupyterlab-git==0.20.0-rc.0
 
-RUN echo "**** install jupyterlab-git" && \
-    python3 -m pip install --upgrade jupyterlab-git
+#RUN echo "**** install jupyterlab-git" && \
+#    python3 -m pip install --upgrade jupyterlab-git
 
 RUN echo "**** install nbdime" && \
-    python3 -m pip install nbdime
+    python3 -m pip install --upgrade nbdime && \
+    jupyter labextension install nbdime-jupyterlab
 
 RUN echo "**** install nbstripout" && \
     python3 -m pip install nbstripout
