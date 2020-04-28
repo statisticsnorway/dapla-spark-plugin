@@ -20,17 +20,14 @@ def namespace_read(self, ns):
 def get_session():
     session = SparkSession._instantiatedSession
     if should_reload_token(session.sparkContext.getConf()):
-        # Load new spark session
-        print("Fetch new access token")
+        # Fetch new access token
         update_tokens()
-    else:
-        print("Reusing access token")
     return session
 
 def should_reload_token(conf):
     spark_token = conf.get("spark.ssb.access")
     if spark_token is None:
-        print("No spark token")
+        # First time fetching the token
         return True
 
     access_token = jwt.decode(spark_token, verify=False)
