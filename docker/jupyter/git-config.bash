@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 GIT_CONFIG=~/.gitconfig
-GIT_CREDENTIALS=~/.git-credentials
 
 read_git_fullname() {
   echo -n "Enter Full name: "
@@ -26,14 +25,14 @@ read_git_password() {
 read_git_fullname
 read_git_email
 read_git_user
-read_git_password
+#read_git_password
 
 cat > $GIT_CONFIG << EOF
 [user]
         name = $GIT_FULL_NAME
         email = $GIT_EMAIL
 [credential]
-        helper = store
+        username = $GIT_USERNAME
 [core]
         autocrlf = input
 [diff "jupyternotebook"]
@@ -51,12 +50,4 @@ cat > $GIT_CONFIG << EOF
         prompt = false
 EOF
 
-cat > $GIT_CREDENTIALS << EOF
-protocol=https
-host=github.com
-username=$GIT_USERNAME
-password=$GIT_PASSWORD
-EOF
-
 echo "Successfully configured your Git Account!"
-
