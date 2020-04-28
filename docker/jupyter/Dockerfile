@@ -92,7 +92,6 @@ COPY docker/jupyter/aliases.bash /etc/profile.d/aliases.sh
 COPY docker/jupyter/env.sh /jupyter/env.sh
 COPY docker/jupyter/check-git-config.bash /jupyter/check-git-config.sh
 COPY docker/jupyter/git-config.bash /bin/git-config.sh
-#RUN echo "/jupyter/check-git-config.sh" >> /etc/profile
 RUN chmod +x /jupyter/env.sh && \
     chmod +x /jupyter/check-git-config.sh && \
     chmod +x /bin/git-config.sh

@@ -2,20 +2,35 @@ import os
 import requests
 import jwt
 import time
-from pyspark.sql import DataFrameReader
-from pyspark.sql import SparkSession
 from pyspark import SparkContext
+from pyspark.sql import DataFrameReader, DataFrameWriter, SparkSession
 from jupyterhub.services.auth import HubAuth
 
+
 """
-This extension will replace `spark.read.format("gsim").load("/ns")` with
- `spark.read.namespace("/ns")`, and at the same time add access token reload the spark context if necessary.
+This extension will overload the spark session object (spark) with a method called ``namespace``.
+That means, that the "normal" spark expressions:
+>>> spark.read.format("gsim").load("/ns")
+and
+>>> ds.write.format("gsim").save("/ns")
+can be replaced by
+>>> spark.read.namespace("/ns")
+and
+>>> ds.write.namespace("/ns")
+respectively. 
+
+The ``namespace`` method will ensure that an access token is (re)loaded (if necessary) and added to the spark context.
 """
 def load_extensions():
     DataFrameReader.namespace = namespace_read
+    DataFrameWriter.namespace = namespace_write
 
 def namespace_read(self, ns):
     return get_session().read.format("gsim").load(ns)
+
+def namespace_write(self, ns):
+    self._spark = get_session()
+    self.format("gsim").save(ns)
 
 def get_session():
     session = SparkSession._instantiatedSession
