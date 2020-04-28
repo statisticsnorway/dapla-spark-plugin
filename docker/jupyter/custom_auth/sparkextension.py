@@ -5,6 +5,7 @@ import time
 from pyspark.sql import DataFrameReader
 from pyspark.sql import SparkSession
 from pyspark import SparkContext
+from jupyterhub.services.auth import HubAuth
 
 """
 This extension will replace `spark.read.format("gsim").load("/ns")` with
@@ -34,16 +35,18 @@ def should_reload_token(conf):
 
     access_token = jwt.decode(spark_token, verify=False)
     diff_access = access_token['exp'] - time.time()
-    # Should fetch new token from server if the access token expires in 10 secs
-    if diff_access>10:
+    # Should fetch new token from server if the access token within the given buffer
+    if diff_access > int(os.environ['SPARK_USER_TOKEN_EXPIRY_BUFFER_SECS']):
         return False
     else:
         return True
 
 def update_tokens():
-    response = requests.get("http://127.0.0.1:8081/hub/custom-api/user",
-                            headers={
-                                'Authorization': 'token %s' % os.environ["JUPYTERHUB_API_TOKEN"]
-                            }).json()
+    # Helps getting the correct ssl configs
+    hub = HubAuth()
+    response = requests.get(os.environ['JUPYTERHUB_HANDLER_CUSTOM_AUTH_URL'],
+             headers={
+                 'Authorization': 'token %s' % hub.api_token
+             }, cert = (hub.certfile, hub.keyfile), verify= hub.client_ca).json()
     SparkContext._active_spark_context._conf.set("spark.ssb.access", response['access_token'])
 
