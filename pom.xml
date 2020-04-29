@@ -412,6 +412,7 @@
                                     <include>org.jetbrains.kotlin:kotlin-stdlib:*</include>
                                     <include>org.jetbrains.kotlin:kotlin-stdlib-common:*</include>
                                     <include>org.apache.parquet:parquet-avro</include>
+                                    <include>org.apache.parquet:parquet-column</include>
                                     <include>io.grpc:*</include>
                                     <include>com.google.guava:*</include>
                                     <include>com.google.protobuf:*</include>
