@@ -81,37 +81,37 @@ steps:
   depends_on:
     - sonarqube
 
-- name: docker-dapla-zeppelin
-  image: plugins/gcr
-  settings:
-    dockerfile: docker/zeppelin/Dockerfile
-    repo: eu.gcr.io/prod-bip/dapla-zeppelin
-    registry: eu.gcr.io
-    tags:
-      - latest
-      - ${DRONE_BRANCH//\//-}-${DRONE_COMMIT_SHA:0:8}
-    json_key:
-      from_secret: gcr_credentials
-  when:
-    event: push
-  depends_on:
-    - publish-maven
-
-- name: docker-dapla-polynote
-  image: plugins/gcr
-  settings:
-    dockerfile: docker/polynote/Dockerfile
-    repo: eu.gcr.io/prod-bip/dapla-polynote
-    registry: eu.gcr.io
-    tags:
-      - latest
-      - ${DRONE_BRANCH//\//-}-${DRONE_COMMIT_SHA:0:8}
-    json_key:
-      from_secret: gcr_credentials
-  when:
-    event: push
-  depends_on:
-    - publish-maven
+#- name: docker-dapla-zeppelin
+#  image: plugins/gcr
+#  settings:
+#    dockerfile: docker/zeppelin/Dockerfile
+#    repo: eu.gcr.io/prod-bip/dapla-zeppelin
+#    registry: eu.gcr.io
+#    tags:
+#      - latest
+#      - ${DRONE_BRANCH//\//-}-${DRONE_COMMIT_SHA:0:8}
+#    json_key:
+#      from_secret: gcr_credentials
+#  when:
+#    event: push
+#  depends_on:
+#    - publish-maven
+#
+#- name: docker-dapla-polynote
+#  image: plugins/gcr
+#  settings:
+#    dockerfile: docker/polynote/Dockerfile
+#    repo: eu.gcr.io/prod-bip/dapla-polynote
+#    registry: eu.gcr.io
+#    tags:
+#      - latest
+#      - ${DRONE_BRANCH//\//-}-${DRONE_COMMIT_SHA:0:8}
+#    json_key:
+#      from_secret: gcr_credentials
+#  when:
+#    event: push
+#  depends_on:
+#    - publish-maven
 
 - name: docker-dapla-jupyter
   image: plugins/gcr
@@ -139,9 +139,9 @@ steps:
     status: [ success, failure ]
   depends_on:
     - publish-maven
-    - docker-dapla-zeppelin
-    - docker-dapla-polynote
     - docker-dapla-jupyter
+    #- docker-dapla-zeppelin
+    #- docker-dapla-polynote
 
 # Rebuild cache if it has changed with this build
 - name: rebuild-cache

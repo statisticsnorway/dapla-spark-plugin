@@ -3,6 +3,9 @@ Custom GenericOAuthenticator extension
 """
 import os
 from oauthenticator.generic import GenericOAuthenticator
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 # Pre-Spawn custom class to retrieve user access token
 class EnvGenericOAuthenticator(GenericOAuthenticator):
