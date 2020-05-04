@@ -195,7 +195,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
 
     private void saveAvroSchema(URI storagePath, SparkSession sparkSession, Schema schema) {
         Configuration hadoopConfiguration = sparkSession.sparkContext().hadoopConfiguration();
-        final Path schemaPath = new Path(storagePath + Path.SEPARATOR + "schema.avsc");
+        final Path schemaPath = new Path(storagePath + Path.SEPARATOR + ".schema.avsc");
 
         try (FileSystem fs = FileSystem.get(storagePath, hadoopConfiguration)) {
             fs.mkdirs(schemaPath.getParent());
