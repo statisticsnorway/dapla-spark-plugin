@@ -49,6 +49,22 @@ RUN python3 -m pip install toree && \
 RUN apk add --update openssl && \
     rm -rf /var/cache/apk/*
 
+RUN echo "**** install git-cli ****" && \
+    apk add --no-cache bash git openssh-client
+
+RUN echo "**** install jupyterlab-git ****" && \
+    python3 -m pip install --upgrade jupyterlab-git==0.20.0-rc.0
+
+#RUN echo "**** install jupyterlab-git" && \
+#    python3 -m pip install --upgrade jupyterlab-git
+
+RUN echo "**** install nbdime" && \
+    python3 -m pip install --upgrade nbdime && \
+    jupyter labextension install nbdime-jupyterlab
+
+RUN echo "**** install nbstripout" && \
+    python3 -m pip install nbstripout
+
 ENV JUPYTER_GROUP_ID=2100
 ENV JUPYTER_USER_ID=2100
 ENV JUPYTER_HOME="/jupyter"
@@ -72,8 +88,13 @@ RUN wget -P /tmp https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-had
 RUN addgroup -g $JUPYTER_GROUP_ID -S jupyter && \
     adduser  -u $JUPYTER_USER_ID --shell /bin/false --home ${JUPYTER_HOME} -D -S jupyter -G jupyter
 
+COPY docker/jupyter/aliases.bash /etc/profile.d/aliases.sh
 COPY docker/jupyter/env.sh /jupyter/env.sh
-RUN chmod +x /jupyter/env.sh
+COPY docker/jupyter/check-git-config.bash /jupyter/check-git-config.sh
+COPY docker/jupyter/git-config.bash /bin/git-config.sh
+RUN chmod +x /jupyter/env.sh && \
+    chmod +x /jupyter/check-git-config.sh && \
+    chmod +x /bin/git-config.sh
 
 COPY docker/jupyter/custom_auth /usr/lib/python3.6/site-packages/custom_auth
 COPY docker/jupyter/kernels/pyspark-local ${PYTHON_KERNELS_PATH}/pyspark-local
