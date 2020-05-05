@@ -8,22 +8,22 @@ from jupyterhub.services.auth import HubAuth
 
 
 """
-This extension will overload the spark session object (spark) with a method called ``namespace``.
+This extension will overload the spark session object (spark) with a method called ``path``.
 That means, that the "normal" spark expressions:
 >>> spark.read.format("gsim").load("/ns")
 and
 >>> ds.write.format("gsim").save("/ns")
 can be replaced by
->>> spark.read.namespace("/ns")
+>>> spark.read.path("/ns")
 and
->>> ds.write.namespace("/ns")
+>>> ds.write.path("/ns")
 respectively. 
 
-The ``namespace`` method will ensure that an access token is (re)loaded (if necessary) and added to the spark context.
+The ``path`` method will ensure that an access token is (re)loaded (if necessary) and added to the spark context.
 """
 def load_extensions():
-    DataFrameReader.namespace = namespace_read
-    DataFrameWriter.namespace = namespace_write
+    DataFrameReader.path = namespace_read
+    DataFrameWriter.path = namespace_write
 
 def namespace_read(self, ns):
     return get_session().read.format("gsim").load(ns)
@@ -57,8 +57,8 @@ def update_tokens():
     # Helps getting the correct ssl configs
     hub = HubAuth()
     response = requests.get(os.environ['JUPYTERHUB_HANDLER_CUSTOM_AUTH_URL'],
-             headers={
-                 'Authorization': 'token %s' % hub.api_token
-             }, cert = (hub.certfile, hub.keyfile), verify= hub.client_ca).json()
+                            headers={
+                                'Authorization': 'token %s' % hub.api_token
+                            }, cert = (hub.certfile, hub.keyfile), verify= hub.client_ca).json()
     SparkContext._active_spark_context._conf.set("spark.ssb.access", response['access_token'])
 
