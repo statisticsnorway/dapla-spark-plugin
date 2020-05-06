@@ -17,6 +17,7 @@ RUN echo "**** install pip ****" && \
     python3 -m ensurepip && \
     rm -r /usr/lib/python*/ensurepip && \
     pip3 install --no-cache --upgrade pip setuptools wheel && \
+    python3 -m pip install --upgrade pip && \
     if [ ! -e /usr/bin/pip ]; then ln -s pip3 /usr/bin/pip ; fi
 
 RUN echo "**** install npm ****" && \
@@ -53,7 +54,7 @@ RUN echo "**** install git-cli ****" && \
     apk add --no-cache bash git openssh-client
 
 RUN echo "**** install jupyterlab-git ****" && \
-    python3 -m pip install --upgrade jupyterlab-git==0.20.0-rc.0
+    python3 -m pip install --upgrade jupyterlab-git==0.20.0
 
 #RUN echo "**** install jupyterlab-git" && \
 #    python3 -m pip install --upgrade jupyterlab-git
