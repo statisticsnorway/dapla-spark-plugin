@@ -18,14 +18,10 @@ import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
+import no.ssb.dapla.spark.plugin.metadata.MetaDataWriter;
 import no.ssb.dapla.spark.plugin.metadata.MetaDataWriterFactory;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import org.apache.avro.Schema;
-import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroSchemaConverter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.spark.SparkConf;
@@ -45,10 +41,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.immutable.Map;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.URI;
 import java.util.Optional;
 
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
@@ -165,7 +159,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf, span);
 
             // Write metadata file
-            MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeMetadataFile(parentUri, datasetMeta, writeLocationResponse.getValidMetadataJson());
+            final MetaDataWriter metaDataWriter = MetaDataWriterFactory.fromSparkSession(sparkSession).create();
+            metaDataWriter.writeMetadataFile(parentUri, datasetMeta, writeLocationResponse.getValidMetadataJson());
             // Publish metadata file created event
             metadataPublisherClient.dataChanged(pathToNewDataSet, FilesystemMetaDataWriter.DATASET_META_FILE_NAME);
 
@@ -175,10 +170,10 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // convert parquet schema to avro schema
             Schema schema = getSchema(sqlContext, data.schema());
             // save avro schema to bucket
-            saveAvroSchema(pathToNewDataSet.toURI(), sparkSession, schema);
+            metaDataWriter.writeSchemaFile(parentUri, datasetMeta, schema);
 
             // Write metadata signature file
-            MetaDataWriterFactory.fromSparkSession(sparkSession).create().writeSignatureFile(parentUri, datasetMeta, writeLocationResponse.getMetadataSignature());
+            metaDataWriter.writeSignatureFile(parentUri, datasetMeta, writeLocationResponse.getMetadataSignature());
             // Publish metadata signature file created event, this will be used for validation and signals a "commit" of metadata
             metadataPublisherClient.dataChanged(pathToNewDataSet, FilesystemMetaDataWriter.DATASET_META_SIGNATURE_FILE_NAME);
 
@@ -190,20 +185,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         } finally {
             unsetUserContext(sqlContext.sparkSession());
             span.finish();
-        }
-    }
-
-    private void saveAvroSchema(URI storagePath, SparkSession sparkSession, Schema schema) {
-        Configuration hadoopConfiguration = sparkSession.sparkContext().hadoopConfiguration();
-        final Path schemaPath = new Path(storagePath + Path.SEPARATOR + ".schema.avsc");
-
-        try (FileSystem fs = FileSystem.get(storagePath, hadoopConfiguration)) {
-            fs.mkdirs(schemaPath.getParent());
-            try (FSDataOutputStream outputStream = fs.create(schemaPath, false)) {
-                IOUtils.write(schema.toString(true), outputStream);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Error writing schema.avsc file", e);
         }
     }
 

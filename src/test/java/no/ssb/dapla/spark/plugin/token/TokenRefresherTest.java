@@ -75,7 +75,7 @@ public class TokenRefresherTest {
         store.setDelay(Duration.of(1, SECONDS));
             TokenRefresher refresher = new TokenRefresher(store);
 
-        server.takeRequest(2, TimeUnit.SECONDS);
+        server.takeRequest(3, TimeUnit.SECONDS);
 
         assertThatThrownBy(refresher::get);
     }
