@@ -78,7 +78,7 @@ public class GsimDatasourceGCSTest {
         assumeThat(System.getenv().get(GoogleCredentialsFactory.SERVICE_ACCOUNT_KEY_FILE), notNullValue());
 
         // Setup GCS test bucket
-        bucket = Optional.ofNullable(System.getenv().get("DAPLA_SPARK_TEST_BUCKET")).orElse("dev-datalager-store");
+        bucket = Optional.ofNullable(System.getenv().get("DAPLA_SPARK_TEST_BUCKET")).orElse("ssb-dev-md-test");
         // Create temporary folder and copy test data into it.
         tempDirectory = Files.createTempDirectory("lds-gsim-spark").toFile();
         InputStream parquetContent = GsimDatasourceGCSTest.class.getResourceAsStream("data/dataset.parquet");
