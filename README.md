@@ -16,7 +16,7 @@ For testing locally. Setup [localstack](https://github.com/statisticsnorway/dapl
 In order to run some of the junit tests for the full stack you will need to have a service account file available in your environment.
 Ask a friend to get hold of this.
 
-- The project _dapla-spark-plugin_ needs a service account key file placed under`/secret/gcs_sa_test.json`.
+  - The project _dapla-spark-plugin_ needs a service account key file placed under`/secret/gcs_sa_test.json`.
 This is needed to build the docker image and to run integration tests against a GCS bucket.
 
 #### Redeployment locally:
