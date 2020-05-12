@@ -33,6 +33,7 @@ cat > $GIT_CONFIG << EOF
         email = $GIT_EMAIL
 [credential]
         username = $GIT_USERNAME
+        helper = cache --timeout=3600
 [core]
         autocrlf = input
 [diff "jupyternotebook"]
