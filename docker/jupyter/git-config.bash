@@ -48,6 +48,11 @@ cat > $GIT_CONFIG << EOF
         cmd = git-nbmergetool merge \"$BASE\" \"$LOCAL\" \"$REMOTE\" \"$MERGED\"
 [mergetool]
         prompt = false
+[filter "nbstripout"]
+        clean = '/opt/conda/bin/python3' -m nbstripout
+        smudge = cat
+[diff "ipynb"]
+        textconv = '/opt/conda/bin/python3' -m nbstripout -t
 EOF
 
 echo "Successfully configured your Git Account!"
