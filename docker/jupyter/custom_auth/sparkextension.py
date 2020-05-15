@@ -3,7 +3,7 @@ import requests
 import jwt
 import time
 from pyspark import SparkContext
-from pyspark.sql import DataFrameReader, DataFrameWriter, SparkSession
+from pyspark.sql import DataFrame, DataFrameReader, DataFrameWriter, SparkSession
 from jupyterhub.services.auth import HubAuth
 
 
@@ -24,6 +24,13 @@ The ``path`` method will ensure that an access token is (re)loaded (if necessary
 def load_extensions():
     DataFrameReader.path = namespace_read
     DataFrameWriter.path = namespace_write
+    DataFrame.printMetadata = print_metadata
+
+def print_metadata(self):
+    import pandavro as pdx
+    import json
+    df = self.toPandas()
+    print(json.dumps(pdx.__fields_infer(df), indent=2, sort_keys=True))
 
 def namespace_read(self, ns):
     return get_session().read.format("gsim").load(ns)
