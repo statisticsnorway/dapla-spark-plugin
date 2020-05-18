@@ -27,10 +27,11 @@ def load_extensions():
     DataFrame.printMetadata = print_metadata
 
 def print_metadata(self):
-    import pandavro as pdx
-    import json
-    df = self.toPandas()
-    print(json.dumps(pdx.__fields_infer(df), indent=2, sort_keys=True))
+    SparkToParquetSchemaConverter = self._sc._jvm.org.apache.spark.sql.execution.datasources.parquet.SparkToParquetSchemaConverter(self.sql_ctx._conf)
+    messageType = SparkToParquetSchemaConverter.convert(self._jdf.schema())
+    AvroSchemaConverter = self._sc._jvm.org.apache.parquet.avro.AvroSchemaConverter()
+    avroSchema = AvroSchemaConverter.convert(messageType)
+    print(avroSchema.toString(True))
 
 def namespace_read(self, ns):
     return get_session().read.format("gsim").load(ns)
