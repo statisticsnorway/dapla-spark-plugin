@@ -170,7 +170,9 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // convert parquet schema to avro schema
             Schema schema = getSchema(sqlContext, data.schema());
             // save avro schema to bucket
-            metaDataWriter.writeSchemaFile(parentUri, datasetMeta, schema);
+            if (schema != null) {
+                metaDataWriter.writeSchemaFile(parentUri, datasetMeta, schema);
+            }
 
             // Write metadata signature file
             metaDataWriter.writeSignatureFile(parentUri, datasetMeta, writeLocationResponse.getMetadataSignature());
@@ -189,10 +191,15 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
     }
 
     private Schema getSchema(SQLContext sqlContext, StructType parquetSchema) {
-        SparkToParquetSchemaConverter sparkToParquetSchemaConverter = new SparkToParquetSchemaConverter(sqlContext.conf());
-        MessageType messageType = sparkToParquetSchemaConverter.convert(parquetSchema);
-        AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter();
-        return avroSchemaConverter.convert(messageType);
+        try {
+            SparkToParquetSchemaConverter sparkToParquetSchemaConverter = new SparkToParquetSchemaConverter(sqlContext.conf());
+            MessageType messageType = sparkToParquetSchemaConverter.convert(parquetSchema);
+            AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter();
+            return avroSchemaConverter.convert(messageType);
+        } catch (Exception e) {
+            log.error("Error in spark to avro schema conversion", e);
+        }
+        return null;
     }
 
     private Span getSpan(SQLContext sqlContext, String operationName) {
