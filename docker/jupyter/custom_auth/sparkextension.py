@@ -2,6 +2,7 @@ import os
 import requests
 import jwt
 import time
+import json, jsonpatch
 from pyspark import SparkContext
 from pyspark.sql import DataFrame, DataFrameReader, DataFrameWriter, SparkSession
 from jupyterhub.services.auth import HubAuth
@@ -27,7 +28,7 @@ def load_extensions():
     DataFrame.printMetadata = print_metadata
 
 def print_metadata(self):
-    avroSchema = self._sc._jvm.no.ssb.dapla.spark.plugin.SparkSchemaConverter.toAvroSchema(self._jdf.schema(), "spark_schema", "")
+    avroSchema = get_avro_schema(self)
     print(avroSchema.toString(True))
 
 def namespace_read(self, ns):
@@ -35,7 +36,13 @@ def namespace_read(self, ns):
 
 def namespace_write(self, ns):
     self._spark = get_session()
-    self.format("gsim").save(ns)
+    # Convert Java object to json
+    schema = json.loads(get_avro_schema(self).toString())
+    patch = jsonpatch.make_patch(schema, self.metadata)
+    self.format("gsim").option("schema-additions", json.dumps(patch.patch)).save(ns)
+
+def get_avro_schema(self):
+    return self._sc._jvm.no.ssb.dapla.spark.plugin.SparkSchemaConverter.toAvroSchema(self._jdf.schema(), "spark_schema", "")
 
 def get_session():
     session = SparkSession._instantiatedSession

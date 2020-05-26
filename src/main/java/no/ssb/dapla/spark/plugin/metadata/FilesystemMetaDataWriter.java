@@ -3,7 +3,6 @@ package no.ssb.dapla.spark.plugin.metadata;
 import com.google.protobuf.ByteString;
 import no.ssb.dapla.dataset.api.DatasetMeta;
 import no.ssb.dapla.dataset.uri.DatasetUri;
-import org.apache.avro.Schema;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -41,8 +40,8 @@ public class FilesystemMetaDataWriter implements MetaDataWriter {
     }
 
     @Override
-    public void writeSchemaFile(String parentUri, DatasetMeta datasetMeta, Schema schema) {
-        writeFile(parentUri, datasetMeta, schema.toString(true).getBytes(), DATASET_META_SCHEMA_FILE_NAME);
+    public void writeSchemaFile(String parentUri, DatasetMeta datasetMeta, String schema) {
+        writeFile(parentUri, datasetMeta, schema.getBytes(), DATASET_META_SCHEMA_FILE_NAME);
     }
 
     private void writeFile(String parentUri, DatasetMeta datasetMeta, byte[] content, String filename) {
