@@ -2,7 +2,6 @@ import os
 import requests
 import jwt
 import time
-import json, jsonpatch
 from pyspark import SparkContext
 from pyspark.sql import DataFrame, DataFrameReader, DataFrameWriter, SparkSession
 from jupyterhub.services.auth import HubAuth
@@ -25,24 +24,25 @@ The ``path`` method will ensure that an access token is (re)loaded (if necessary
 def load_extensions():
     DataFrameReader.path = namespace_read
     DataFrameWriter.path = namespace_write
-    DataFrame.printMetadata = print_metadata
+    DataFrame.printDocTemplate = print_doc
 
-def print_metadata(self):
-    avroSchema = get_avro_schema(self)
-    print(avroSchema.toString(True))
+def print_doc(self, ns = ""):
+    doc_template = get_doc_template(self, ns)
+    print(doc_template)
 
 def namespace_read(self, ns):
     return get_session().read.format("gsim").load(ns)
 
 def namespace_write(self, ns):
     self._spark = get_session()
-    # Convert Java object to json
-    schema = json.loads(get_avro_schema(self).toString())
-    patch = jsonpatch.make_patch(schema, self.metadata)
-    self.format("gsim").option("schema-additions", json.dumps(patch.patch)).save(ns)
+    if hasattr(self, 'doc'):
+        self.format("gsim").option("dataset-doc", self.doc).save(ns)
+    else:
+        doc_template = get_doc_template(self, ns)
+        self.format("gsim").option("dataset-doc", doc_template).save(ns)
 
-def get_avro_schema(self):
-    return self._sc._jvm.no.ssb.dapla.spark.plugin.SparkSchemaConverter.toAvroSchema(self._jdf.schema(), "spark_schema", "")
+def get_doc_template(self, ns):
+    return self._sc._jvm.no.ssb.dapla.spark.plugin.SparkSchemaConverter.toSchemaTemplate(self._jdf.schema(), ns)
 
 def get_session():
     session = SparkSession._instantiatedSession

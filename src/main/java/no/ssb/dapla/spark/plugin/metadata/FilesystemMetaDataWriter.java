@@ -22,7 +22,7 @@ public class FilesystemMetaDataWriter implements MetaDataWriter {
 
     public static final String DATASET_META_FILE_NAME = ".dataset-meta.json";
     public static final String DATASET_META_SIGNATURE_FILE_NAME = ".dataset-meta.json.sign";
-    public static final String DATASET_META_SCHEMA_FILE_NAME = ".schema.avsc";
+    public static final String DATASET_META_SCHEMA_FILE_NAME = ".dataset-doc.json";
     private final SparkSession sparkSession;
 
     public FilesystemMetaDataWriter(SparkSession sparkSession) {
