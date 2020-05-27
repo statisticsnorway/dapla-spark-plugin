@@ -26,19 +26,20 @@ class EnvGenericOAuthenticator(GenericOAuthenticator):
         import time
         import urllib
         import json
+        import os
         from tornado.httpclient import HTTPRequest, AsyncHTTPClient
         from tornado.httputil import url_concat
         # Retrieve user authentication info, decode, and check if refresh is needed
         auth_state = await user.get_auth_state()
         access_token = jwt.decode(auth_state['access_token'], verify=False)
         refresh_token = jwt.decode(auth_state['refresh_token'], verify=False)
-        diff_access=access_token['exp']-time.time()
-        diff_refresh=refresh_token['exp']-time.time()
-        # Allow 20 secs before expiry
-        if diff_access>20:
+        diff_access = access_token['exp']-time.time()
+        diff_refresh = refresh_token['exp']-time.time()
+        # Allow SPARK_USER_TOKEN_EXPIRY_BUFFER_SECS before expiry
+        if diff_access > int(os.environ['SPARK_USER_TOKEN_EXPIRY_BUFFER_SECS']):
             # Access token still valid, function returns True
             refresh_user_return = True
-        elif diff_refresh<0:
+        elif diff_refresh < 0:
             # Refresh token not valid, need to completely reauthenticate
             self.log.info('Refresh token not valid, need to completely reauthenticate for: ' +  user.name)
             refresh_user_return = False
