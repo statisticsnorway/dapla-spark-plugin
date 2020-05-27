@@ -1,7 +1,6 @@
 """
 Custom GenericOAuthenticator extension
 """
-import os
 from oauthenticator.generic import GenericOAuthenticator
 
 # Pre-Spawn custom class to retrieve user access token

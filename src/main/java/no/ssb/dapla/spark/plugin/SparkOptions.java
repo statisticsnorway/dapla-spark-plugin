@@ -11,6 +11,7 @@ public class SparkOptions {
     static final String VALUATION = "valuation";
     static final String STATE = "state";
     static final String VERSION = "version";
+    static final String SCHEMA_DOC = "dataset-doc";
 
     final Map<String, String> parameters;
 
@@ -32,6 +33,10 @@ public class SparkOptions {
 
     String getVersion() {
         return getParameter(VERSION);
+    }
+
+    String getDoc() {
+        return getParameter(SCHEMA_DOC);
     }
 
     private String getParameter(String option) {

@@ -66,9 +66,6 @@ RUN echo "**** install nbdime" && \
 RUN echo "**** install nbstripout" && \
     python3 -m pip install nbstripout
 
-RUN echo "**** install avro libraries ****" && \
-    python3 -m pip install pandavro fastavro
-
 ENV JUPYTER_GROUP_ID=2100
 ENV JUPYTER_USER_ID=2100
 ENV JUPYTER_HOME="/jupyter"

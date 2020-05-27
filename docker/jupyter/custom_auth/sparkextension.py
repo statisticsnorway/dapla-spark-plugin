@@ -24,18 +24,27 @@ The ``path`` method will ensure that an access token is (re)loaded (if necessary
 def load_extensions():
     DataFrameReader.path = namespace_read
     DataFrameWriter.path = namespace_write
-    DataFrame.printMetadata = print_metadata
+    DataFrame.printDocTemplate = print_doc
 
-def print_metadata(self):
-    avroSchema = self._sc._jvm.no.ssb.dapla.spark.plugin.SparkSchemaConverter.toAvroSchema(self._jdf.schema(), "spark_schema", "")
-    print(avroSchema.toString(True))
+def print_doc(self, ns = "", simple = False):
+    doc_template = get_doc_template(self, ns, simple)
+    print(doc_template)
 
 def namespace_read(self, ns):
     return get_session().read.format("gsim").load(ns)
 
 def namespace_write(self, ns):
     self._spark = get_session()
-    self.format("gsim").save(ns)
+    # Read doc from parent dataframe
+    if hasattr(self._df, 'doc'):
+        self.format("gsim").option("dataset-doc", self._df.doc).save(ns)
+    else:
+        self.format("gsim").save(ns)
+
+def get_doc_template(self, ns, simple):
+    use_simple = "true" if simple else "false"
+    # Call Java class via jvm gateway
+    return self._sc._jvm.no.ssb.dapla.spark.plugin.SparkSchemaConverter.toSchemaTemplate(self._jdf.schema(), ns, use_simple)
 
 def get_session():
     session = SparkSession._instantiatedSession

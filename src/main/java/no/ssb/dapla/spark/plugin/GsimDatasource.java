@@ -21,9 +21,6 @@ import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
 import no.ssb.dapla.spark.plugin.metadata.MetaDataWriter;
 import no.ssb.dapla.spark.plugin.metadata.MetaDataWriterFactory;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
-import org.apache.avro.Schema;
-import org.apache.parquet.avro.AvroSchemaConverter;
-import org.apache.parquet.schema.MessageType;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Dataset;
@@ -31,12 +28,10 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.execution.datasources.parquet.SparkToParquetSchemaConverter;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.DataSourceRegister;
 import org.apache.spark.sql.sources.RelationProvider;
-import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.immutable.Map;
@@ -167,11 +162,9 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // Write to GCS before writing metadata
             data.coalesce(1).write().mode(SaveMode.Append).parquet(pathToNewDataSet.toString());
 
-            // convert parquet schema to avro schema
-            Schema schema = getSchema(data.schema());
-            // save avro schema to bucket
-            if (schema != null) {
-                metaDataWriter.writeSchemaFile(parentUri, datasetMeta, schema);
+            // Write schema doc
+            if (options.getDoc() != null) {
+                metaDataWriter.writeSchemaFile(parentUri, datasetMeta, options.getDoc());
             }
 
             // Write metadata signature file
@@ -188,15 +181,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             unsetUserContext(sqlContext.sparkSession());
             span.finish();
         }
-    }
-
-    private Schema getSchema(StructType parquetSchema) {
-        try {
-            return SparkSchemaConverter.toAvroSchema(parquetSchema, "spark_schema", "");
-        } catch (Exception e) {
-            log.error("Error in spark to avro schema conversion", e);
-        }
-        return null;
     }
 
     private Span getSpan(SQLContext sqlContext, String operationName) {

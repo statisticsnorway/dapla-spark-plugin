@@ -141,6 +141,23 @@
             <scope>compile</scope>
         </dependency>
 
+            <dependency>
+            <groupId>no.ssb.dapla</groupId>
+            <artifactId>dataset-doc</artifactId>
+            <version>0.1-SNAPSHOT</version>
+            <scope>compile</scope>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-databind</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-core</artifactId>
+                    </exclusion>
+                </exclusions>
+        </dependency>
+
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
@@ -650,6 +667,8 @@
                                     <include>io.opencensus:*</include>
                                     <include>no.ssb.dapla:dataset-api</include>
                                     <include>no.ssb.dapla:dataset-uri</include>
+                                    <include>no.ssb.dapla:dataset-doc</include>
+                                    <include>no.ssb.avro.convert.core:avro-buddy-core</include>
                                     <include>no.ssb.dapla:metadata-distributor-protobuf</include>
                                     <include>no.ssb.dapla.data:*</include>
                                     <include>no.ssb.dapla.catalog:*</include>
