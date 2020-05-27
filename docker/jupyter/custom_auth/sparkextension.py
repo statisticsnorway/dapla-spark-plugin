@@ -26,8 +26,8 @@ def load_extensions():
     DataFrameWriter.path = namespace_write
     DataFrame.printDocTemplate = print_doc
 
-def print_doc(self, ns = ""):
-    doc_template = get_doc_template(self, ns)
+def print_doc(self, ns = "", simple = False):
+    doc_template = get_doc_template(self, ns, simple)
     print(doc_template)
 
 def namespace_read(self, ns):
@@ -41,8 +41,9 @@ def namespace_write(self, ns):
         doc_template = get_doc_template(self, ns)
         self.format("gsim").option("dataset-doc", doc_template).save(ns)
 
-def get_doc_template(self, ns):
-    return self._sc._jvm.no.ssb.dapla.spark.plugin.SparkSchemaConverter.toSchemaTemplate(self._jdf.schema(), ns)
+def get_doc_template(self, ns, simple):
+    use_simple = "true" if simple else "false"
+    return self._sc._jvm.no.ssb.dapla.spark.plugin.SparkSchemaConverter.toSchemaTemplate(self._jdf.schema(), ns, use_simple)
 
 def get_session():
     session = SparkSession._instantiatedSession
