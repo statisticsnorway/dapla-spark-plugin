@@ -35,14 +35,15 @@ def namespace_read(self, ns):
 
 def namespace_write(self, ns):
     self._spark = get_session()
-    if hasattr(self, 'doc'):
-        self.format("gsim").option("dataset-doc", self.doc).save(ns)
+    # Read doc from parent dataframe
+    if hasattr(self._df, 'doc'):
+        self.format("gsim").option("dataset-doc", self._df.doc).save(ns)
     else:
-        doc_template = get_doc_template(self, ns)
-        self.format("gsim").option("dataset-doc", doc_template).save(ns)
+        self.format("gsim").save(ns)
 
 def get_doc_template(self, ns, simple):
     use_simple = "true" if simple else "false"
+    # Call Java class via jvm gateway
     return self._sc._jvm.no.ssb.dapla.spark.plugin.SparkSchemaConverter.toSchemaTemplate(self._jdf.schema(), ns, use_simple)
 
 def get_session():
