@@ -162,7 +162,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // Write to GCS before writing metadata
             data.coalesce(1).write().mode(SaveMode.Append).parquet(pathToNewDataSet.toString());
 
-            // save json schema to bucket
+            // Write schema doc
             if (options.getDoc() != null) {
                 metaDataWriter.writeSchemaFile(parentUri, datasetMeta, options.getDoc());
             }
