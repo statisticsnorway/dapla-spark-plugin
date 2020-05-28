@@ -2,6 +2,7 @@ import os
 import requests
 import jwt
 import time
+import json
 from pyspark import SparkContext
 from pyspark.sql import DataFrame, DataFrameReader, DataFrameWriter, SparkSession
 from jupyterhub.services.auth import HubAuth
@@ -37,7 +38,12 @@ def namespace_write(self, ns):
     self._spark = get_session()
     # Read doc from parent dataframe
     if hasattr(self._df, 'doc'):
-        self.format("gsim").option("dataset-doc", self._df.doc).save(ns)
+        doc = self._df.doc
+        # doc can be either str or native json
+        if type(doc) is str:
+            self.format("gsim").option("dataset-doc", doc).save(ns)
+        else:
+            self.format("gsim").option("dataset-doc", json.dumps(doc, indent=2)).save(ns)
     else:
         self.format("gsim").save(ns)
 
@@ -71,8 +77,8 @@ def update_tokens():
     # Helps getting the correct ssl configs
     hub = HubAuth()
     response = requests.get(os.environ['JUPYTERHUB_HANDLER_CUSTOM_AUTH_URL'],
-                            headers={
-                                'Authorization': 'token %s' % hub.api_token
-                            }, cert = (hub.certfile, hub.keyfile), verify= hub.client_ca).json()
+        headers={
+            'Authorization': 'token %s' % hub.api_token
+        }, cert=(hub.certfile, hub.keyfile), verify=hub.client_ca).json()
     SparkContext._active_spark_context._conf.set("spark.ssb.access", response['access_token'])
 
