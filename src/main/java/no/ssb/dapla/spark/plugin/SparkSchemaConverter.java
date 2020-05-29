@@ -7,8 +7,8 @@ import org.apache.spark.sql.types.StructType;
 public class SparkSchemaConverter {
 
     public static String toSchemaTemplate(StructType sparkSchema, String simple) {
-        Schema schema = SchemaConverters.toAvroType(sparkSchema, false, "", "");
-        SchemaToTemplate generator = new SchemaToTemplate(schema, "");
+        Schema schema = SchemaConverters.toAvroType(sparkSchema, false, "spark_schema", "");
+        SchemaToTemplate generator = new SchemaToTemplate(schema, null);
         return generator.withDoSimpleFiltering(Boolean.valueOf(simple)).generateSimpleTemplateAsJsonString();
     }
 

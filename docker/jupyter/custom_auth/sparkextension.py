@@ -26,10 +26,17 @@ def load_extensions():
     DataFrameReader.path = namespace_read
     DataFrameWriter.path = namespace_write
     DataFrame.printDocTemplate = print_doc
+    DataFrame.printAvroSchema = print_avro_schema
 
-def print_doc(self, ns = "", simple = False):
-    doc_template = get_doc_template(self, ns, simple)
+def print_doc(self, simple = False):
+    doc_template = get_doc_template(self, simple)
     print(doc_template)
+    if not simple:
+        print("Use printDocTemplate(True) for a simplified template")
+
+def print_avro_schema(self, record_name = "spark_schema", record_namespace = ""):
+    avro_schema = self._sc._jvm.no.ssb.dapla.spark.plugin.SparkSchemaConverter.toAvroSchema(self._jdf.schema(), record_name, record_namespace)
+    print(avro_schema.toString(True))
 
 def namespace_read(self, ns):
     return get_session().read.format("gsim").load(ns)
@@ -47,10 +54,10 @@ def namespace_write(self, ns):
     else:
         self.format("gsim").save(ns)
 
-def get_doc_template(self, ns, simple):
+def get_doc_template(self, simple):
     use_simple = "true" if simple else "false"
     # Call Java class via jvm gateway
-    return self._sc._jvm.no.ssb.dapla.spark.plugin.SparkSchemaConverter.toSchemaTemplate(self._jdf.schema(), ns, use_simple)
+    return self._sc._jvm.no.ssb.dapla.spark.plugin.SparkSchemaConverter.toSchemaTemplate(self._jdf.schema(), use_simple)
 
 def get_session():
     session = SparkSession._instantiatedSession
@@ -77,8 +84,8 @@ def update_tokens():
     # Helps getting the correct ssl configs
     hub = HubAuth()
     response = requests.get(os.environ['JUPYTERHUB_HANDLER_CUSTOM_AUTH_URL'],
-        headers={
-            'Authorization': 'token %s' % hub.api_token
-        }, cert=(hub.certfile, hub.keyfile), verify=hub.client_ca).json()
+                            headers={
+                                'Authorization': 'token %s' % hub.api_token
+                            }, cert=(hub.certfile, hub.keyfile), verify=hub.client_ca).json()
     SparkContext._active_spark_context._conf.set("spark.ssb.access", response['access_token'])
 
