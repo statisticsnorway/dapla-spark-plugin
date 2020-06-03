@@ -40,8 +40,8 @@ class EnvGenericOAuthenticator(GenericOAuthenticator):
             refresh_user_return = True
         elif diff_refresh < 0:
             # Refresh token not valid, need to completely reauthenticate
-            self.log.info('Refresh token not valid, need to completely reauthenticate for: ' +  user.name)
-            refresh_user_return = False
+            self.log.info('Refresh token not valid, need to completely reauthenticate for: ' + user.name)
+            refresh_user_return = None
         else:
             # We need to refresh access token (which will also refresh the refresh token)
             self.log.info('Try to refresh user tokens for: ' + user.name)
