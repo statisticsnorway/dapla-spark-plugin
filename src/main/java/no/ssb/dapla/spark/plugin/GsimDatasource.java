@@ -160,7 +160,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             metadataPublisherClient.dataChanged(pathToNewDataSet, FilesystemMetaDataWriter.DATASET_META_FILE_NAME);
 
             // Write to GCS before writing metadata
-            data.coalesce(1).write().mode(SaveMode.Append).parquet(pathToNewDataSet.toString());
+            data.repartition(1).write().mode(SaveMode.Append).parquet(pathToNewDataSet.toString());
 
             // Write schema doc
             if (options.getDoc() != null) {
