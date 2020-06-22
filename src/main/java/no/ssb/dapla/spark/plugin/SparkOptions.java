@@ -12,6 +12,7 @@ public class SparkOptions {
     static final String STATE = "state";
     static final String VERSION = "version";
     static final String SCHEMA_DOC = "dataset-doc";
+    static final String AUTO_REPARTITION = "auto-repartition";
 
     final Map<String, String> parameters;
 
@@ -37,6 +38,10 @@ public class SparkOptions {
 
     String getDoc() {
         return getParameter(SCHEMA_DOC);
+    }
+
+    boolean getAutoRepartition() {
+        return Boolean.valueOf(parameters.getOrElse(AUTO_REPARTITION, () -> "true"));
     }
 
     private String getParameter(String option) {

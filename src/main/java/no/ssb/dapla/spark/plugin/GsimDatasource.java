@@ -40,6 +40,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Optional;
 
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.SPARK_SSB_DAPLA_DEFAULT_PARTITION_SIZE;
+
 public class GsimDatasource implements RelationProvider, CreatableRelationProvider, DataSourceRegister {
     private static final String SHORT_NAME = "gsim";
 
@@ -160,7 +162,12 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             metadataPublisherClient.dataChanged(pathToNewDataSet, FilesystemMetaDataWriter.DATASET_META_FILE_NAME);
 
             // Write to GCS before writing metadata
-            data.write().mode(SaveMode.Append).parquet(pathToNewDataSet.toString());
+            if (options.getAutoRepartition()) {
+                int partitions = Math.min(data.rdd().getNumPartitions(), Integer.parseInt(conf.get(SPARK_SSB_DAPLA_DEFAULT_PARTITION_SIZE)));
+                data.repartition(partitions).write().mode(SaveMode.Append).parquet(pathToNewDataSet.toString());
+            } else {
+                data.write().mode(SaveMode.Append).parquet(pathToNewDataSet.toString());
+            }
 
             // Write schema doc
             if (options.getDoc() != null) {
