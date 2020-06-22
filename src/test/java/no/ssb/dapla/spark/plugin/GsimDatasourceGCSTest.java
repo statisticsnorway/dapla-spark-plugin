@@ -149,6 +149,7 @@ public class GsimDatasourceGCSTest {
                 .config("spark.ssb.dapla.oauth.clientId", "zeppelin")
                 .config("spark.ssb.dapla.oauth.clientSecret", "ed48ee94-fe9d-4096-b069-9626a52877f2")
                 .config("spark.ssb.dapla.oauth.ignoreExpiry", "true")
+                .config("spark.ssb.dapla.default.partition.size", 5)
                 .config("spark.ssb.username", "kim")
                 .config("spark.ssb.access", JWT.create()
                         .withClaim("preferred_username", "kim")

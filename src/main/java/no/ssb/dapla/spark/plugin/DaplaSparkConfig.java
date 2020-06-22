@@ -7,6 +7,7 @@ public class DaplaSparkConfig {
     private static final String CONFIG = "spark.ssb.dapla.";
     public static final String SPARK_SSB_DAPLA_GCS_STORAGE = "spark.ssb.dapla.gcs.storage";
     public static final String SPARK_SSB_DAPLA_OUTPUT_PREFIX = "spark.ssb.dapla.output.prefix";
+    public static final String SPARK_SSB_DAPLA_DEFAULT_PARTITION_SIZE = "spark.ssb.dapla.default.partition.size";
     public static final String SPARK_SSB_ACCESS_TOKEN = "spark.ssb.access";
     public static final String SPARK_SSB_REFRESH_TOKEN = "spark.ssb.refresh";
     public static final String CONFIG_ROUTER_OAUTH_TOKEN_IGNORE_EXPIRY = CONFIG + "oauth.ignoreExpiry";
