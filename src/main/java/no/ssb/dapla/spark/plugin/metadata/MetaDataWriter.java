@@ -9,4 +9,6 @@ public interface MetaDataWriter {
     void writeSignatureFile(String parentUri, DatasetMeta datasetMeta, ByteString signatureBytes);
 
     void writeSchemaFile(String parentUri, DatasetMeta datasetMeta, String schema);
+
+    void writeLineageDocFile(String parentUri, DatasetMeta datasetMeta, String lineageDoc);
 }

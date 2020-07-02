@@ -18,4 +18,9 @@ public class NoOpMetadataWriter implements MetaDataWriter {
     public void writeSchemaFile(String parentUri, DatasetMeta datasetMeta, String schema) {
         // Do nothing
     }
+
+    @Override
+    public void writeLineageDocFile(String parentUri, DatasetMeta datasetMeta, String lineageDoc) {
+        // Do nothing
+    }
 }

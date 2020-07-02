@@ -12,6 +12,7 @@ public class SparkOptions {
     static final String STATE = "state";
     static final String VERSION = "version";
     static final String SCHEMA_DOC = "dataset-doc";
+    static final String LINEAGE_DOC = "lineage-doc";
     static final String AUTO_REPARTITION = "auto-repartition";
 
     final Map<String, String> parameters;
@@ -38,6 +39,9 @@ public class SparkOptions {
 
     String getDoc() {
         return getParameter(SCHEMA_DOC);
+    }
+    String getLineageDoc() {
+        return getParameter(LINEAGE_DOC);
     }
 
     boolean getAutoRepartition() {
