@@ -23,6 +23,7 @@ public class FilesystemMetaDataWriter implements MetaDataWriter {
     public static final String DATASET_META_FILE_NAME = ".dataset-meta.json";
     public static final String DATASET_META_SIGNATURE_FILE_NAME = ".dataset-meta.json.sign";
     public static final String DATASET_META_SCHEMA_FILE_NAME = ".dataset-doc.json";
+    public static final String DATASET_LINEAGE_META_FILE_NAME = ".dataset-lineage.json";
     private final SparkSession sparkSession;
 
     public FilesystemMetaDataWriter(SparkSession sparkSession) {
@@ -42,6 +43,11 @@ public class FilesystemMetaDataWriter implements MetaDataWriter {
     @Override
     public void writeSchemaFile(String parentUri, DatasetMeta datasetMeta, String schema) {
         writeFile(parentUri, datasetMeta, schema.getBytes(), DATASET_META_SCHEMA_FILE_NAME);
+    }
+
+    @Override
+    public void writeLineageDocFile(String parentUri, DatasetMeta datasetMeta, String lineageDoc) {
+        writeFile(parentUri, datasetMeta, lineageDoc.getBytes(), DATASET_LINEAGE_META_FILE_NAME);
     }
 
     private void writeFile(String parentUri, DatasetMeta datasetMeta, byte[] content, String filename) {

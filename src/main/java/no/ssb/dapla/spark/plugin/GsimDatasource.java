@@ -174,6 +174,11 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                 metaDataWriter.writeSchemaFile(parentUri, datasetMeta, options.getDoc());
             }
 
+            // Write lineage doc
+            if (options.getLineageDoc() != null) {
+                metaDataWriter.writeLineageDocFile(parentUri, datasetMeta, options.getLineageDoc());
+            }
+
             // Write metadata signature file
             metaDataWriter.writeSignatureFile(parentUri, datasetMeta, writeLocationResponse.getMetadataSignature());
             // Publish metadata signature file created event, this will be used for validation and signals a "commit" of metadata
