@@ -23,11 +23,17 @@ import org.apache.spark.sql.sources.StringEndsWith;
 import org.apache.spark.sql.sources.StringStartsWith;
 import org.apache.spark.sql.sources.TableScan;
 import org.apache.spark.sql.types.StructType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
 public class GsimRelation extends BaseRelation implements PrunedFilteredScan, FileRelation, TableScan {
+
+    private static final Logger log = LoggerFactory.getLogger(GsimRelation.class);
 
     private final SQLContext context;
     private final String path;
@@ -75,7 +81,9 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     @Override
     public RDD<Row> buildScan(String[] columns, Filter[] filters) {
         Column[] requiredColumns = Stream.of(columns).map(Column::new).toArray(Column[]::new);
-        Optional<Column> filter = Stream.of(filters).map(this::convertFilter).reduce(Column::and);
+        boolean andFilterIsNull = Arrays.stream(filters).anyMatch(Objects::nonNull);
+        Optional<Column> filter = andFilterIsNull ? Optional.empty()
+                : Stream.of(filters).map(this::convertFilter).reduce(Column::and);
 
         Dataset<Row> dataset = getDataset();
         dataset = dataset.select(requiredColumns);
@@ -135,7 +143,8 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
             StringStartsWith stringStartsWith = (StringStartsWith) filter;
             return new Column(stringStartsWith.attribute()).startsWith(stringStartsWith.value());
         } else {
-            throw new UnsupportedOperationException("Could not convert " + filter + " to Column");
+            log.warn("Could not convert {} to Column", filter);
+            return null;
         }
     }
 
