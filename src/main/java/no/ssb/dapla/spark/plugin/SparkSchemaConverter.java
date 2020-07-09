@@ -1,8 +1,8 @@
 package no.ssb.dapla.spark.plugin;
 
 import no.ssb.dapla.dataset.doc.builder.LineageBuilder;
-import no.ssb.dapla.dataset.doc.model.lineage.SchemaWithPath;
 import no.ssb.dapla.dataset.doc.template.SchemaToTemplate;
+import no.ssb.dapla.dataset.doc.traverse.SchemaWithPath;
 import org.apache.avro.Schema;
 import org.apache.spark.sql.avro.SchemaConverters;
 import org.apache.spark.sql.types.StructType;

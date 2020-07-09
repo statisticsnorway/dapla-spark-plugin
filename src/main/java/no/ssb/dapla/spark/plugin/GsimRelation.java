@@ -81,8 +81,8 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     @Override
     public RDD<Row> buildScan(String[] columns, Filter[] filters) {
         Column[] requiredColumns = Stream.of(columns).map(Column::new).toArray(Column[]::new);
-        boolean andFilterIsNull = Arrays.stream(filters).anyMatch(Objects::nonNull);
-        Optional<Column> filter = andFilterIsNull ? Optional.empty()
+        boolean oneFilterIsNull = Stream.of(filters).map(this::convertFilter).anyMatch(Objects::isNull);
+        Optional<Column> filter = oneFilterIsNull ? Optional.empty()
                 : Stream.of(filters).map(this::convertFilter).reduce(Column::and);
 
         Dataset<Row> dataset = getDataset();
