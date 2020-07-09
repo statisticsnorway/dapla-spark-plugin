@@ -17,6 +17,7 @@ import org.apache.spark.sql.sources.IsNotNull;
 import org.apache.spark.sql.sources.IsNull;
 import org.apache.spark.sql.sources.LessThan;
 import org.apache.spark.sql.sources.LessThanOrEqual;
+import org.apache.spark.sql.sources.Not;
 import org.apache.spark.sql.sources.PrunedFilteredScan;
 import org.apache.spark.sql.sources.StringContains;
 import org.apache.spark.sql.sources.StringEndsWith;
@@ -97,7 +98,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
      * I could not find any function in spark to do this. This will be thrown away when
      * we migrate to DataSourceV2.
      * <p>
-     * Note that the filters we receive are canonical. Thus we do not handle and/or/not.
+     * Note that the filters we receive are canonical. Thus we do not handle and/or.
      */
     Column convertFilter(Filter filter) {
         if (filter instanceof EqualNullSafe) {
@@ -134,7 +135,10 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         } else if (filter instanceof StringStartsWith) {
             StringStartsWith stringStartsWith = (StringStartsWith) filter;
             return new Column(stringStartsWith.attribute()).startsWith(stringStartsWith.value());
+        } else if (filter instanceof Not) {
+            return convertFilter(((Not) filter).child()).unary_$bang();
         } else {
+            // And/Or filter is an error!
             throw new UnsupportedOperationException("Could not convert " + filter + " to Column");
         }
     }
