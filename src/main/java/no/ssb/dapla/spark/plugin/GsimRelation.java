@@ -6,19 +6,29 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.execution.FileRelation;
-import org.apache.spark.sql.sources.*;
+import org.apache.spark.sql.sources.BaseRelation;
+import org.apache.spark.sql.sources.EqualNullSafe;
+import org.apache.spark.sql.sources.EqualTo;
+import org.apache.spark.sql.sources.Filter;
+import org.apache.spark.sql.sources.GreaterThan;
+import org.apache.spark.sql.sources.GreaterThanOrEqual;
+import org.apache.spark.sql.sources.In;
+import org.apache.spark.sql.sources.IsNotNull;
+import org.apache.spark.sql.sources.IsNull;
+import org.apache.spark.sql.sources.LessThan;
+import org.apache.spark.sql.sources.LessThanOrEqual;
+import org.apache.spark.sql.sources.Not;
+import org.apache.spark.sql.sources.PrunedFilteredScan;
+import org.apache.spark.sql.sources.StringContains;
+import org.apache.spark.sql.sources.StringEndsWith;
+import org.apache.spark.sql.sources.StringStartsWith;
+import org.apache.spark.sql.sources.TableScan;
 import org.apache.spark.sql.types.StructType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
 public class GsimRelation extends BaseRelation implements PrunedFilteredScan, FileRelation, TableScan {
-
-    private static final Logger log = LoggerFactory.getLogger(GsimRelation.class);
 
     private final SQLContext context;
     private final String path;
@@ -66,9 +76,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     @Override
     public RDD<Row> buildScan(String[] columns, Filter[] filters) {
         Column[] requiredColumns = Stream.of(columns).map(Column::new).toArray(Column[]::new);
-        boolean oneFilterIsNull = Stream.of(filters).map(this::convertFilter).anyMatch(Objects::isNull);
-        Optional<Column> filter = oneFilterIsNull ? Optional.empty()
-                : Stream.of(filters).map(this::convertFilter).reduce(Column::and);
+        Optional<Column> filter = Stream.of(filters).map(this::convertFilter).reduce(Column::and);
 
         Dataset<Row> dataset = getDataset();
         dataset = dataset.select(requiredColumns);
@@ -131,8 +139,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
             return convertFilter(((Not) filter).child()).unary_$bang();
         } else {
             // And/Or filter is an error!
-            log.warn("Could not convert {} to Column", filter);
-            return null;
+            throw new UnsupportedOperationException("Could not convert " + filter + " to Column");
         }
     }
 
