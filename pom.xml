@@ -213,14 +213,14 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-avro_2.12</artifactId>
-            <version>2.4.5</version>
+            <version>3.0.0</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_2.12</artifactId>
-            <version>2.4.5</version>
+            <version>3.0.0</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -237,7 +237,7 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.12</artifactId>
-            <version>2.4.5</version>
+            <version>3.0.0</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
