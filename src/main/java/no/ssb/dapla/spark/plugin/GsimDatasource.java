@@ -5,6 +5,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
 import io.opentracing.util.GlobalTracer;
+import no.ssb.dapla.catalog.protobuf.SignedDataset;
 import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
 import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
@@ -15,6 +16,7 @@ import no.ssb.dapla.dataset.api.DatasetState;
 import no.ssb.dapla.dataset.api.Type;
 import no.ssb.dapla.dataset.api.Valuation;
 import no.ssb.dapla.dataset.uri.DatasetUri;
+import no.ssb.dapla.service.CatalogClient;
 import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
@@ -183,7 +185,22 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             metaDataWriter.writeSignatureFile(parentUri, datasetMeta, writeLocationResponse.getMetadataSignature());
             // Publish metadata signature file created event, this will be used for validation and signals a "commit" of metadata
             metadataPublisherClient.dataChanged(pathToNewDataSet, FilesystemMetaDataWriter.DATASET_META_SIGNATURE_FILE_NAME);
-
+            // Update catalog
+            CatalogClient catalogClient = new CatalogClient(conf, span);
+            catalogClient.writeDataset(SignedDataset.newBuilder()
+                    .setDataset(no.ssb.dapla.catalog.protobuf.Dataset.newBuilder()
+                            .setId(no.ssb.dapla.catalog.protobuf.DatasetId.newBuilder()
+                                    .setPath(localPath)
+                                    .setTimestamp(Long.parseLong(version))
+                                    .build())
+                            .setType(no.ssb.dapla.catalog.protobuf.Dataset.Type.BOUNDED)
+                            .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf(valuation.name()))
+                            .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state.name()))
+                            .setParentUri(parentUri)
+                            .build())
+                    .setDatasetMetaBytes(writeLocationResponse.getValidMetadataJson())
+                    .setDatasetMetaSignatureBytes(writeLocationResponse.getMetadataSignature())
+                    .build());
             return new GsimRelation(sqlContext, pathToNewDataSet.toString(), data.schema());
 
         } catch (Exception e) {
