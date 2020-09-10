@@ -6,6 +6,7 @@ import io.opentracing.noop.NoopSpan;
 import io.opentracing.util.GlobalTracer;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixRequest;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixResponse;
+import no.ssb.dapla.catalog.protobuf.SignedDataset;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
 import no.ssb.dapla.spark.plugin.token.SparkConfStore;
 import no.ssb.dapla.spark.plugin.token.TokenRefresher;
@@ -77,6 +78,20 @@ public class CatalogClient {
         }
     }
 
+    public void writeDataset(SignedDataset signedDataset) {
+        span.log("writeDataset" + signedDataset.getDataset());
+        Request request = new Request.Builder()
+                .url(buildUrl("catalog/write"))
+                .post(RequestBody.create(ProtobufJsonUtils.toString(signedDataset), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .build();
+        try (Response response = client.newCall(request).execute()) {
+            String json = getJson(response);
+            handleErrorCodes(response, json);
+        } catch (IOException e) {
+            log.error("writeDataset failed", e);
+            throw new CatalogServiceException(e);
+        }
+    }
 
     private String getJson(Response response) throws IOException {
         ResponseBody body = response.body();

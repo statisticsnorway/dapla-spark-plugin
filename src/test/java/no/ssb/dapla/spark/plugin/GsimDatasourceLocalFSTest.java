@@ -5,6 +5,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.google.protobuf.ByteString;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
+import no.ssb.dapla.service.CatalogClient;
 import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.NoOpMetadataWriter;
@@ -41,6 +42,7 @@ public class GsimDatasourceLocalFSTest {
     private static File tempDirectory;
     private static Path parquetFile;
     private MockWebServer dataAccessMockServer;
+    private MockWebServer catalogMockServer;
     private MockWebServer metadataDistributorMockServer;
     private File tempOutPutDirectory;
     private String sparkStoragePath;
@@ -76,7 +78,11 @@ public class GsimDatasourceLocalFSTest {
 
         this.dataAccessMockServer = new MockWebServer();
         this.dataAccessMockServer.start();
-        HttpUrl baseUrl = dataAccessMockServer.url("/data-access/");
+        HttpUrl dataAccessUrl = dataAccessMockServer.url("/data-access/");
+
+        this.catalogMockServer = new MockWebServer();
+        this.catalogMockServer.start();
+        HttpUrl catalogUrl = catalogMockServer.url("/catalog/");
 
         this.metadataDistributorMockServer = new MockWebServer();
         this.metadataDistributorMockServer.start();
@@ -90,10 +96,9 @@ public class GsimDatasourceLocalFSTest {
                 .config("fs.gs.impl.disable.cache", true)
                 .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE, "file://" + sparkStoragePath)
                 .config("spark.ssb.dapla.output.prefix", "test-output")
-                .config(DataAccessClient.CONFIG_DATA_ACCESS_URL, baseUrl.toString())
-                //.config(DataAccessClient.CONFIG_DATA_ACCESS_URL, "http://localhost:10140/")
+                .config(DataAccessClient.CONFIG_DATA_ACCESS_URL, dataAccessUrl.toString())
+                .config(CatalogClient.CONFIG_CATALOG_URL, catalogUrl.toString())
                 .config(MetadataPublisherClient.CONFIG_METADATA_PUBLISHER_URL, publisherUrl.toString())
-                //.config(MetadataPublisherClient.CONFIG_METADATA_PUBLISHER_URL, "http://localhost:10160/")
                 .config("spark.ssb.dapla.metadata.writer", NoOpMetadataWriter.class.getName())
                 .config("spark.ssb.dapla.metadata.publisher.project.id", "dapla")
                 .config("spark.ssb.dapla.metadata.publisher.topic.name", "file-events-1")
@@ -119,6 +124,7 @@ public class GsimDatasourceLocalFSTest {
         try {
             metadataDistributorMockServer.enqueue(new MockResponse().setResponseCode(200));
             metadataDistributorMockServer.enqueue(new MockResponse().setResponseCode(200));
+            catalogMockServer.enqueue(new MockResponse().setResponseCode(200));
             long version = System.currentTimeMillis();
             dataAccessMockServer.enqueue(
                     new MockResponse().setBody(ProtobufJsonUtils.toString(WriteLocationResponse.newBuilder()

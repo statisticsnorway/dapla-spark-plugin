@@ -2,8 +2,11 @@ package no.ssb.dapla.service;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import no.ssb.dapla.catalog.protobuf.Dataset;
+import no.ssb.dapla.catalog.protobuf.DatasetId;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixRequest;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixResponse;
+import no.ssb.dapla.catalog.protobuf.SignedDataset;
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -56,6 +59,20 @@ public class CatalogClientTest {
                 .setPrefix("/skatt/person/")
                 .build());
         assertThat(response.getEntriesCount()).isEqualTo(2);
+    }
+
+    @Test
+    public void testWriteSignedDataset() {
+        server.enqueue(new MockResponse().setResponseCode(200));
+        CatalogClient catalogClient = new CatalogClient(this.sparkConf);
+        catalogClient.writeDataset(SignedDataset.newBuilder()
+                .setDataset(Dataset.newBuilder()
+                        .setId(DatasetId.newBuilder().setPath("1").build())
+                        .setValuation(Dataset.Valuation.SHIELDED)
+                        .setState(Dataset.DatasetState.OUTPUT)
+                        .setParentUri("f1")
+                        .build())
+                .build());
     }
 
 }
