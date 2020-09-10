@@ -57,6 +57,22 @@ jobs:
       # Maven caching to speed up pipeline build time
       - template: maven/task-cache.yml@templates
 
+      # Download file with json-key to GCR as a later task needs to
+      # authenticate in a different way than using service connection
+      # File is stored in Pipelines->Library->Secure Files
+      - task: DownloadSecureFile@1
+        name: gcrJsonKey
+        displayName: 'Download gcr creds'
+        inputs:
+          secureFile: 'gcr-key.json'
+
+      # Set env variable pointing to the file downloaded in previous task
+      # as a library in next task needs this env variable
+      - script: |
+          echo "Setting env variable DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE"
+          echo "##vso[task.setvariable variable=DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE]$(gcrJsonKey.secureFilePath)"
+        displayName: 'Setting DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE env variable'
+
       # Test and verify
       - template: maven/task-test-and-verify.yml@templates
 
