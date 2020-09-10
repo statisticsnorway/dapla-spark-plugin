@@ -1,9 +1,8 @@
 # Dapla Spark Plugin 
 
-[![Build Status](https://drone.prod-bip-ci.ssb.no/api/badges/statisticsnorway/dapla-spark-plugin/status.svg)](https://drone.prod-bip-ci.ssb.no/statisticsnorway/dapla-spark-plugin)
-[![Coverage](https://sonarqube.prod-bip-ci.ssb.no/api/project_badges/measure?project=no.ssb.dapla.spark.plugin%3Adapla-spark-plugin&metric=coverage)](https://sonarqube.prod-bip-ci.ssb.no/dashboard?id=no.ssb.dapla.spark.plugin%3Adapla-spark-plugin)
+[![Build Status](https://dev.azure.com/statisticsnorway/Dapla/_apis/build/status/statisticsnorway.dapla-spark-plugin?repoName=statisticsnorway%2Fdapla-spark-plugin&branchName=master)](https://dev.azure.com/statisticsnorway/Dapla/_build/latest?definitionId=99&repoName=statisticsnorway%2Fdapla-spark-plugin&branchName=master)
 
-This project integrates spark a with the dapla-spark service   
+This project integrates spark with dapla services and GCS.
 
 ### Usage
 
