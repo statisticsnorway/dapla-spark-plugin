@@ -65,13 +65,14 @@ jobs:
         name: gcrJsonKey
         displayName: 'Download gcr creds'
         inputs:
-          secureFile: 'gcr-key.json'
+          secureFile: 'gcs_sa_test.json'
 
       # Set env variable pointing to the file downloaded in previous task
       # as a library in next task needs this env variable
       - script: |
           echo "Setting env variable DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE"
           echo "##vso[task.setvariable variable=DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE]$(gcrJsonKey.secureFilePath)"
+          echo "##vso[task.setvariable variable=DAPLA_SPARK_TEST_BUCKET]ssb-dev-md-test"
         displayName: 'Setting DAPLA_SPARK_SERVICE_ACCOUNT_KEY_FILE env variable'
 
       # Test and verify
