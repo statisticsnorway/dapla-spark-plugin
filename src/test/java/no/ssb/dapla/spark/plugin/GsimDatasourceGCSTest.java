@@ -18,6 +18,7 @@ import no.ssb.dapla.gcs.connector.GoogleHadoopFileSystemExt;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsDetails;
 import no.ssb.dapla.gcs.oauth.GoogleCredentialsFactory;
 import no.ssb.dapla.gcs.token.SparkAccessTokenProvider;
+import no.ssb.dapla.service.CatalogClient;
 import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
@@ -69,8 +70,9 @@ public class GsimDatasourceGCSTest {
     private static String namespace = "test/dapla/namespace";
     private static long version = System.currentTimeMillis();
     private static BlobId blobId;
-    private MockWebServer server;
+    private MockWebServer dataAccessMockServer;
     private MockWebServer publisher;
+    private MockWebServer catalogMockServer;
     private static GoogleCredentialsDetails credentials;
 
     @BeforeClass
@@ -121,9 +123,13 @@ public class GsimDatasourceGCSTest {
         // Mock user read by org.apache.hadoop.security.UserGroupInformation
         System.setProperty("HADOOP_USER_NAME", "dapla_test");
 
-        this.server = new MockWebServer();
-        this.server.start();
-        HttpUrl baseUrl = server.url("/data-access/");
+        this.dataAccessMockServer = new MockWebServer();
+        this.dataAccessMockServer.start();
+        HttpUrl dataAccessUrl = dataAccessMockServer.url("/data-access/");
+
+        this.catalogMockServer = new MockWebServer();
+        this.catalogMockServer.start();
+        HttpUrl catalogUrl = catalogMockServer.url("/catalog/");
 
         this.publisher = new MockWebServer();
         this.publisher.start();
@@ -136,10 +142,9 @@ public class GsimDatasourceGCSTest {
                 .config("spark.ui.enabled", false)
                 .config(DaplaSparkConfig.FS_GS_IMPL_DISABLE_CACHE, true)
                 .config(DaplaSparkConfig.SPARK_SSB_DAPLA_GCS_STORAGE, "gs://" + bucket)
-                .config(DataAccessClient.CONFIG_DATA_ACCESS_URL, baseUrl.toString())
-                //.config(DataAccessClient.CONFIG_DATA_ACCESS_URL, "http://localhost:10140/")
+                .config(DataAccessClient.CONFIG_DATA_ACCESS_URL, dataAccessUrl.toString())
                 .config(MetadataPublisherClient.CONFIG_METADATA_PUBLISHER_URL, publisherUrl.toString())
-                //.config(MetadataPublisherClient.CONFIG_METADATA_PUBLISHER_URL, "http://localhost:10160/")
+                .config(CatalogClient.CONFIG_CATALOG_URL, catalogUrl.toString())
                 .config("spark.ssb.dapla.metadata.writer", FilesystemMetaDataWriter.class.getCanonicalName())
                 .config("spark.hadoop.fs.gs.impl", GoogleHadoopFileSystemExt.class.getCanonicalName())
                 .config("spark.hadoop.fs.gs.auth.access.token.provider.impl", SparkAccessTokenProvider.class.getCanonicalName())
@@ -205,7 +210,7 @@ public class GsimDatasourceGCSTest {
 
     @Test
     public void testReadFromBucket() throws InterruptedException {
-        server.enqueue(new MockResponse()
+        dataAccessMockServer.enqueue(new MockResponse()
                 .setBody(ProtobufJsonUtils.toString(ReadLocationResponse.newBuilder()
                         .setAccessAllowed(true)
                         .setParentUri("gs://" + blobId.getBucket())
@@ -223,7 +228,7 @@ public class GsimDatasourceGCSTest {
         assertThat(dataset.isEmpty()).isFalse();
 
         {
-            RecordedRequest recordedRequest = server.takeRequest();
+            RecordedRequest recordedRequest = dataAccessMockServer.takeRequest();
             final ReadLocationRequest readLocationRequest = ProtobufJsonUtils.toPojo(
                     recordedRequest.getBody().readByteString().utf8(), ReadLocationRequest.class);
             assertThat(readLocationRequest.getPath()).isEqualTo("/test/dapla/namespace");
@@ -238,7 +243,7 @@ public class GsimDatasourceGCSTest {
     @Test
     @Ignore("Fails from Maven")
     public void testUnauthorizedReadShouldFail() {
-        server.enqueue(new MockResponse().setResponseCode(403));
+        dataAccessMockServer.enqueue(new MockResponse().setResponseCode(403));
         thrown.expectMessage("Din bruker har ikke tilgang");
         sqlContext.read()
                 .format("gsim")
@@ -250,7 +255,8 @@ public class GsimDatasourceGCSTest {
         long version = System.currentTimeMillis();
         publisher.enqueue(new MockResponse().setResponseCode(200));
         publisher.enqueue(new MockResponse().setResponseCode(200));
-        server.enqueue(
+        catalogMockServer.enqueue(new MockResponse().setResponseCode(200));
+        dataAccessMockServer.enqueue(
                 new MockResponse()
                         .setBody(ProtobufJsonUtils.toString(WriteLocationResponse.newBuilder()
                                 .setAccessAllowed(true)
@@ -286,7 +292,7 @@ public class GsimDatasourceGCSTest {
         assertThat(dataset.isEmpty()).isFalse();
 
         final WriteLocationRequest writeLocationRequest = ProtobufJsonUtils.toPojo(
-                server.takeRequest().getBody().readByteString().utf8(), WriteLocationRequest.class);
+                dataAccessMockServer.takeRequest().getBody().readByteString().utf8(), WriteLocationRequest.class);
         assertThat(writeLocationRequest.getMetadataJson()).isEqualTo("{\n" +
                 "  \"id\": {\n" +
                 "    \"path\": \"/test/dapla/namespace\",\n" +
