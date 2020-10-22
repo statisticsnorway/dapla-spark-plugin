@@ -1,10 +1,16 @@
 package no.ssb.dapla.spark.plugin;
 
+import io.opentracing.Span;
+import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
+import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
+import no.ssb.dapla.dataset.uri.DatasetUri;
+import no.ssb.dapla.service.DataAccessClient;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.execution.FileRelation;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.EqualNullSafe;
@@ -32,17 +38,19 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     private final SQLContext context;
     private final String path;
-    private final StructType schema;
+    private final Span span;
+    private StructType schema;
 
-    public GsimRelation(SQLContext context, String path) {
+    public GsimRelation(SQLContext context, String path, Span span) {
         this.context = context;
         this.path = path;
-        this.schema = getDataset().schema();
+        this.span = span;
     }
 
-    public GsimRelation(SQLContext context, String path, StructType schema) {
+    public GsimRelation(SQLContext context, String path, StructType schema, Span span) {
         this.context = context;
         this.path = path;
+        this.span = span;
         this.schema = schema;
     }
 
@@ -70,7 +78,11 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     @Override
     public StructType schema() {
-        return schema;
+        System.out.println("*** Schema requested");
+        if (this.schema == null) {
+            this.schema = getDataset().schema();
+        }
+        return this.schema;
     }
 
     @Override
@@ -144,11 +156,31 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     }
 
     private Dataset<Row> getDataset() {
-        return this.sqlContext().read().parquet(path);
+        DataAccessClient dataAccessClient = new DataAccessClient(context.sparkContext().getConf(), span);
+
+        ReadLocationResponse locationResponse = dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
+                .setPath(path)
+                .setSnapshot(0) // 0 means latest
+                .build());
+
+        if (!locationResponse.getAccessAllowed()) {
+            span.log("User got permission denied");
+            throw new RuntimeException("Permission denied");
+        }
+
+        String uriString = DatasetUri.of(locationResponse.getParentUri(), path, locationResponse.getVersion()).toString();
+
+        span.log("Path to dataset: " + uriString);
+        System.out.println("Path til dataset: " + uriString);
+        SparkSession sparkSession = context.sparkSession().newSession();
+        DaplaSparkConfig.setUserContext(sparkSession, locationResponse.getAccessToken(), locationResponse.getExpirationTime());
+
+        return this.sqlContext().read().parquet(uriString);
     }
 
     @Override
     public String[] inputFiles() {
+        System.out.println("*** Inputfiles requested");
         return new String[]{path};
     }
 }

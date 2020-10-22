@@ -73,25 +73,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             final String localPath = options.getPath();
             span.setTag("namespace", localPath);
             System.out.println("Leser datasett fra: " + localPath);
-
-            DataAccessClient dataAccessClient = new DataAccessClient(sqlContext.sparkContext().getConf(), span);
-
-            ReadLocationResponse locationResponse = dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
-                    .setPath(localPath)
-                    .setSnapshot(0) // 0 means latest
-                    .build());
-
-            if (!locationResponse.getAccessAllowed()) {
-                span.log("User got permission denied");
-                throw new RuntimeException("Permission denied");
-            }
-
-            String uriString = DatasetUri.of(locationResponse.getParentUri(), localPath, locationResponse.getVersion()).toString();
-
-            span.log("Path to dataset: " + uriString);
-            System.out.println("Path til dataset: " + uriString);
-            SQLContext isolatedSqlContext = isolatedContext(sqlContext, locationResponse.getAccessToken(), locationResponse.getExpirationTime());
-            return new GsimRelation(isolatedSqlContext, uriString);
+            return new GsimRelation(sqlContext, localPath, span);
         } catch (Exception e) {
             logError(span, e);
             throw e;
@@ -154,7 +136,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             span.log("writing file(s) to: " + pathToNewDataSet);
             System.out.println("Skriver datasett til: " + pathToNewDataSet);
             SparkSession sparkSession = sqlContext.sparkSession();
-            setUserContext(sparkSession, writeLocationResponse.getAccessToken(), writeLocationResponse.getExpirationTime());
+            DaplaSparkConfig.setUserContext(sparkSession, writeLocationResponse.getAccessToken(), writeLocationResponse.getExpirationTime());
             MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf, span);
 
             // Write metadata file
@@ -201,13 +183,13 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                     .setDatasetMetaBytes(writeLocationResponse.getValidMetadataJson())
                     .setDatasetMetaSignatureBytes(writeLocationResponse.getMetadataSignature())
                     .build());
-            return new GsimRelation(sqlContext, pathToNewDataSet.toString(), data.schema());
+            return new GsimRelation(sqlContext, pathToNewDataSet.toString(), data.schema(), span);
 
         } catch (Exception e) {
             logError(span, e);
             throw e;
         } finally {
-            unsetUserContext(sqlContext.sparkSession());
+            DaplaSparkConfig.unsetUserContext(sqlContext.sparkSession());
             span.finish();
         }
     }
@@ -229,40 +211,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
         e.printStackTrace(new PrintWriter(stringWriter));
         span.log(new ImmutableMap.Builder().put("event", "error")
                 .put("message", e.getMessage()).put("stacktrace", stringWriter.toString()).build());
-    }
-
-
-    /**
-     * Creates a new SQLContext with an isolated spark session.
-     *
-     * @param sqlContext the original SQLContext (which will be the parent context)
-     * @param accessToken  namespace info that will be added to the isolated context
-     * @param expirationTime  namespace info that will be added to the isolated context
-     * @return the new SQLContext
-     */
-    private SQLContext isolatedContext(SQLContext sqlContext, String accessToken, long expirationTime) {
-        // Temporary enable file system cache during execution. This aviods re-creating the GoogleHadoopFileSystem
-        // during multiple job executions within the spark session.
-        // For this to work, we must create an isolated configuration inside a new spark session
-        // Note: There is still only one spark context that is shared among sessions
-        SparkSession sparkSession = sqlContext.sparkSession().newSession();
-        setUserContext(sparkSession, accessToken, expirationTime);
-        return sparkSession.sqlContext();
-    }
-
-    private void setUserContext(SparkSession sparkSession, String accessToken, long expirationTime) {
-        if (sparkSession.conf().contains(SparkOptions.ACCESS_TOKEN)) {
-            System.out.println("Access token already exists");
-        }
-        if (accessToken != null) {
-            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, accessToken);
-            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, expirationTime);
-        }
-    }
-
-    private void unsetUserContext(SparkSession sparkSession) {
-        sparkSession.conf().unset(SparkOptions.ACCESS_TOKEN);
-        sparkSession.conf().unset(SparkOptions.ACCESS_TOKEN_EXP);
     }
 
     @Override
