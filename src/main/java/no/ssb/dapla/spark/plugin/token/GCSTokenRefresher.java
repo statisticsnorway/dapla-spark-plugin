@@ -22,7 +22,7 @@ public class GCSTokenRefresher {
     private final String localPath;
     private final Span span;
     private Long lastRefresh = 0L;
-    private final Long lastRefreshTheshold = 1 * 60 * 1000L;
+    private final Long lastRefreshTheshold = 5 * 60 * 1000L;
 
     public GCSTokenRefresher(SparkConf sparkConf, String localPath, Span span) {
         this.dataAccessClient = new DataAccessClient(sparkConf, span);
