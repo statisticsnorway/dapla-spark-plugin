@@ -83,8 +83,8 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         Column[] requiredColumns = Stream.of(columns).map(Column::new).toArray(Column[]::new);
         Optional<Column> filter = Stream.of(filters).map(this::convertFilter).reduce(Column::and);
 
-        // This may be called interactively (long after the GsimRelation is created)
-        // So the check if the GCS token needs to be refreshed
+        // The buildScan method may be triggered interactively in notebooks (long after the GsimRelation is created)
+        // So check if the GCS token needs to be refreshed
         refreshGCSTokenIfNeeded();
         Dataset<Row> dataset = getDataset();
         dataset = dataset.select(requiredColumns);
@@ -97,8 +97,8 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     @Override
     public RDD<Row> buildScan() {
-        // This may be called interactively (long after the GsimRelation is created)
-        // So the check if the GCS token needs to be refreshed
+        // The buildScan method may be triggered interactively in notebooks (long after the GsimRelation is created)
+        // So check if the GCS token needs to be refreshed
         refreshGCSTokenIfNeeded();
         return getDataset().rdd();
     }
