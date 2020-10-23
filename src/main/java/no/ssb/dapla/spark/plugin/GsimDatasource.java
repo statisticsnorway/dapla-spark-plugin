@@ -22,6 +22,7 @@ import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
 import no.ssb.dapla.spark.plugin.metadata.MetaDataWriter;
 import no.ssb.dapla.spark.plugin.metadata.MetaDataWriterFactory;
+import no.ssb.dapla.spark.plugin.token.GCSTokenRefresher;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
@@ -34,6 +35,7 @@ import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.DataSourceRegister;
 import org.apache.spark.sql.sources.RelationProvider;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.immutable.Map;
@@ -73,7 +75,17 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             final String localPath = options.getPath();
             span.setTag("namespace", localPath);
             System.out.println("Leser datasett fra: " + localPath);
-            return new GsimRelation(sqlContext, localPath, span);
+
+            final GCSTokenRefresher gcsTokenRefresher = new GCSTokenRefresher(sqlContext.sparkContext().getConf(), localPath, span);
+            ReadLocationResponse locationResponse = gcsTokenRefresher.getReadLocation();
+            String uriString = DatasetUri.of(locationResponse.getParentUri(), localPath, locationResponse.getVersion()).toString();
+
+            span.log("Path to dataset: " + uriString);
+            System.out.println("Path til dataset: " + uriString);
+            SparkSession sparkSession = sqlContext.sparkSession().newSession();
+            GCSTokenRefresher.setUserContext(sparkSession, locationResponse.getAccessToken(), locationResponse.getExpirationTime());
+
+            return new GsimRelation(sparkSession.sqlContext(), uriString, gcsTokenRefresher);
         } catch (Exception e) {
             logError(span, e);
             throw e;
@@ -111,21 +123,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             }
             DatasetState state = DatasetState.valueOf(options.getState());
 
-            WriteLocationResponse writeLocationResponse = dataAccessClient.writeLocation(WriteLocationRequest.newBuilder()
-                    .setMetadataJson(ProtobufJsonUtils.toString(DatasetMeta.newBuilder()
-                            .setId(DatasetId.newBuilder()
-                                    .setPath(localPath)
-                                    .setVersion(version)
-                                    .build())
-                            .setType(Type.BOUNDED)
-                            .setValuation(valuation)
-                            .setState(state)
-                            .build()))
-                    .build());
-
-            if (!writeLocationResponse.getAccessAllowed()) {
-                throw new RuntimeException("Permission denied");
-            }
+            final GCSTokenRefresher gcsTokenRefresher = new GCSTokenRefresher(sqlContext.sparkContext().getConf(), localPath, span);
+            WriteLocationResponse writeLocationResponse = gcsTokenRefresher.getWriteLocation(version, valuation, state);
 
             String metadataJson = writeLocationResponse.getValidMetadataJson().toStringUtf8();
 
@@ -136,7 +135,7 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             span.log("writing file(s) to: " + pathToNewDataSet);
             System.out.println("Skriver datasett til: " + pathToNewDataSet);
             SparkSession sparkSession = sqlContext.sparkSession();
-            DaplaSparkConfig.setUserContext(sparkSession, writeLocationResponse.getAccessToken(), writeLocationResponse.getExpirationTime());
+            GCSTokenRefresher.setUserContext(sparkSession, writeLocationResponse.getAccessToken(), writeLocationResponse.getExpirationTime());
             MetadataPublisherClient metadataPublisherClient = new MetadataPublisherClient(conf, span);
 
             // Write metadata file
@@ -183,13 +182,13 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
                     .setDatasetMetaBytes(writeLocationResponse.getValidMetadataJson())
                     .setDatasetMetaSignatureBytes(writeLocationResponse.getMetadataSignature())
                     .build());
-            return new GsimRelation(sqlContext, pathToNewDataSet.toString(), data.schema(), span);
+            return new GsimRelation(sqlContext, pathToNewDataSet.toString(), data.schema(), gcsTokenRefresher);
 
         } catch (Exception e) {
             logError(span, e);
             throw e;
         } finally {
-            DaplaSparkConfig.unsetUserContext(sqlContext.sparkSession());
+            GCSTokenRefresher.unsetUserContext(sqlContext.sparkSession());
             span.finish();
         }
     }

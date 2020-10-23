@@ -1,16 +1,12 @@
 package no.ssb.dapla.spark.plugin;
 
-import io.opentracing.Span;
-import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
 import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
-import no.ssb.dapla.dataset.uri.DatasetUri;
-import no.ssb.dapla.service.DataAccessClient;
+import no.ssb.dapla.spark.plugin.token.GCSTokenRefresher;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
-import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.execution.FileRelation;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.EqualNullSafe;
@@ -38,20 +34,21 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     private final SQLContext context;
     private final String path;
-    private final Span span;
-    private StructType schema;
+    private final StructType schema;
+    private final GCSTokenRefresher gcsTokenRefresher;
 
-    public GsimRelation(SQLContext context, String path, Span span) {
+    public GsimRelation(SQLContext context, String path, GCSTokenRefresher gcsTokenRefresher) {
         this.context = context;
         this.path = path;
-        this.span = span;
+        this.schema = getDataset().schema();
+        this.gcsTokenRefresher = gcsTokenRefresher;
     }
 
-    public GsimRelation(SQLContext context, String path, StructType schema, Span span) {
+    public GsimRelation(SQLContext context, String path, StructType schema, GCSTokenRefresher gcsTokenRefresher) {
         this.context = context;
         this.path = path;
-        this.span = span;
         this.schema = schema;
+        this.gcsTokenRefresher = gcsTokenRefresher;
     }
 
     /**
@@ -78,11 +75,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     @Override
     public StructType schema() {
-        System.out.println("*** Schema requested");
-        if (this.schema == null) {
-            this.schema = getDataset().schema();
-        }
-        return this.schema;
+        return schema;
     }
 
     @Override
@@ -90,6 +83,9 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         Column[] requiredColumns = Stream.of(columns).map(Column::new).toArray(Column[]::new);
         Optional<Column> filter = Stream.of(filters).map(this::convertFilter).reduce(Column::and);
 
+        // This may be called interactively (long after the GsimRelation is created)
+        // So the GCS token is refreshed just in case
+        refreshGCSToken();
         Dataset<Row> dataset = getDataset();
         dataset = dataset.select(requiredColumns);
         if (filter.isPresent()) {
@@ -101,7 +97,16 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     @Override
     public RDD<Row> buildScan() {
+        // This may be called interactively (long after the GsimRelation is created)
+        // So the GCS token is refreshed just in case
+        refreshGCSToken();
         return getDataset().rdd();
+    }
+
+    private void refreshGCSToken() {
+        ReadLocationResponse locationResponse = gcsTokenRefresher.getReadLocation();
+        GCSTokenRefresher.setUserContext(sqlContext().sparkSession(), locationResponse.getAccessToken(),
+                locationResponse.getExpirationTime());
     }
 
     /**
@@ -156,26 +161,7 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     }
 
     private Dataset<Row> getDataset() {
-        DataAccessClient dataAccessClient = new DataAccessClient(context.sparkContext().getConf(), span);
-
-        ReadLocationResponse locationResponse = dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
-                .setPath(path)
-                .setSnapshot(0) // 0 means latest
-                .build());
-
-        if (!locationResponse.getAccessAllowed()) {
-            span.log("User got permission denied");
-            throw new RuntimeException("Permission denied");
-        }
-
-        String uriString = DatasetUri.of(locationResponse.getParentUri(), path, locationResponse.getVersion()).toString();
-
-        span.log("Path to dataset: " + uriString);
-        System.out.println("Path til dataset: " + uriString);
-        SparkSession sparkSession = context.sparkSession().newSession();
-        DaplaSparkConfig.setUserContext(sparkSession, locationResponse.getAccessToken(), locationResponse.getExpirationTime());
-
-        return this.sqlContext().read().parquet(uriString);
+        return this.sqlContext().read().parquet(path);
     }
 
     @Override

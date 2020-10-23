@@ -25,20 +25,4 @@ public class DaplaSparkConfig {
         this.conf = sparkConf;
     }
 
-    static void setUserContext(SparkSession sparkSession, String accessToken, long expirationTime) {
-        if (sparkSession.conf().contains(SparkOptions.ACCESS_TOKEN)) {
-            System.out.println("Access token already exists");
-        }
-        if (accessToken != null) {
-            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN, accessToken);
-            sparkSession.conf().set(SparkOptions.ACCESS_TOKEN_EXP, expirationTime);
-        }
-    }
-
-    static void unsetUserContext(SparkSession sparkSession) {
-        sparkSession.conf().unset(SparkOptions.ACCESS_TOKEN);
-        sparkSession.conf().unset(SparkOptions.ACCESS_TOKEN_EXP);
-    }
-
-
 }

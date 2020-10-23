@@ -219,6 +219,15 @@ public class GsimDatasourceGCSTest {
                         .setExpirationTime(System.currentTimeMillis() + 1000 * 60 * 60) // +1 Hour
                         .build()))
                 .setResponseCode(200));
+        dataAccessMockServer.enqueue(new MockResponse()
+                .setBody(ProtobufJsonUtils.toString(ReadLocationResponse.newBuilder()
+                        .setAccessAllowed(true)
+                        .setParentUri("gs://" + blobId.getBucket())
+                        .setVersion(String.valueOf(version))
+                        .setAccessToken(credentials.getAccessToken())
+                        .setExpirationTime(System.currentTimeMillis() + 1000 * 60 * 60) // +1 Hour
+                        .build()))
+                .setResponseCode(200));
 
         Dataset<Row> dataset = sqlContext.read()
                 .format("gsim")
