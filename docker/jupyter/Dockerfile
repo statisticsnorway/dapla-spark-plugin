@@ -82,8 +82,8 @@ COPY target/dapla-spark-plugin-*-shaded.jar /jupyter/lib/dapla-spark-plugin.jar
 # https://github.com/GoogleCloudPlatform/bigdata-interop/blob/master/gcs/INSTALL.md#configure-spark
 # https://github.com/GoogleCloudPlatform/bigdata-interop/issues/188
 # https://github.com/GoogleCloudPlatform/bigdata-interop/pull/180/files
-RUN wget -P /tmp https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-2.0.1.jar && \
-    mv /tmp/gcs-connector-hadoop2-2.0.1.jar /jupyter/lib/gcs-connector-hadoop.jar
+RUN wget -P /tmp https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-2.1.5.jar && \
+    mv /tmp/gcs-connector-hadoop2-2.1.5.jar /jupyter/lib/gcs-connector-hadoop.jar
 
 # JUPYTER needs a real user/group
 RUN addgroup -g $JUPYTER_GROUP_ID -S jupyter && \
