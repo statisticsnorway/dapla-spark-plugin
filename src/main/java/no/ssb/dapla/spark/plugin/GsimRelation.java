@@ -1,5 +1,7 @@
 package no.ssb.dapla.spark.plugin;
 
+import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
+import no.ssb.dapla.spark.plugin.token.GCSTokenRefresher;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
@@ -33,17 +35,20 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     private final SQLContext context;
     private final String path;
     private final StructType schema;
+    private final GCSTokenRefresher gcsTokenRefresher;
 
-    public GsimRelation(SQLContext context, String path) {
+    public GsimRelation(SQLContext context, String path, GCSTokenRefresher gcsTokenRefresher) {
         this.context = context;
         this.path = path;
         this.schema = getDataset().schema();
+        this.gcsTokenRefresher = gcsTokenRefresher;
     }
 
-    public GsimRelation(SQLContext context, String path, StructType schema) {
+    public GsimRelation(SQLContext context, String path, StructType schema, GCSTokenRefresher gcsTokenRefresher) {
         this.context = context;
         this.path = path;
         this.schema = schema;
+        this.gcsTokenRefresher = gcsTokenRefresher;
     }
 
     /**
@@ -78,6 +83,9 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         Column[] requiredColumns = Stream.of(columns).map(Column::new).toArray(Column[]::new);
         Optional<Column> filter = Stream.of(filters).map(this::convertFilter).reduce(Column::and);
 
+        // The buildScan method may be triggered interactively in notebooks (long after the GsimRelation is created)
+        // So check if the GCS token needs to be refreshed
+        refreshGCSTokenIfNeeded();
         Dataset<Row> dataset = getDataset();
         dataset = dataset.select(requiredColumns);
         if (filter.isPresent()) {
@@ -89,7 +97,18 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     @Override
     public RDD<Row> buildScan() {
+        // The buildScan method may be triggered interactively in notebooks (long after the GsimRelation is created)
+        // So check if the GCS token needs to be refreshed
+        refreshGCSTokenIfNeeded();
         return getDataset().rdd();
+    }
+
+    private void refreshGCSTokenIfNeeded() {
+        if (gcsTokenRefresher.shouldRefresh()) {
+            ReadLocationResponse locationResponse = gcsTokenRefresher.getReadLocation();
+            GCSTokenRefresher.setUserContext(sqlContext().sparkSession(), locationResponse.getAccessToken(),
+                    locationResponse.getExpirationTime());
+        }
     }
 
     /**
