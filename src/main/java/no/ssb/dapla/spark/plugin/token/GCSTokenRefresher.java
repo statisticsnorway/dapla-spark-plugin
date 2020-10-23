@@ -21,11 +21,17 @@ public class GCSTokenRefresher {
     private final DataAccessClient dataAccessClient;
     private final String localPath;
     private final Span span;
+    private Long lastRefresh = 0L;
+    private final Long lastRefreshTheshold = 1 * 60 * 1000L;
 
     public GCSTokenRefresher(SparkConf sparkConf, String localPath, Span span) {
         this.dataAccessClient = new DataAccessClient(sparkConf, span);
         this.localPath = localPath;
         this.span = span;
+    }
+
+    public boolean shouldRefresh() {
+        return System.currentTimeMillis() > lastRefresh + lastRefreshTheshold;
     }
 
     public ReadLocationResponse getReadLocation() {
@@ -38,6 +44,7 @@ public class GCSTokenRefresher {
             span.log("User got permission denied");
             throw new RuntimeException("Permission denied");
         }
+        this.lastRefresh = System.currentTimeMillis();
         return readLocationResponse;
     }
 
@@ -57,6 +64,7 @@ public class GCSTokenRefresher {
         if (!writeLocationResponse.getAccessAllowed()) {
             throw new RuntimeException("Permission denied");
         }
+        this.lastRefresh = System.currentTimeMillis();
         return writeLocationResponse;
     }
 

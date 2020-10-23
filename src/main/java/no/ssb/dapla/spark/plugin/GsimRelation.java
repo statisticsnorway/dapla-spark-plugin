@@ -84,8 +84,8 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
         Optional<Column> filter = Stream.of(filters).map(this::convertFilter).reduce(Column::and);
 
         // This may be called interactively (long after the GsimRelation is created)
-        // So the GCS token is refreshed just in case
-        refreshGCSToken();
+        // So the check if the GCS token needs to be refreshed
+        refreshGCSTokenIfNeeded();
         Dataset<Row> dataset = getDataset();
         dataset = dataset.select(requiredColumns);
         if (filter.isPresent()) {
@@ -98,15 +98,17 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
     @Override
     public RDD<Row> buildScan() {
         // This may be called interactively (long after the GsimRelation is created)
-        // So the GCS token is refreshed just in case
-        refreshGCSToken();
+        // So the check if the GCS token needs to be refreshed
+        refreshGCSTokenIfNeeded();
         return getDataset().rdd();
     }
 
-    private void refreshGCSToken() {
-        ReadLocationResponse locationResponse = gcsTokenRefresher.getReadLocation();
-        GCSTokenRefresher.setUserContext(sqlContext().sparkSession(), locationResponse.getAccessToken(),
-                locationResponse.getExpirationTime());
+    private void refreshGCSTokenIfNeeded() {
+        if (gcsTokenRefresher.shouldRefresh()) {
+            ReadLocationResponse locationResponse = gcsTokenRefresher.getReadLocation();
+            GCSTokenRefresher.setUserContext(sqlContext().sparkSession(), locationResponse.getAccessToken(),
+                    locationResponse.getExpirationTime());
+        }
     }
 
     /**
@@ -166,7 +168,6 @@ public class GsimRelation extends BaseRelation implements PrunedFilteredScan, Fi
 
     @Override
     public String[] inputFiles() {
-        System.out.println("*** Inputfiles requested");
         return new String[]{path};
     }
 }
