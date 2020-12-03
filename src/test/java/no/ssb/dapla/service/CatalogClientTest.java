@@ -2,11 +2,12 @@ package no.ssb.dapla.service;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import no.ssb.dapla.catalog.protobuf.Dataset;
-import no.ssb.dapla.catalog.protobuf.DatasetId;
+import com.google.protobuf.ByteString;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixRequest;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixResponse;
 import no.ssb.dapla.catalog.protobuf.SignedDataset;
+import no.ssb.dapla.dataset.api.DatasetMetaAll;
+import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -19,9 +20,11 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
-import static no.ssb.dapla.service.CatalogClient.*;
-import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.*;
-import static org.assertj.core.api.Assertions.*;
+import static no.ssb.dapla.service.CatalogClient.CONFIG_CATALOG_URL;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_ID;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_CLIENT_SECRET;
+import static no.ssb.dapla.spark.plugin.DaplaSparkConfig.CONFIG_ROUTER_OAUTH_TOKEN_URL;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class CatalogClientTest {
 
@@ -65,13 +68,15 @@ public class CatalogClientTest {
     public void testWriteSignedDataset() {
         server.enqueue(new MockResponse().setResponseCode(200));
         CatalogClient catalogClient = new CatalogClient(this.sparkConf);
+
         catalogClient.writeDataset(SignedDataset.newBuilder()
-                .setDataset(Dataset.newBuilder()
-                        .setId(DatasetId.newBuilder().setPath("1").build())
-                        .setValuation(Dataset.Valuation.SHIELDED)
-                        .setState(Dataset.DatasetState.OUTPUT)
+                .setDatasetMetaAllBytes(ByteString.copyFromUtf8(ProtobufJsonUtils.toString(DatasetMetaAll.newBuilder()
+                        .setId(no.ssb.dapla.dataset.api.DatasetId.newBuilder().setPath("1").build())
+                        .setValuation(no.ssb.dapla.dataset.api.Valuation.SHIELDED)
+                        .setState(no.ssb.dapla.dataset.api.DatasetState.OUTPUT)
+                        .setRandom("398ghaD")
                         .setParentUri("f1")
-                        .build())
+                        .build())))
                 .build());
     }
 
