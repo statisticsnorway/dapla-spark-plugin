@@ -6,18 +6,13 @@ import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
 import io.opentracing.util.GlobalTracer;
 import no.ssb.dapla.catalog.protobuf.SignedDataset;
-import no.ssb.dapla.data.access.protobuf.ReadLocationRequest;
 import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
-import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
-import no.ssb.dapla.dataset.api.DatasetId;
 import no.ssb.dapla.dataset.api.DatasetMeta;
 import no.ssb.dapla.dataset.api.DatasetState;
-import no.ssb.dapla.dataset.api.Type;
 import no.ssb.dapla.dataset.api.Valuation;
 import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.service.CatalogClient;
-import no.ssb.dapla.service.DataAccessClient;
 import no.ssb.dapla.service.MetadataPublisherClient;
 import no.ssb.dapla.spark.plugin.metadata.FilesystemMetaDataWriter;
 import no.ssb.dapla.spark.plugin.metadata.MetaDataWriter;
@@ -35,7 +30,6 @@ import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.sources.CreatableRelationProvider;
 import org.apache.spark.sql.sources.DataSourceRegister;
 import org.apache.spark.sql.sources.RelationProvider;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.immutable.Map;
@@ -107,8 +101,6 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             SparkContext sparkContext = sqlContext.sparkContext();
             SparkConf conf = sparkContext.getConf();
 
-            DataAccessClient dataAccessClient = new DataAccessClient(conf, span);
-
             String version = Optional.of(options)
                     .map(SparkOptions::getVersion)
                     .filter(s -> !s.isEmpty())
@@ -169,18 +161,8 @@ public class GsimDatasource implements RelationProvider, CreatableRelationProvid
             // Update catalog
             CatalogClient catalogClient = new CatalogClient(conf, span);
             catalogClient.writeDataset(SignedDataset.newBuilder()
-                    .setDataset(no.ssb.dapla.catalog.protobuf.Dataset.newBuilder()
-                            .setId(no.ssb.dapla.catalog.protobuf.DatasetId.newBuilder()
-                                    .setPath(localPath)
-                                    .setTimestamp(Long.parseLong(version))
-                                    .build())
-                            .setType(no.ssb.dapla.catalog.protobuf.Dataset.Type.BOUNDED)
-                            .setValuation(no.ssb.dapla.catalog.protobuf.Dataset.Valuation.valueOf(valuation.name()))
-                            .setState(no.ssb.dapla.catalog.protobuf.Dataset.DatasetState.valueOf(state.name()))
-                            .setParentUri(parentUri)
-                            .build())
-                    .setDatasetMetaBytes(writeLocationResponse.getValidMetadataJson())
-                    .setDatasetMetaSignatureBytes(writeLocationResponse.getMetadataSignature())
+                    .setDatasetMetaAllBytes(writeLocationResponse.getAllValidMetadataJson())
+                    .setDatasetMetaAllSignatureBytes(writeLocationResponse.getAllMetadataSignature())
                     .build());
             return new GsimRelation(sqlContext, pathToNewDataSet.toString(), data.schema(), gcsTokenRefresher);
 

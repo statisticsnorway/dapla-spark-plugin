@@ -12,6 +12,13 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <scm>
+        <connection>scm:git:git://github.com/statisticsnorway/dapla-spark-plugin.git</connection>
+        <developerConnection>scm:git:git@github.com:statisticsnorway/dapla-spark-plugin.git</developerConnection>
+        <url>https://github.com/statisticsnorway/dapla-spark-plugin</url>
+        <tag>HEAD</tag>
+    </scm>
+
     <repositories>
         <repository>
             <id>ssb-bip-releases</id>
@@ -42,12 +49,12 @@
                     <plugin>
                         <groupId>org.sonarsource.scanner.maven</groupId>
                         <artifactId>sonar-maven-plugin</artifactId>
-                        <version>3.6.1.1688</version>
+                        <version>3.7.0.1746</version>
                     </plugin>
                     <plugin>
                         <groupId>org.jacoco</groupId>
                         <artifactId>jacoco-maven-plugin</artifactId>
-                        <version>0.8.4</version>
+                        <version>0.8.6</version>
                         <executions>
                             <execution>
                                 <id>prepare-agent</id>
@@ -88,14 +95,14 @@
         <dependency>
             <groupId>no.ssb.dapla.data</groupId>
             <artifactId>data-access-protobuf</artifactId>
-            <version>0.9</version>
+            <version>0.11</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>no.ssb.dapla.catalog</groupId>
             <artifactId>dapla-catalog-protobuf</artifactId>
-            <version>0.6</version>
+            <version>0.10</version>
             <scope>compile</scope>
         </dependency>
 
@@ -123,7 +130,7 @@
         <dependency>
             <groupId>no.ssb.dapla</groupId>
             <artifactId>dataset-api</artifactId>
-            <version>0.2</version>
+            <version>0.6</version>
             <scope>compile</scope>
         </dependency>
 
@@ -137,7 +144,7 @@
         <dependency>
             <groupId>no.ssb.dapla</groupId>
             <artifactId>metadata-distributor-protobuf</artifactId>
-            <version>0.2</version>
+            <version>0.3</version>
             <scope>compile</scope>
         </dependency>
 
@@ -476,7 +483,7 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-storage</artifactId>
-            <version>1.99.0</version>
+            <version>1.113.4</version>
             <scope>test</scope>
         </dependency>
 

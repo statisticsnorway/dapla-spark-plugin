@@ -79,7 +79,7 @@ public class CatalogClient {
     }
 
     public void writeDataset(SignedDataset signedDataset) {
-        span.log("writeDataset" + signedDataset.getDataset());
+        span.log("/catalog/write " + signedDataset.getDatasetMetaAllBytes().toStringUtf8());
         Request request = new Request.Builder()
                 .url(buildUrl("catalog/write"))
                 .post(RequestBody.create(ProtobufJsonUtils.toString(signedDataset), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
