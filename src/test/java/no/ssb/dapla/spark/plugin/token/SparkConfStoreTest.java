@@ -2,10 +2,12 @@ package no.ssb.dapla.spark.plugin.token;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.SparkSession;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Ignore
 public class SparkConfStoreTest {
 
     @Test
