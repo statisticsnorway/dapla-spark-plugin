@@ -32,6 +32,7 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalog.Table;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -48,6 +49,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.hamcrest.core.IsNull.*;
 import static org.junit.Assume.*;
 
+@Ignore
 public class CustomSparkCatalogTest {
 
     private MockWebServer dataAccessMockServer;

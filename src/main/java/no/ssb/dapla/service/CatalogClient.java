@@ -21,7 +21,6 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.apache.spark.SparkConf;
-import org.apache.spark.sql.catalyst.catalog.CatalogTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
