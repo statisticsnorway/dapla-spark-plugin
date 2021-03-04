@@ -80,6 +80,25 @@ public class DataAccessClient {
         }
     }
 
+    public ReadLocationResponse readLocation2(ReadLocationRequest readLocationRequest) {
+        final String requestBody = ProtobufJsonUtils.toString(readLocationRequest);
+        span.log("ReadLocationRequest" + requestBody);
+        Request request = new Request.Builder()
+                .url(buildUrl("rpc/DataAccessService/readLocation2"))
+                .post(RequestBody.create(requestBody, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            String json = getJson(response);
+            handleErrorCodes(response, json);
+            ReadLocationResponse readLocationResponse = ProtobufJsonUtils.toPojo(json, ReadLocationResponse.class);
+            return readLocationResponse;
+        } catch (IOException e) {
+            log.error("readLocation failed", e);
+            throw new DataAccessServiceException(e);
+        }
+    }
+
     public WriteLocationResponse writeLocation(WriteLocationRequest writeLocationRequest) {
         final String requestBody = ProtobufJsonUtils.toString(writeLocationRequest);
         Request request = new Request.Builder()

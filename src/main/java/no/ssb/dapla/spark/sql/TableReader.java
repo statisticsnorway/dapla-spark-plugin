@@ -38,7 +38,7 @@ public class TableReader {
     private static ReadLocationResponse getReadLocation(SparkConf sparkConf, String path) {
         DataAccessClient dataAccessClient = new DataAccessClient(sparkConf);
 
-        return dataAccessClient.readLocation(ReadLocationRequest.newBuilder()
+        return dataAccessClient.readLocation2(ReadLocationRequest.newBuilder()
                 .setPath(path)
                 .setSnapshot(0) // 0 means latest
                 .build());
