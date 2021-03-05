@@ -76,7 +76,8 @@ public class CustomSparkCatalogTest {
                 .config("spark.ui.enabled", false)
                 //.config(CatalogClient.CONFIG_CATALOG_URL, catalogUrl.toString())
                 .config(CatalogClient.CONFIG_CATALOG_URL, "http://localhost:20110")
-                .config(DataAccessClient.CONFIG_DATA_ACCESS_URL, dataAccessUrl.toString())
+                //.config(DataAccessClient.CONFIG_DATA_ACCESS_URL, dataAccessUrl.toString())
+                .config(DataAccessClient.CONFIG_DATA_ACCESS_URL, "http://localhost:20140")
                 .config("spark.hadoop.fs.gs.auth.access.token.provider.impl", SparkAccessTokenProvider.class.getCanonicalName())
                 .config("spark.hadoop.fs.gs.impl", GoogleHadoopFileSystemExt.class.getCanonicalName())
                 .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
@@ -98,7 +99,7 @@ public class CustomSparkCatalogTest {
                 //.config(SparkOptions.ACCESS_TOKEN_EXP, credentials.getExpirationTime())
                 //.enableHiveSupport()
                 .config("spark.ssb.access", JWT.create()
-                        .withClaim("preferred_username", "kim")
+                        .withClaim("preferred_username", "kim.gaarder")
                         .withExpiresAt(Date.from(Instant.now().plus(1, HOURS)))
                         .sign(Algorithm.HMAC256("secret")))
                 .getOrCreate();
@@ -272,17 +273,23 @@ public class CustomSparkCatalogTest {
         TableWriter.forDataset(dataset)
                 .property("valuation", "INTERNAL")
                 .property("state", "INPUT")
-                .writeTo("/felles/test/roblix")
+                .writeTo("/skatt/test/iceberg/bjornandre")
                 .createOrReplace();
 
-        TableReader.forSession(session).readFrom("/felles/test/roblix").show();
+        //TableReader.forSession(session).readFrom("/felles/test/roblix").show();
 
     }
     @Test
     public void testLoadTable() throws IOException {
-        session.sqlContext().table("ssb_catalog.testing.region").show(false);
+        dataAccessMockServer.enqueue(new MockResponse()
+                .setBody(READ_LOCATION_RESPONSE)
+                .setResponseCode(200));
+        //TableReader.forSession(session).readFrom("/felles/test/roblix").show();
+        //session.sqlContext().table("ssb_catalog.testing.region").show(false);
         //session.sqlContext().sql("show create table test_db1.TestTable").show(false);
-        //session.sqlContext().sql("DESCRIBE EXTENDED test_db1.TestTable").show(false);
+        session.sqlContext().sql("DESCRIBE EXTENDED ssb_catalog.felles.test.roblix").show(false);
+        //session.sqlContext().sql("SELECT * FROM ssb_catalog.felles.test.roblix.snapshots").show(false);
+        //session.sqlContext().sql("CALL ssb_catalog.system.rollback_to_snapshot('felles.test.roblix', 2407205414572021903)");
         //session.sqlContext().read().format("iceberg").table("test_db1.TestTable").show(false);
         //session.sqlContext().read().format("iceberg").option("snapshot-id", "506444440131968391").load("ssb_catalog.felles.test.ssb_table").show(false);
         //session.sql("DESCRIBE HISTORY ssb_catalog.felles.test.ssb_table").show();
