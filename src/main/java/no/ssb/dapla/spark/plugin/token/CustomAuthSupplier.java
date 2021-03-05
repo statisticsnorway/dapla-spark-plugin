@@ -27,7 +27,7 @@ public class CustomAuthSupplier implements TokenSupplier {
     private static final Logger LOG = LoggerFactory.getLogger(CustomAuthSupplier.class);
 
     public CustomAuthSupplier(final SparkConf conf) {
-        TOKEN.compareAndSet(null, conf.get(SPARK_SSB_ACCESS_TOKEN));
+        TOKEN.compareAndSet(null, conf.get(SPARK_SSB_ACCESS_TOKEN, null));
         if (shouldRefresh()) {
             refreshToken();
         }
