@@ -30,6 +30,8 @@ public class TableReader {
         }
         session.conf().set(SparkOptions.ACCESS_TOKEN, readLocation.getAccessToken());
         session.conf().set(SparkOptions.ACCESS_TOKEN_EXP, String.valueOf(readLocation.getExpirationTime()));
+        SparkSession.getActiveSession().get().conf().set(SparkOptions.ACCESS_TOKEN, readLocation.getAccessToken());
+        SparkSession.getActiveSession().get().conf().set(SparkOptions.ACCESS_TOKEN_EXP, String.valueOf(readLocation.getExpirationTime()));
 
         TableCatalogIdentifier identifier = TableCatalogIdentifier.fromPath(path);
         return session.sqlContext().table(identifier.toCatalogPath(CustomSparkCatalog.DEFAULT_CATALOG_NAME));

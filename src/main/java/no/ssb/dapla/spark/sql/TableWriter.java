@@ -15,6 +15,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.sql.CreateTableWriter;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -51,6 +52,8 @@ public class TableWriter {
         String metadataPath = String.format("%s%s/%s", writeLocation.getParentUri(), path, METADATA_FOLDER);
         dataset.sparkSession().conf().set(SparkOptions.ACCESS_TOKEN, writeLocation.getAccessToken());
         dataset.sparkSession().conf().set(SparkOptions.ACCESS_TOKEN_EXP, String.valueOf(writeLocation.getExpirationTime()));
+        SparkSession.getActiveSession().get().conf().set(SparkOptions.ACCESS_TOKEN, writeLocation.getAccessToken());
+        SparkSession.getActiveSession().get().conf().set(SparkOptions.ACCESS_TOKEN_EXP, String.valueOf(writeLocation.getExpirationTime()));
 
         return dataset.writeTo(identifier.toCatalogPath("ssb_catalog"))
                 .using("iceberg")
