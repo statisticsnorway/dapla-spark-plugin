@@ -28,8 +28,6 @@ public class TableReader {
         if (!readLocation.getAccessAllowed()) {
             throw new RuntimeException("Permission denied");
         }
-        session.conf().set(SparkOptions.ACCESS_TOKEN, readLocation.getAccessToken());
-        session.conf().set(SparkOptions.ACCESS_TOKEN_EXP, String.valueOf(readLocation.getExpirationTime()));
         SparkSession.getActiveSession().get().conf().set(SparkOptions.ACCESS_TOKEN, readLocation.getAccessToken());
         SparkSession.getActiveSession().get().conf().set(SparkOptions.ACCESS_TOKEN_EXP, String.valueOf(readLocation.getExpirationTime()));
 

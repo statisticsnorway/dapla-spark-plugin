@@ -7,8 +7,6 @@ import no.ssb.dapla.dataset.uri.DatasetUri;
 import no.ssb.dapla.metadata.distributor.protobuf.DataChangedRequest;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
 import no.ssb.dapla.spark.plugin.token.CustomAuthSupplier;
-import no.ssb.dapla.spark.plugin.token.SparkConfStore;
-import no.ssb.dapla.spark.plugin.token.TokenRefresher;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;

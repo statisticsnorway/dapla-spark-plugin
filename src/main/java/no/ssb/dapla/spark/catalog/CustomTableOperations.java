@@ -22,6 +22,8 @@ public class CustomTableOperations extends BaseMetastoreTableOperations {
 
     protected CustomTableOperations(SparkConf sparkConf, Configuration conf, TableIdentifier tableIdentifier) {
         this.conf = conf;
+        this.conf.setBooleanIfUnset("fs.gs.impl.disable.cache",
+                this.conf.getBoolean("spark.hadoop.fs.gs.impl.disable.cache", false));
         //this.fileIO = new CustomFileIO(this.conf);
         this.fileIO = new HadoopFileIO(this.conf);
         this.tableIdentifier = tableIdentifier;
