@@ -51,7 +51,10 @@ public class CustomAuthSupplier implements TokenSupplier {
                     .addHeader("Authorization", String.format("token %s", System.getenv("JUPYTERHUB_API_TOKEN"))).get()
                     .build();
 
-            OkHttpClient client = new OkHttpClient();
+            OkHttpClient client = new OkHttpClient().newBuilder()
+                    .followRedirects(false)
+                    .followSslRedirects(false)
+                    .build();
             try (Response response = client.newCall(request).execute()) {
                 if (!response.isSuccessful()) {
                     throw new IOException("authentication failed " + response);
