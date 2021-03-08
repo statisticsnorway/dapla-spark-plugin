@@ -23,7 +23,8 @@ public final class SparkAccessTokenProvider implements AccessTokenProvider {
 
     @Override
     public AccessToken getAccessToken() {
-        return this.accessToken;
+        //return this.accessToken;
+        return new AccessToken(config.get(SparkOptions.ACCESS_TOKEN), Long.valueOf(config.get(SparkOptions.ACCESS_TOKEN_EXP)));
     }
 
     @Override
