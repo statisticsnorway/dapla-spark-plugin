@@ -50,6 +50,8 @@ public class TableWriter {
         }
         String dataPath = String.format("%s%s", writeLocation.getParentUri(), path);
         String metadataPath = String.format("%s%s/%s", writeLocation.getParentUri(), path, METADATA_FOLDER);
+        SparkSession.getActiveSession().get().conf().set(SparkOptions.ACCESS_TOKEN, writeLocation.getAccessToken());
+        SparkSession.getActiveSession().get().conf().set(SparkOptions.ACCESS_TOKEN_EXP, String.valueOf(writeLocation.getExpirationTime()));
         return new String[] {metadataPath, dataPath};
     }
 
