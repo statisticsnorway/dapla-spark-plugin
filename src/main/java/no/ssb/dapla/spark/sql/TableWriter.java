@@ -39,6 +39,20 @@ public class TableWriter {
         return this;
     }
 
+    //TODO: Remove after demo
+    public String[] getPaths(String path) {
+        Valuation valuation = Valuation.valueOf(props.get("valuation"));
+        DatasetState state = DatasetState.valueOf(props.get("state"));
+
+        WriteLocationResponse writeLocation = getWriteLocation(dataset.sparkSession().sparkContext().conf(), path, valuation, state);
+        if (!writeLocation.getAccessAllowed()) {
+            throw new RuntimeException("Permission denied");
+        }
+        String dataPath = String.format("%s%s", writeLocation.getParentUri(), path);
+        String metadataPath = String.format("%s%s/%s", writeLocation.getParentUri(), path, METADATA_FOLDER);
+        return new String[] {metadataPath, dataPath};
+    }
+
     public CreateTableWriter<Row> writeTo(String path) {
         TableCatalogIdentifier identifier = TableCatalogIdentifier.fromPath(path);
         Valuation valuation = Valuation.valueOf(props.get("valuation"));
