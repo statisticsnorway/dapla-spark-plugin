@@ -9,6 +9,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
     <scm>
@@ -101,7 +103,7 @@
         <dependency>
             <groupId>no.ssb.dapla.catalog</groupId>
             <artifactId>dapla-catalog-protobuf</artifactId>
-            <version>0.10</version>
+            <version>0.11-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
 
@@ -202,14 +204,14 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-avro_2.12</artifactId>
-            <version>3.0.0</version>
+            <version>3.0.1</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_2.12</artifactId>
-            <version>3.0.0</version>
+            <version>3.0.1</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -226,7 +228,7 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.12</artifactId>
-            <version>3.0.0</version>
+            <version>3.0.1</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -242,6 +244,13 @@
                     <artifactId>guava</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.iceberg</groupId>
+            <artifactId>iceberg-spark3-runtime</artifactId>
+            <version>0.11.0</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -588,8 +597,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>8</source>
-                    <target>8</target>
+                    <source>9</source>
+                    <target>9</target>
                 </configuration>
             </plugin>
             <plugin>

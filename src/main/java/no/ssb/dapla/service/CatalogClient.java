@@ -4,12 +4,15 @@ import io.opentracing.Span;
 import io.opentracing.contrib.okhttp3.TracingInterceptor;
 import io.opentracing.noop.NoopSpan;
 import io.opentracing.util.GlobalTracer;
+import no.ssb.dapla.catalog.protobuf.CreateTableRequest;
+import no.ssb.dapla.catalog.protobuf.GetTableRequest;
+import no.ssb.dapla.catalog.protobuf.GetTableResponse;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixRequest;
 import no.ssb.dapla.catalog.protobuf.ListByPrefixResponse;
 import no.ssb.dapla.catalog.protobuf.SignedDataset;
+import no.ssb.dapla.catalog.protobuf.UpdateTableRequest;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
-import no.ssb.dapla.spark.plugin.token.SparkConfStore;
-import no.ssb.dapla.spark.plugin.token.TokenRefresher;
+import no.ssb.dapla.spark.plugin.token.CustomAuthSupplier;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -41,13 +44,7 @@ public class CatalogClient {
     public CatalogClient(final SparkConf conf, Span span) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS);
 
-        SparkConfStore store;
-        if (conf != null) {
-            store = new SparkConfStore(conf);
-        } else {
-            store = SparkConfStore.get();
-        }
-        builder.addInterceptor(new OAuth2Interceptor(new TokenRefresher(store)));
+        builder.addInterceptor(new OAuth2Interceptor(new CustomAuthSupplier(conf)));
         this.client = TracingInterceptor.addTracing(builder, GlobalTracer.get());
         this.baseURL = conf.get(CONFIG_CATALOG_URL);
         if (!this.baseURL.endsWith("/")) {
@@ -89,6 +86,52 @@ public class CatalogClient {
             handleErrorCodes(response, json);
         } catch (IOException e) {
             log.error("writeDataset failed", e);
+            throw new CatalogServiceException(e);
+        }
+    }
+
+    public GetTableResponse getTable(GetTableRequest getTableRequest) throws NotFoundException {
+        span.log("/catalog2/get " + getTableRequest.getPath());
+        Request request = new Request.Builder()
+                .url(buildUrl("catalog2/get"))
+                .post(RequestBody.create(ProtobufJsonUtils.toString(getTableRequest), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .build();
+        try (Response response = client.newCall(request).execute()) {
+            String json = getJson(response);
+            handleErrorCodes(response, json);
+            return ProtobufJsonUtils.toPojo(json, GetTableResponse.class);
+        } catch (IOException e) {
+            log.error("getTable failed", e);
+            throw new CatalogServiceException(e);
+        }
+    }
+
+    public void createTable(CreateTableRequest createTableRequest) {
+        span.log("/catalog2/create " + createTableRequest.getTable().getPath());
+        Request request = new Request.Builder()
+                .url(buildUrl("catalog2/create"))
+                .post(RequestBody.create(ProtobufJsonUtils.toString(createTableRequest), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .build();
+        try (Response response = client.newCall(request).execute()) {
+            String json = getJson(response);
+            handleErrorCodes(response, json);
+        } catch (IOException e) {
+            log.error("createTable failed", e);
+            throw new CatalogServiceException(e);
+        }
+    }
+
+    public void updateTable(UpdateTableRequest updateTableRequest) {
+        span.log("/catalog2/update " + updateTableRequest.getTable().getPath());
+        Request request = new Request.Builder()
+                .url(buildUrl("catalog2/update"))
+                .put(RequestBody.create(ProtobufJsonUtils.toString(updateTableRequest), okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .build();
+        try (Response response = client.newCall(request).execute()) {
+            String json = getJson(response);
+            handleErrorCodes(response, json);
+        } catch (IOException e) {
+            log.error("updateTable failed", e);
             throw new CatalogServiceException(e);
         }
     }

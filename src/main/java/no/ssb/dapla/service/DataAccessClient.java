@@ -9,8 +9,7 @@ import no.ssb.dapla.data.access.protobuf.ReadLocationResponse;
 import no.ssb.dapla.data.access.protobuf.WriteLocationRequest;
 import no.ssb.dapla.data.access.protobuf.WriteLocationResponse;
 import no.ssb.dapla.spark.plugin.OAuth2Interceptor;
-import no.ssb.dapla.spark.plugin.token.SparkConfStore;
-import no.ssb.dapla.spark.plugin.token.TokenRefresher;
+import no.ssb.dapla.spark.plugin.token.CustomAuthSupplier;
 import no.ssb.dapla.utils.ProtobufJsonUtils;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -41,13 +40,7 @@ public class DataAccessClient {
     public DataAccessClient(final SparkConf conf, Span span) {
         okhttp3.OkHttpClient.Builder builder = new okhttp3.OkHttpClient.Builder();
 
-        SparkConfStore store;
-        if (conf != null) {
-            store = new SparkConfStore(conf);
-        } else {
-            store = SparkConfStore.get();
-        }
-        builder.addInterceptor(new OAuth2Interceptor(new TokenRefresher(store)));
+        builder.addInterceptor(new OAuth2Interceptor(new CustomAuthSupplier(conf)));
 
         this.client = TracingInterceptor.addTracing(builder, GlobalTracer.get());
         this.baseURL = conf.get(CONFIG_DATA_ACCESS_URL);
@@ -66,6 +59,25 @@ public class DataAccessClient {
         span.log("ReadLocationRequest" + requestBody);
         Request request = new Request.Builder()
                 .url(buildUrl("rpc/DataAccessService/readLocation"))
+                .post(RequestBody.create(requestBody, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            String json = getJson(response);
+            handleErrorCodes(response, json);
+            ReadLocationResponse readLocationResponse = ProtobufJsonUtils.toPojo(json, ReadLocationResponse.class);
+            return readLocationResponse;
+        } catch (IOException e) {
+            log.error("readLocation failed", e);
+            throw new DataAccessServiceException(e);
+        }
+    }
+
+    public ReadLocationResponse readLocation2(ReadLocationRequest readLocationRequest) {
+        final String requestBody = ProtobufJsonUtils.toString(readLocationRequest);
+        span.log("ReadLocationRequest" + requestBody);
+        Request request = new Request.Builder()
+                .url(buildUrl("rpc/DataAccessService/readLocation2"))
                 .post(RequestBody.create(requestBody, okhttp3.MediaType.get(MediaType.APPLICATION_JSON)))
                 .build();
 
